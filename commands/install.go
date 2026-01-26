@@ -131,14 +131,29 @@ func runInstall(database *db.SQLiteDB, slug string, showAll bool, run bool, sudo
 	var matched []db.InstallInstruction
 
 	if platform != "" {
+		normalizedPlatform := lib.NormalizePlatform(platform)
+		if normalizedPlatform != platform {
+			platform = normalizedPlatform
+		}
 		matched = findMatchingInstalls(platform, installs)
 	} else {
 		osInfo, err := lib.DetectOS()
 		if err != nil {
 			fmt.Printf("Warning: Could not detect OS: %v\n\n", err)
 			if fallbackPlatform != "" {
-				matched = findMatchingInstalls(fallbackPlatform, installs)
-				platform = fallbackPlatform
+				fallback := lib.NormalizePlatform(fallbackPlatform)
+				if fallback == "LANG" {
+					fallback = tool.Language
+					for _, inst := range installs {
+						if lib.MatchLanguage(fallback, inst.Platform) {
+							matched = append(matched, inst)
+						}
+					}
+					platform = fallback
+				} else {
+					matched = findMatchingInstalls(fallback, installs)
+					platform = fallback
+				}
 			}
 		} else {
 			matched = findMatchingInstalls(osInfo.ID, installs)
@@ -148,6 +163,22 @@ func runInstall(database *db.SQLiteDB, slug string, showAll bool, run bool, sudo
 
 	if len(matched) == 0 {
 		fmt.Printf("No install command found for %s.\n\n", platform)
+		if platform != "LANG" && platform != tool.Language {
+			var langMatched []db.InstallInstruction
+			for _, inst := range installs {
+				if lib.MatchLanguage(tool.Language, inst.Platform) {
+					langMatched = append(langMatched, inst)
+				}
+			}
+			if len(langMatched) > 0 {
+				fmt.Printf("Trying language (%s):\n", tool.Language)
+				for _, inst := range langMatched {
+					fmt.Println(lipgloss.NewStyle().Bold(true).Render(inst.Command))
+				}
+				fmt.Println()
+				return nil
+			}
+		}
 		fmt.Println("Available commands:")
 		return showAllInstalls(tool.Name, installs)
 	}
