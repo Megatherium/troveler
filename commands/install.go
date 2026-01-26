@@ -17,14 +17,19 @@ import (
 var all bool
 
 var InstallCmd = &cobra.Command{
-	Use:   "install <slug>",
+	Use:   "install <slug> [platform]",
 	Short: "Show install command for a tool",
 	Long: `Show the appropriate install command for the current OS.
 Without flags, shows only the command for your detected OS.
-Use --all to show all available install commands.`,
-	Args: cobra.ExactArgs(1),
+Use --all to show all available install commands.
+Specify a platform as the second argument to show commands for that platform.`,
+	Args: cobra.RangeArgs(1, 2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		slug := args[0]
+		platform := ""
+		if len(args) > 1 {
+			platform = args[1]
+		}
 
 		cfg, err := config.Load()
 		if err != nil {
@@ -37,7 +42,7 @@ Use --all to show all available install commands.`,
 		}
 		defer database.Close()
 
-		return runInstall(database, slug, all)
+		return runInstall(database, slug, all, platform)
 	},
 }
 
@@ -45,7 +50,7 @@ func init() {
 	InstallCmd.Flags().BoolVarP(&all, "all", "a", false, "Show all install commands")
 }
 
-func runInstall(database *db.SQLiteDB, slug string, showAll bool) error {
+func runInstall(database *db.SQLiteDB, slug string, showAll bool, platform string) error {
 	tools, err := database.GetToolBySlug(slug)
 	if err != nil {
 		return fmt.Errorf("tool not found: %s", slug)
@@ -66,6 +71,10 @@ func runInstall(database *db.SQLiteDB, slug string, showAll bool) error {
 
 	if showAll {
 		return showAllInstalls(tool.Name, installs)
+	}
+
+	if platform != "" {
+		return showPlatformInstalls(tool.Name, platform, installs)
 	}
 
 	osInfo, err := lib.DetectOS()
@@ -108,6 +117,27 @@ func showAllInstalls(name string, installs []db.InstallInstruction) error {
 	}
 
 	t.Render()
+	return nil
+}
+
+func showPlatformInstalls(name string, platform string, installs []db.InstallInstruction) error {
+	matched := findMatchingInstalls(platform, installs)
+
+	fmt.Println()
+	fmt.Println(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#00FF00")).Render("Install command for " + platform + ":"))
+	fmt.Println()
+
+	if len(matched) == 0 {
+		fmt.Printf("No install command found for %s.\n\n", platform)
+		fmt.Println("Available commands:")
+		return showAllInstalls(name, installs)
+	}
+
+	for _, inst := range matched {
+		fmt.Println(lipgloss.NewStyle().Bold(true).Render(inst.Command))
+	}
+	fmt.Println()
+
 	return nil
 }
 
