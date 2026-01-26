@@ -5,7 +5,6 @@ go 1.25.6
 require (
 	github.com/charmbracelet/log v0.4.2
 	github.com/google/uuid v1.6.0
-	github.com/jedib0t/go-pretty/v6 v6.7.8
 	github.com/mattn/go-sqlite3 v1.14.33
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/time v0.14.0

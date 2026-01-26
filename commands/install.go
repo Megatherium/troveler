@@ -2,11 +2,9 @@ package commands
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
 	"troveler/db"
@@ -64,54 +62,6 @@ func findMatchingInstalls(osID string, installs []db.InstallInstruction) []db.In
 	}
 
 	return matched
-}
-
-func showAllInstalls(name string, installs []db.InstallInstruction) error {
-	fmt.Println()
-	fmt.Println(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#00FFFF")).Render(name + " - All Install Commands:"))
-	fmt.Println(strings.Repeat("─", len(name)+len(" - All Install Commands:")))
-	fmt.Println()
-
-	t := table.NewWriter()
-	t.SetOutputMirror(os.Stdout)
-	t.SetStyle(table.StyleDefault)
-	t.SetColumnConfigs([]table.ColumnConfig{
-		{NumberFormat: "%02d"},
-	})
-
-	for i, inst := range installs {
-		platformColor := getGradientColorSimple(i)
-		cmdColor := getGradientColorSimple((i + len(installs)/2) % len(gradientColors))
-
-		t.AppendRow(table.Row{
-			lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(platformColor)).Render(inst.Platform),
-			lipgloss.NewStyle().Foreground(lipgloss.Color(cmdColor)).Render(inst.Command),
-		})
-	}
-
-	t.Render()
-	return nil
-}
-
-func showPlatformInstalls(name string, platform string, installs []db.InstallInstruction) error {
-	matched := findMatchingInstalls(platform, installs)
-
-	fmt.Println()
-	fmt.Println(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#00FF00")).Render("Install command for " + platform + ":"))
-	fmt.Println()
-
-	if len(matched) == 0 {
-		fmt.Printf("No install command found for %s.\n\n", platform)
-		fmt.Println("Available commands:")
-		return showAllInstalls(name, installs)
-	}
-
-	for _, inst := range matched {
-		fmt.Println(lipgloss.NewStyle().Bold(true).Render(inst.Command))
-	}
-	fmt.Println()
-
-	return nil
 }
 
 func runInstall(database *db.SQLiteDB, slug string, showAll bool, run bool, sudo bool, platform string, fallbackPlatform string, alwaysRun bool, useSudo string) error {
@@ -241,4 +191,115 @@ func executeInstall(command string, sudo bool, useSudo string, alwaysRun bool) e
 
 	fmt.Printf("\nExecuting: %s\n\n", command)
 	return nil
+}
+
+func showAllInstalls(name string, installs []db.InstallInstruction) error {
+	fmt.Println()
+	fmt.Println(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#00FFFF")).Render(name + " - All Install Commands:"))
+	fmt.Println(strings.Repeat("─", len(name)+len(" - All Install Commands:")))
+	fmt.Println()
+
+	headers := []string{"Platform", "Command"}
+	rows := make([][]string, len(installs))
+	for i, inst := range installs {
+		rows[i] = []string{inst.Platform, inst.Command}
+	}
+
+	fmt.Println(renderInstallTable(headers, rows))
+
+	return nil
+}
+
+func renderInstallTable(headers []string, rows [][]string) string {
+	if len(headers) == 0 || len(rows) == 0 {
+		return ""
+	}
+
+	colWidths := make([]int, len(headers))
+	for i, h := range headers {
+		colWidths[i] = len(h)
+	}
+	for _, row := range rows {
+		for i, cell := range row {
+			if len(cell) > colWidths[i] {
+				colWidths[i] = len(cell)
+			}
+		}
+	}
+
+	borderChar := "│"
+	topBorder := "┌"
+	midBorder := "├"
+	botBorder := "└"
+	joinChar := "┬"
+	joinMid := "┼"
+	joinBot := "┴"
+	rightEnd := "┐"
+	rightMid := "┤"
+	rightBot := "┘"
+
+	headerStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#00FF00"))
+
+	var b strings.Builder
+
+	b.WriteString(topBorder)
+	for i, w := range colWidths {
+		b.WriteString(strings.Repeat("─", w+2))
+		if i < len(colWidths)-1 {
+			b.WriteString(joinChar)
+		}
+	}
+	b.WriteString(rightEnd + "\n")
+
+	b.WriteString(borderChar)
+	for i, h := range headers {
+		pad := colWidths[i] - len(h)
+		b.WriteString(" ")
+		b.WriteString(headerStyle.Render(h))
+		b.WriteString(strings.Repeat(" ", pad+1))
+		b.WriteString(borderChar)
+	}
+	b.WriteString("\n")
+
+	b.WriteString(midBorder)
+	for i, w := range colWidths {
+		b.WriteString(strings.Repeat("─", w+2))
+		if i < len(colWidths)-1 {
+			b.WriteString(joinMid)
+		}
+	}
+	b.WriteString(rightMid + "\n")
+
+	for rowIdx, row := range rows {
+		b.WriteString(borderChar)
+		for i, cell := range row {
+			pad := colWidths[i] - len(cell)
+			var color string
+			if i == 0 {
+				color = getGradientColorSimple(rowIdx)
+			} else {
+				color = getGradientColorSimple((rowIdx + len(rows)/2) % len(gradientColors))
+			}
+			cellStyle := lipgloss.NewStyle().
+				Foreground(lipgloss.Color(color))
+			b.WriteString(" ")
+			b.WriteString(cellStyle.Render(cell))
+			b.WriteString(strings.Repeat(" ", pad+1))
+			b.WriteString(borderChar)
+		}
+		b.WriteString("\n")
+	}
+
+	b.WriteString(botBorder)
+	for i, w := range colWidths {
+		b.WriteString(strings.Repeat("─", w+2))
+		if i < len(colWidths)-1 {
+			b.WriteString(joinBot)
+		}
+	}
+	b.WriteString(rightBot)
+
+	return b.String()
 }

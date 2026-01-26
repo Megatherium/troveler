@@ -3,15 +3,102 @@ package commands
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
 	"troveler/db"
 )
+
+func renderTable(headers []string, rows [][]string) string {
+	if len(headers) == 0 || len(rows) == 0 {
+		return ""
+	}
+
+	colWidths := make([]int, len(headers))
+	for i, h := range headers {
+		colWidths[i] = len(h)
+	}
+	for _, row := range rows {
+		for i, cell := range row {
+			if len(cell) > colWidths[i] {
+				colWidths[i] = len(cell)
+			}
+		}
+	}
+
+	borderChar := "│"
+	topBorder := "┌"
+	midBorder := "├"
+	botBorder := "└"
+	joinChar := "┬"
+	joinMid := "┼"
+	joinBot := "┴"
+	rightEnd := "┐"
+	rightMid := "┤"
+	rightBot := "┘"
+
+	headerStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#00FF00"))
+
+	var b strings.Builder
+
+	b.WriteString(topBorder)
+	for i, w := range colWidths {
+		b.WriteString(strings.Repeat("─", w+2))
+		if i < len(colWidths)-1 {
+			b.WriteString(joinChar)
+		}
+	}
+	b.WriteString(rightEnd + "\n")
+
+	b.WriteString(borderChar)
+	for i, h := range headers {
+		pad := colWidths[i] - len(h)
+		b.WriteString(" ")
+		b.WriteString(headerStyle.Render(h))
+		b.WriteString(strings.Repeat(" ", pad+1))
+		b.WriteString(borderChar)
+	}
+	b.WriteString("\n")
+
+	b.WriteString(midBorder)
+	for i, w := range colWidths {
+		b.WriteString(strings.Repeat("─", w+2))
+		if i < len(colWidths)-1 {
+			b.WriteString(joinMid)
+		}
+	}
+	b.WriteString(rightMid + "\n")
+
+	for rowIdx, row := range rows {
+		b.WriteString(borderChar)
+		for i, cell := range row {
+			pad := colWidths[i] - len(cell)
+			color := getGradientColorSimple(rowIdx)
+			cellStyle := lipgloss.NewStyle().
+				Foreground(lipgloss.Color(color))
+			b.WriteString(" ")
+			b.WriteString(cellStyle.Render(cell))
+			b.WriteString(strings.Repeat(" ", pad+1))
+			b.WriteString(borderChar)
+		}
+		b.WriteString("\n")
+	}
+
+	b.WriteString(botBorder)
+	for i, w := range colWidths {
+		b.WriteString(strings.Repeat("─", w+2))
+		if i < len(colWidths)-1 {
+			b.WriteString(joinBot)
+		}
+	}
+	b.WriteString(rightBot)
+
+	return b.String()
+}
 
 var SearchCmd = &cobra.Command{
 	Use:   "search [query]",
@@ -55,29 +142,17 @@ func runSearch(ctx context.Context, database *db.SQLiteDB, query string) error {
 	fmt.Println(strings.Repeat("─", len(fmt.Sprintf("Found %d results for '%s'", len(results), query))))
 	fmt.Println()
 
-	t := table.NewWriter()
-	t.SetOutputMirror(os.Stdout)
-	t.SetStyle(table.StyleDefault)
-
-	t.AppendHeader(table.Row{"#", "Name", "Tagline", "Language"})
-
+	headers := []string{"#", "Name", "Tagline", "Language"}
+	rows := make([][]string, len(results))
 	for i, r := range results {
 		tagline := r.Tagline
 		if len(tagline) > 50 {
 			tagline = tagline[:47] + "..."
 		}
-		nameStyle := lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color(getGradientColorSimple(i)))
-		t.AppendRow(table.Row{
-			fmt.Sprintf("%d", i+1),
-			nameStyle.Render(r.Name),
-			tagline,
-			r.Language,
-		})
+		rows[i] = []string{fmt.Sprintf("%d", i+1), r.Name, tagline, r.Language}
 	}
 
-	t.Render()
+	fmt.Println(renderTable(headers, rows))
 
 	return nil
 }
