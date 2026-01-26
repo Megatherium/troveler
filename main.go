@@ -19,7 +19,18 @@ Use 'troveler search <query>' to search your local database.
 Use 'troveler info <slug>' to see details of a specific tool.
 Use 'troveler install <slug>' to get install commands for your OS.`,
 	Version: "0.1.0",
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		configPath, _ := cmd.Flags().GetString("config")
+		cfg, err := commands.LoadConfig(configPath)
+		if err != nil {
+			return fmt.Errorf("config load: %w", err)
+		}
+		cmd.SetContext(commands.WithConfig(cmd.Context(), cfg))
+		return nil
+	},
 }
+
+var configPath string
 
 var completionCmd = &cobra.Command{
 	Use:   "completion [bash|zsh|fish]",
@@ -70,6 +81,7 @@ Fish:
 }
 
 func init() {
+	RootCmd.PersistentFlags().StringVarP(&configPath, "config", "c", "", "Path to config file")
 	RootCmd.AddCommand(commands.UpdateCmd)
 	RootCmd.AddCommand(commands.SearchCmd)
 	RootCmd.AddCommand(commands.InfoCmd)

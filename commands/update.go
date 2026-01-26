@@ -10,7 +10,6 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/spf13/cobra"
 
-	"troveler/config"
 	"troveler/crawler"
 	"troveler/db"
 )
@@ -22,14 +21,14 @@ var UpdateCmd = &cobra.Command{
 	Short: "Crawl terminaltrove.com and update local database",
 	Long:  "Fetches all tools from terminaltrove.com and stores them in the local SQLite database.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cfg, err := config.Load()
-		if err != nil {
-			return fmt.Errorf("config load: %w", err)
+		cfg := GetConfig(cmd.Context())
+		if cfg == nil {
+			return fmt.Errorf("config not loaded")
 		}
 
-		log.Info("Opening database at ", cfg.DBPath)
+		log.Info("Opening database with DSN: ", cfg.DSN)
 
-		database, err := db.New(cfg.DBPath)
+		database, err := db.New(cfg.DSN)
 		if err != nil {
 			return fmt.Errorf("db init: %w", err)
 		}

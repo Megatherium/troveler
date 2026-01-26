@@ -9,7 +9,6 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
-	"troveler/config"
 	"troveler/db"
 )
 
@@ -21,12 +20,12 @@ var SearchCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		query := strings.Join(args, " ")
 
-		cfg, err := config.Load()
-		if err != nil {
-			return fmt.Errorf("config load: %w", err)
+		cfg := GetConfig(cmd.Context())
+		if cfg == nil {
+			return fmt.Errorf("config not loaded")
 		}
 
-		database, err := db.New(cfg.DBPath)
+		database, err := db.New(cfg.DSN)
 		if err != nil {
 			return fmt.Errorf("db init: %w", err)
 		}
