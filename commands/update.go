@@ -85,6 +85,10 @@ func getGradientColor(pos int, total int) string {
 	return gradientColors[idx]
 }
 
+func getGradientColorSimple(index int) string {
+	return gradientColors[index%len(gradientColors)]
+}
+
 type slugEntry struct {
 	slug     string
 	position int

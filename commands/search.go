@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
@@ -46,19 +47,34 @@ func runSearch(ctx context.Context, database *db.SQLiteDB, query string) error {
 		return nil
 	}
 
-	fmt.Printf("Found %d results for '%s'\n", len(results), query)
+	fmt.Println()
+	fmt.Println(lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#00FFFF")).
+		Render(fmt.Sprintf("Found %d results for '%s'", len(results), query)))
+	fmt.Println(strings.Repeat("─", len(fmt.Sprintf("Found %d results for '%s'", len(results), query))))
+	fmt.Println()
 
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
-	t.AppendHeader(table.Row{"#", "Name", "Tagline", "Language"})
 	t.SetStyle(table.StyleDefault)
+
+	t.AppendHeader(table.Row{"#", "Name", "Tagline", "Language"})
 
 	for i, r := range results {
 		tagline := r.Tagline
-		if len(tagline) > 60 {
-			tagline = tagline[:57] + "..."
+		if len(tagline) > 50 {
+			tagline = tagline[:47] + "..."
 		}
-		t.AppendRow(table.Row{i + 1, r.Name, tagline, r.Language})
+		nameStyle := lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color(getGradientColorSimple(i)))
+		t.AppendRow(table.Row{
+			fmt.Sprintf("%d", i+1),
+			nameStyle.Render(r.Name),
+			tagline,
+			r.Language,
+		})
 	}
 
 	t.Render()

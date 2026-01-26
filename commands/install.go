@@ -74,10 +74,19 @@ func showAllInstalls(name string, installs []db.InstallInstruction) error {
 
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
-	t.AppendHeader(table.Row{"Platform", "Command"})
+	t.SetStyle(table.StyleDefault)
+	t.SetColumnConfigs([]table.ColumnConfig{
+		{NumberFormat: "%02d"},
+	})
 
-	for _, inst := range installs {
-		t.AppendRow(table.Row{inst.Platform, inst.Command})
+	for i, inst := range installs {
+		platformColor := getGradientColorSimple(i)
+		cmdColor := getGradientColorSimple((i + len(installs)/2) % len(gradientColors))
+
+		t.AppendRow(table.Row{
+			lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(platformColor)).Render(inst.Platform),
+			lipgloss.NewStyle().Foreground(lipgloss.Color(cmdColor)).Render(inst.Command),
+		})
 	}
 
 	t.Render()
