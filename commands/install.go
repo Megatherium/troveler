@@ -14,6 +14,8 @@ import (
 )
 
 var all bool
+var run bool
+var sudo bool
 
 var InstallCmd = &cobra.Command{
 	Use:   "install <slug> [platform]",
@@ -21,7 +23,8 @@ var InstallCmd = &cobra.Command{
 	Long: `Show the appropriate install command for the current OS.
 Without flags, shows only the command for your detected OS.
 Use --all to show all available install commands.
-Specify a platform as the second argument to show commands for that platform.`,
+Specify a platform as the second argument to show commands for that platform.
+Use --run to execute the install command after confirmation.`,
 	Args: cobra.RangeArgs(1, 2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		slug := args[0]
@@ -41,12 +44,14 @@ Specify a platform as the second argument to show commands for that platform.`,
 		}
 		defer database.Close()
 
-		return runInstall(database, slug, all, platform, cfg.Install.FallbackPlatform)
+		return runInstall(database, slug, all, run, sudo, platform, cfg.Install.FallbackPlatform, cfg.Install.AlwaysRun, cfg.Install.UseSudo)
 	},
 }
 
 func init() {
 	InstallCmd.Flags().BoolVarP(&all, "all", "a", false, "Show all install commands")
+	InstallCmd.Flags().BoolVarP(&run, "run", "r", false, "Run the install command after confirmation")
+	InstallCmd.Flags().BoolVarP(&sudo, "sudo", "s", false, "Prepend sudo to the install command")
 }
 
 func findMatchingInstalls(osID string, installs []db.InstallInstruction) []db.InstallInstruction {
@@ -79,7 +84,7 @@ func showAllInstalls(name string, installs []db.InstallInstruction) error {
 	return nil
 }
 
-func showPlatformInstallsWithFallback(name string, platform string, installs []db.InstallInstruction) error {
+func showPlatformInstalls(name string, platform string, installs []db.InstallInstruction) error {
 	matched := findMatchingInstalls(platform, installs)
 
 	fmt.Println()
@@ -100,11 +105,7 @@ func showPlatformInstallsWithFallback(name string, platform string, installs []d
 	return nil
 }
 
-func showPlatformInstalls(name string, platform string, installs []db.InstallInstruction) error {
-	return showPlatformInstallsWithFallback(name, platform, installs)
-}
-
-func runInstall(database *db.SQLiteDB, slug string, showAll bool, platform string, fallbackPlatform string) error {
+func runInstall(database *db.SQLiteDB, slug string, showAll bool, run bool, sudo bool, platform string, fallbackPlatform string, alwaysRun bool, useSudo string) error {
 	tools, err := database.GetToolBySlug(slug)
 	if err != nil {
 		return fmt.Errorf("tool not found: %s", slug)
@@ -127,32 +128,32 @@ func runInstall(database *db.SQLiteDB, slug string, showAll bool, platform strin
 		return showAllInstalls(tool.Name, installs)
 	}
 
+	var matched []db.InstallInstruction
+
 	if platform != "" {
-		return showPlatformInstalls(tool.Name, platform, installs)
-	}
-
-	osInfo, err := lib.DetectOS()
-	if err != nil {
-		fmt.Printf("Warning: Could not detect OS: %v\n\n", err)
-		if fallbackPlatform != "" {
-			return showPlatformInstallsWithFallback(tool.Name, fallbackPlatform, installs)
+		matched = findMatchingInstalls(platform, installs)
+	} else {
+		osInfo, err := lib.DetectOS()
+		if err != nil {
+			fmt.Printf("Warning: Could not detect OS: %v\n\n", err)
+			if fallbackPlatform != "" {
+				matched = findMatchingInstalls(fallbackPlatform, installs)
+				platform = fallbackPlatform
+			}
+		} else {
+			matched = findMatchingInstalls(osInfo.ID, installs)
+			platform = osInfo.ID
 		}
-		return showAllInstalls(tool.Name, installs)
 	}
 
-	matched := findMatchingInstalls(osInfo.ID, installs)
 	if len(matched) == 0 {
-		fmt.Printf("No install command found for %s (%s).\n\n", osInfo.Name, osInfo.ID)
-		if fallbackPlatform != "" {
-			fmt.Printf("Using fallback platform: %s\n", fallbackPlatform)
-			return showPlatformInstallsWithFallback(tool.Name, fallbackPlatform, installs)
-		}
+		fmt.Printf("No install command found for %s.\n\n", platform)
 		fmt.Println("Available commands:")
 		return showAllInstalls(tool.Name, installs)
 	}
 
 	fmt.Println()
-	fmt.Println(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#00FF00")).Render("Install command for " + osInfo.Name + ":"))
+	fmt.Println(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#00FF00")).Render("Install command for " + platform + ":"))
 	fmt.Println()
 
 	for _, inst := range matched {
@@ -160,5 +161,44 @@ func runInstall(database *db.SQLiteDB, slug string, showAll bool, platform strin
 	}
 	fmt.Println()
 
+	if run {
+		return executeInstall(matched[0].Command, sudo, useSudo, alwaysRun)
+	}
+
+	return nil
+}
+
+func executeInstall(command string, sudo bool, useSudo string, alwaysRun bool) error {
+	shouldSudo := sudo
+
+	if !sudo && useSudo == "ask" {
+		fmt.Print("Use sudo? [y/N] ")
+		var confirm string
+		if _, err := fmt.Scanln(&confirm); err != nil {
+			return fmt.Errorf("aborted")
+		}
+		shouldSudo = confirm == "y" || confirm == "Y"
+	} else if !sudo && useSudo == "true" {
+		shouldSudo = true
+	}
+
+	if shouldSudo {
+		command = "sudo " + command
+	}
+
+	if !alwaysRun {
+		fmt.Print("Execute this command? [y/N] ")
+		var confirm string
+		if _, err := fmt.Scanln(&confirm); err != nil {
+			return fmt.Errorf("aborted")
+		}
+
+		if confirm != "y" && confirm != "Y" {
+			fmt.Println("Aborted.")
+			return nil
+		}
+	}
+
+	fmt.Printf("\nExecuting: %s\n\n", command)
 	return nil
 }

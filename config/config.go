@@ -15,6 +15,8 @@ type Config struct {
 
 type InstallConfig struct {
 	FallbackPlatform string `toml:"fallback_platform"`
+	AlwaysRun        bool   `toml:"always_run"`
+	UseSudo          string `toml:"use_sudo"`
 }
 
 func Load(configPath string) (*Config, error) {
