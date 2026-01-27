@@ -82,6 +82,7 @@ Fish:
 
 func init() {
 	RootCmd.PersistentFlags().StringVarP(&configPath, "config", "c", "", "Path to config file")
+	RootCmd.AddCommand(commands.TUICmd)
 	RootCmd.AddCommand(commands.UpdateCmd)
 	RootCmd.AddCommand(commands.SearchCmd)
 	RootCmd.AddCommand(commands.InfoCmd)

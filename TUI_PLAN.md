@@ -7,7 +7,7 @@
 ## Phase Completion Tracker
 
 - [x] **Phase 0**: Project setup & refactoring ✅
-- [ ] **Phase 1**: Base layout & navigation  
+- [x] **Phase 1**: Base layout & navigation ✅
 - [ ] **Phase 2**: Search panel
 - [ ] **Phase 3**: Tool list table panel
 - [ ] **Phase 4**: Tool info panel
@@ -51,9 +51,27 @@
 
 ---
 
+## Phase 1: Base Layout & Navigation 🎨
+
+### Status: ✅ Complete
+
+#### Deliverables:
+- ✅ Base bubbletea model with state management
+- ✅ 4-panel layout structure (search, tools, info, install)
+- ✅ Tab navigation between panels
+- ✅ Gradient styling and border management
+- ✅ Global keybindings (Alt+Q quit, ? help, Alt+U update, i info modal)
+- ✅ Modal system (help, info, update overlays)
+- ✅ Window resize handling
+- ✅ TUI command integration
+- ✅ Comprehensive tests for model behavior
+
+---
+
 ## Commits Made
 
-_(Will track conventional commits here as phases complete)_
+1. **Phase 0**: `cee4fe7` - ♻️ refactor: extract business logic and add TUI dependencies
+2. **Phase 1**: `ce994d6` - ✨ feat(tui): implement base layout and navigation (amended with top margin fix)
 
 ---
 
