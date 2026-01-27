@@ -41,11 +41,25 @@ func (m *Model) renderMainLayout() string {
 	leftWidth := m.width / 2
 	rightWidth := m.width - leftWidth
 
+	// Left side: fixed proportions
 	searchHeight := max(5, availableHeight/10)
 	toolsHeight := availableHeight - searchHeight
 
-	infoHeight := (availableHeight * 67) / 100
-	installHeight := availableHeight - infoHeight
+	// Right side: dynamic proportions based on install count
+	// More installs = larger install panel, smaller info panel
+	installLineCount := len(m.installs) + 4 // +4 for title, borders, help text, padding
+	if installLineCount < 8 {
+		installLineCount = 8 // minimum height
+	}
+	
+	maxInstallHeight := (availableHeight * 2) / 3 // max 67% of height
+	installHeight := installLineCount
+	if installHeight > maxInstallHeight {
+		installHeight = maxInstallHeight
+	}
+	
+	// Info panel gets remaining space
+	infoHeight := availableHeight - installHeight
 
 	// Render panels
 	searchPanel := m.renderSearchPanel(leftWidth, searchHeight)

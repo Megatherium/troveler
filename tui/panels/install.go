@@ -61,8 +61,8 @@ func (p *InstallPanel) SetTool(tool *db.Tool, installs []db.InstallInstruction) 
 	platform := selector.SelectPlatform(detectedOS)
 
 	// Filter commands based on platform
-	filtered := install.FilterCommands(installs, platform, tool.Language)
-	defaultCmd := install.SelectDefaultCommand(filtered)
+	filtered, usedFallback := install.FilterCommands(installs, platform, tool.Language)
+	defaultCmd := install.SelectDefaultCommand(filtered, usedFallback)
 
 	// Format for display
 	p.commands = install.FormatCommands(filtered, defaultCmd)

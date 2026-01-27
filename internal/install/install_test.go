@@ -69,7 +69,11 @@ func TestFilterCommandsLANG(t *testing.T) {
 		{Platform: "python (pip)", Command: "pip install"},
 	}
 
-	matched := FilterCommands(installs, "LANG", "go")
+	matched, usedFallback := FilterCommands(installs, "LANG", "go")
+
+	if usedFallback {
+		t.Error("Expected normal match, got fallback")
+	}
 
 	if len(matched) != 2 {
 		t.Errorf("Expected 2 matches for go language, got %d", len(matched))
@@ -89,7 +93,7 @@ func TestSelectDefaultCommand(t *testing.T) {
 		{ID: "2", Platform: "cargo", Command: "cargo install"},
 	}
 
-	defaultCmd := SelectDefaultCommand(installs)
+	defaultCmd := SelectDefaultCommand(installs, false)
 
 	if defaultCmd == nil {
 		t.Fatal("Expected default command, got nil")

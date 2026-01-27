@@ -1,6 +1,8 @@
 package install
 
 import (
+	"strings"
+	
 	"troveler/db"
 	"troveler/lib"
 )
@@ -46,8 +48,8 @@ func (ps *PlatformSelector) SelectPlatform(detectedOS string) string {
 }
 
 // FilterCommands filters install commands based on platform selection
-// If no matches found, returns all install instructions as fallback
-func FilterCommands(installs []db.InstallInstruction, platform string, toolLanguage string) []db.InstallInstruction {
+// Returns (matched commands, whether fallback was used)
+func FilterCommands(installs []db.InstallInstruction, platform string, toolLanguage string) ([]db.InstallInstruction, bool) {
 	var matched []db.InstallInstruction
 
 	if platform == "LANG" {
@@ -70,16 +72,35 @@ func FilterCommands(installs []db.InstallInstruction, platform string, toolLangu
 	// Fallback: if no matches found, return all instructions
 	// This ensures users always see *something* rather than empty panel
 	if len(matched) == 0 {
-		return installs
+		return installs, true // true = fallback used
 	}
 
-	return matched
+	return matched, false // false = normal match
 }
 
-// SelectDefaultCommand returns the first matched command (highest priority)
-func SelectDefaultCommand(commands []db.InstallInstruction) *db.InstallInstruction {
+// SelectDefaultCommand returns the best default command
+// If fallback was used, tries to pick a sensible default (brew, apt, etc.)
+// Otherwise returns the first matched command
+func SelectDefaultCommand(commands []db.InstallInstruction, usedFallback bool) *db.InstallInstruction {
 	if len(commands) == 0 {
 		return nil
 	}
+	
+	// If we used fallback (showing all commands), try to pick a sensible default
+	if usedFallback {
+		// Priority order for fallback defaults
+		preferredPlatforms := []string{"brew", "linux:brew", "macos:brew", "apt", "apt-get", "linux:ubuntu", "linux:debian", "pacman", "linux:arch"}
+		for _, preferred := range preferredPlatforms {
+			for _, cmd := range commands {
+				if strings.Contains(strings.ToLower(cmd.Platform), preferred) {
+					return &cmd
+				}
+			}
+		}
+		// If no preferred found, don't mark any as default
+		return nil
+	}
+	
+	// Normal case: first match is default
 	return &commands[0]
 }

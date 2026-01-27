@@ -3,6 +3,7 @@ package crawler
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"regexp"
 	"strings"
 
@@ -161,6 +162,8 @@ func ParseDetailPage(data []byte) (*DetailPage, error) {
 				case map[string]any:
 					for method, cmd := range v {
 						if cmdStr, ok := cmd.(string); ok {
+							// Decode HTML entities like &#39; → '
+							cmdStr = html.UnescapeString(cmdStr)
 							methods := strings.Split(method, "/")
 							for _, m := range methods {
 								m = strings.TrimSpace(m)
@@ -170,7 +173,8 @@ func ParseDetailPage(data []byte) (*DetailPage, error) {
 						}
 					}
 				case string:
-					page.Installations[platform] = v
+					// Decode HTML entities like &#39; → '
+					page.Installations[platform] = html.UnescapeString(v)
 				}
 			}
 		}
