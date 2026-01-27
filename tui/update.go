@@ -33,6 +33,21 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.tools = msg.tools
 		m.toolsPanel.SetTools(msg.tools)
 		m.searching = false
+		
+		// Auto-select first tool to populate info/install panels
+		if len(msg.tools) > 0 {
+			firstTool := &msg.tools[0].Tool
+			m.selectedTool = firstTool
+			m.infoPanel.SetTool(firstTool, []db.InstallInstruction{})
+			
+			// Load install instructions for first tool
+			installs, err := m.db.GetInstallInstructions(firstTool.ID)
+			if err == nil {
+				m.installs = installs
+				m.infoPanel.SetTool(firstTool, installs)
+				m.installPanel.SetTool(firstTool, installs)
+			}
+		}
 		return m, nil
 
 	case searchErrorMsg:
@@ -41,8 +56,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.searching = false
 		return m, nil
 
-	case panels.ToolSelectedMsg:
-		// Tool was selected (Enter pressed in tools panel)
+	case panels.ToolCursorChangedMsg:
+		// Cursor moved to a different tool - update info/install panels
 		m.selectedTool = &msg.Tool.Tool
 		
 		// Update info panel
@@ -55,8 +70,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.infoPanel.SetTool(m.selectedTool, installs)
 			m.installPanel.SetTool(m.selectedTool, installs)
 		}
-		
-		// Jump to install panel
+		return m, nil
+
+	case panels.ToolSelectedMsg:
+		// Tool was selected (Enter pressed in tools panel)
+		// Info/install panels already populated by cursor change, just jump to install panel
 		m.toolsPanel.Blur()
 		m.activePanel = PanelInstall
 		m.installPanel.Focus()

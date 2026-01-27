@@ -25,8 +25,13 @@ type ToolsPanel struct {
 	scrollOffset  int
 }
 
-// ToolSelectedMsg is sent when a tool is selected
+// ToolSelectedMsg is sent when a tool is selected (Enter pressed)
 type ToolSelectedMsg struct {
+	Tool db.SearchResult
+}
+
+// ToolCursorChangedMsg is sent when the cursor moves to a different tool
+type ToolCursorChangedMsg struct {
 	Tool db.SearchResult
 }
 
@@ -62,6 +67,12 @@ func (p *ToolsPanel) Update(msg tea.Msg) tea.Cmd {
 			if p.cursor < len(p.tools)-1 {
 				p.cursor++
 				p.adjustScroll()
+				// Notify that cursor changed
+				if p.cursor < len(p.tools) {
+					return func() tea.Msg {
+						return ToolCursorChangedMsg{Tool: p.tools[p.cursor]}
+					}
+				}
 			}
 			return nil
 
@@ -69,6 +80,12 @@ func (p *ToolsPanel) Update(msg tea.Msg) tea.Cmd {
 			if p.cursor > 0 {
 				p.cursor--
 				p.adjustScroll()
+				// Notify that cursor changed
+				if p.cursor < len(p.tools) {
+					return func() tea.Msg {
+						return ToolCursorChangedMsg{Tool: p.tools[p.cursor]}
+					}
+				}
 			}
 			return nil
 
