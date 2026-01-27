@@ -106,16 +106,34 @@ func (s *SQLiteDB) UpsertInstallInstruction(ctx context.Context, inst *InstallIn
 	return err
 }
 
-func (s *SQLiteDB) Search(ctx context.Context, query string, limit int) ([]SearchResult, error) {
-	sqlQuery := `
+func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResult, error) {
+	// Validate sort field to prevent SQL injection
+	allowedFields := map[string]string{
+		"name":     "name",
+		"tagline":  "tagline",
+		"language": "language",
+	}
+
+	sortField, ok := allowedFields[opts.SortField]
+	if !ok {
+		sortField = "name"
+	}
+
+	sortOrder := "ASC"
+	if opts.SortOrder == "DESC" || opts.SortOrder == "desc" {
+		sortOrder = "DESC"
+	}
+
+	sqlQuery := fmt.Sprintf(`
 		SELECT id, slug, name, tagline, description, language, license, date_published, code_repository
 		FROM tools
 		WHERE name LIKE ? OR tagline LIKE ? OR description LIKE ?
+		ORDER BY %s %s
 		LIMIT ?
-	`
+	`, sortField, sortOrder)
 
-	likeQuery := "%" + query + "%"
-	rows, err := s.db.QueryContext(ctx, sqlQuery, likeQuery, likeQuery, likeQuery, limit)
+	likeQuery := "%" + opts.Query + "%"
+	rows, err := s.db.QueryContext(ctx, sqlQuery, likeQuery, likeQuery, likeQuery, opts.Limit)
 	if err != nil {
 		return nil, err
 	}

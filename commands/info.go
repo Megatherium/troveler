@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"troveler/db"
+	"troveler/pkg/ui"
 )
 
 var InfoCmd = &cobra.Command{
@@ -18,86 +20,10 @@ var InfoCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		slug := args[0]
 
-		cfg := GetConfig(cmd.Context())
-		if cfg == nil {
-			return fmt.Errorf("config not loaded")
-		}
-
-		database, err := db.New(cfg.DSN)
-		if err != nil {
-			return fmt.Errorf("db init: %w", err)
-		}
-		defer database.Close()
-
-		return runInfo(database, slug)
+		return WithDB(cmd, func(ctx context.Context, database *db.SQLiteDB) error {
+			return runInfo(database, slug)
+		})
 	},
-}
-
-func renderInfoTable(rows [][]string) string {
-	if len(rows) == 0 {
-		return ""
-	}
-
-	colWidths := []int{12, 0}
-	for _, row := range rows {
-		if len(row[0]) > colWidths[0] {
-			colWidths[0] = len(row[0])
-		}
-		if len(row[1]) > colWidths[1] {
-			colWidths[1] = len(row[1])
-		}
-	}
-
-	borderChar := "│"
-	topBorder := "┌"
-	botBorder := "└"
-	joinChar := "┬"
-	joinBot := "┴"
-	rightEnd := "┐"
-	rightBot := "┘"
-
-	labelStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#00FF00"))
-
-	valueStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#CCCCCC"))
-
-	var b strings.Builder
-
-	b.WriteString(topBorder)
-	for i, w := range colWidths {
-		b.WriteString(strings.Repeat("─", w+2))
-		if i < len(colWidths)-1 {
-			b.WriteString(joinChar)
-		}
-	}
-	b.WriteString(rightEnd + "\n")
-
-	for _, row := range rows {
-		b.WriteString(borderChar)
-		b.WriteString(" ")
-		b.WriteString(labelStyle.Render(row[0]))
-		pad := colWidths[0] - len(row[0])
-		b.WriteString(strings.Repeat(" ", pad+1))
-		b.WriteString(borderChar)
-		b.WriteString(" ")
-		b.WriteString(valueStyle.Render(row[1]))
-		pad = colWidths[1] - len(row[1])
-		b.WriteString(strings.Repeat(" ", pad+1))
-		b.WriteString(borderChar + "\n")
-	}
-
-	b.WriteString(botBorder)
-	for i, w := range colWidths {
-		b.WriteString(strings.Repeat("─", w+2))
-		if i < len(colWidths)-1 {
-			b.WriteString(joinBot)
-		}
-	}
-	b.WriteString(rightBot)
-
-	return b.String()
 }
 
 func runInfo(database *db.SQLiteDB, slug string) error {
@@ -148,18 +74,17 @@ func runInfo(database *db.SQLiteDB, slug string) error {
 
 	if len(rows) > 0 {
 		fmt.Println(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#00FF00")).Render("Info:"))
-		fmt.Println(renderInfoTable(rows))
+		fmt.Println(ui.RenderKeyValueTable(rows))
 		fmt.Println()
 	}
 
 	if len(installs) > 0 {
-		headers := []string{"Platform", "Command"}
 		instRows := make([][]string, len(installs))
 		for i, inst := range installs {
 			instRows[i] = []string{inst.Platform, inst.Command}
 		}
 		fmt.Println(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#00FF00")).Render("Install Instructions:"))
-		fmt.Println(renderInstallTable(headers, instRows))
+		fmt.Println(ui.RenderKeyValueTable(instRows))
 	}
 
 	return nil

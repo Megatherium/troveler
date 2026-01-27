@@ -28,3 +28,10 @@ type SearchResult struct {
 	Tool
 	Installations map[string]string `json:"-"`
 }
+
+type SearchOptions struct {
+	Query     string
+	Limit     int
+	SortField string
+	SortOrder string // ASC or DESC
+}

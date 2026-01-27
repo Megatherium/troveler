@@ -11,12 +11,17 @@ import (
 type Config struct {
 	DSN     string        `toml:"dsn"`
 	Install InstallConfig `toml:"install"`
+	Search  SearchConfig  `toml:"search"`
 }
 
 type InstallConfig struct {
 	FallbackPlatform string `toml:"fallback_platform"`
 	AlwaysRun        bool   `toml:"always_run"`
 	UseSudo          string `toml:"use_sudo"`
+}
+
+type SearchConfig struct {
+	TaglineWidth int `toml:"tagline_width"`
 }
 
 func Load(configPath string) (*Config, error) {

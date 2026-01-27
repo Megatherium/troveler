@@ -14,6 +14,7 @@ import (
 
 	"troveler/crawler"
 	"troveler/db"
+	"troveler/pkg/ui"
 )
 
 var limit int
@@ -25,28 +26,19 @@ var UpdateCmd = &cobra.Command{
 	Long: `Fetches all tools from terminaltrove.com and stores them in the local SQLite database.
 Use --log to show detailed logging output.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cfg := GetConfig(cmd.Context())
-		if cfg == nil {
-			return fmt.Errorf("config not loaded")
-		}
+		return WithDB(cmd, func(ctx context.Context, database *db.SQLiteDB) error {
+			currentCount, err := database.ToolCount(context.Background())
+			if err != nil {
+				return fmt.Errorf("count tools: %w", err)
+			}
 
-		database, err := db.New(cfg.DSN)
-		if err != nil {
-			return fmt.Errorf("db init: %w", err)
-		}
-		defer database.Close()
+			fetcher := crawler.NewFetcher()
 
-		currentCount, err := database.ToolCount(context.Background())
-		if err != nil {
-			return fmt.Errorf("count tools: %w", err)
-		}
+			updateCtx, cancel := context.WithTimeout(ctx, 30*time.Minute)
+			defer cancel()
 
-		fetcher := crawler.NewFetcher()
-
-		ctx, cancel := context.WithTimeout(cmd.Context(), 30*time.Minute)
-		defer cancel()
-
-		return runUpdate(ctx, database, fetcher, limit, logOutput, currentCount)
+			return runUpdate(updateCtx, database, fetcher, limit, logOutput, currentCount)
+		})
 	},
 }
 
@@ -63,31 +55,6 @@ const (
 )
 
 var runePalette = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789~!@#$%^&*()_+-=")
-
-var gradientColors = []string{
-	"#90EE90", "#8BE88C", "#86E288", "#81DC88", "#7CD688",
-	"#77D088", "#72CA88", "#6DC488", "#68BE88", "#63B888",
-	"#5EB288", "#59AC88", "#54A688", "#4FA088", "#4A9A88",
-	"#459488", "#408E88", "#3B8888", "#368288", "#317C88",
-	"#2C7688", "#277088", "#226A88", "#1D6488", "#185E88",
-	"#135888", "#0E5288", "#094C88", "#044688", "#004088",
-}
-
-func getGradientColor(pos int, total int) string {
-	if total == 0 {
-		return gradientColors[0]
-	}
-	p := float64(pos) / float64(total)
-	if p > 1 {
-		p = 1
-	}
-	idx := int(p * float64(len(gradientColors)-1))
-	return gradientColors[idx]
-}
-
-func getGradientColorSimple(index int) string {
-	return gradientColors[index%len(gradientColors)]
-}
 
 type slugEntry struct {
 	slug     string
@@ -143,7 +110,7 @@ func (u *UpdateUI) Render() string {
 
 	var bar strings.Builder
 	for i := 0; i < filled; i++ {
-		color := getGradientColor(i, filled)
+		color := ui.GetGradientColor(i, filled)
 		bar.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render("▇"))
 	}
 	for i := filled; i < progressBarWidth; i++ {
@@ -182,8 +149,8 @@ func (u *UpdateUI) renderChaoticStream() string {
 				if dist < 4 && entry.row == row {
 					charIdx := (col + entry.age + u.step) % len(entry.slug)
 					char := entry.slug[charIdx]
-					colorIdx := (entry.age + col + u.step) % len(gradientColors)
-					color := gradientColors[colorIdx]
+					colorIdx := (entry.age + col + u.step) % len(ui.GradientColors)
+					color := ui.GradientColors[colorIdx]
 
 					style := lipgloss.NewStyle().Foreground(lipgloss.Color(color))
 					if u.step%8 < 4 {
@@ -197,7 +164,7 @@ func (u *UpdateUI) renderChaoticStream() string {
 			}
 			if !found {
 				noiseChar := runePalette[(col+u.step+row*7)%len(runePalette)]
-				color := getGradientColor(col+u.step, streamWidth*2)
+				color := ui.GetGradientColor(col+u.step, streamWidth*2)
 				line.WriteString(lipgloss.NewStyle().
 					Foreground(lipgloss.Color(color)).
 					Render(string(noiseChar)))
@@ -215,21 +182,15 @@ func abs(x int) int {
 	return x
 }
 
-func runUpdate(ctx context.Context, database *db.SQLiteDB, fetcher *crawler.Fetcher, limit int, logOutput bool, currentCount int) error {
-	if !logOutput {
-		fmt.Println()
-		fmt.Println(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#00FFFF")).Render("Fetching tools from terminaltrove.com..."))
-		fmt.Println()
-	}
-
+func fetchAndParseSlugs(ctx context.Context, fetcher *crawler.Fetcher, limit int) ([]string, int, error) {
 	initialData, err := fetcher.FetchSearchPage(ctx, 1)
 	if err != nil {
-		return fmt.Errorf("initial fetch: %w", err)
+		return nil, 0, fmt.Errorf("initial fetch: %w", err)
 	}
 
 	initialResp, err := crawler.ParseSearchResponse(initialData)
 	if err != nil {
-		return fmt.Errorf("parse initial: %w", err)
+		return nil, 0, fmt.Errorf("parse initial: %w", err)
 	}
 
 	totalTools := int(initialResp.Found)
@@ -237,17 +198,9 @@ func runUpdate(ctx context.Context, database *db.SQLiteDB, fetcher *crawler.Fetc
 		totalTools = limit
 	}
 
-	if logOutput {
-		fmt.Printf("Found %d tools (limited to %d)\n", int(initialResp.Found), totalTools)
-	} else {
-		fmt.Printf("Found %d tools\n", totalTools)
-	}
-
 	pageResults, err := fetcher.FetchSearchPagesConcurrently(ctx, (totalTools+99)/100)
 	if err != nil {
-		if logOutput {
-			fmt.Printf("Warning: Partial page fetch error: %v\n", err)
-		}
+		return nil, 0, fmt.Errorf("fetch pages: %w", err)
 	}
 
 	allSlugs := make([]string, 0, totalTools)
@@ -276,28 +229,18 @@ func runUpdate(ctx context.Context, database *db.SQLiteDB, fetcher *crawler.Fetc
 		}
 	}
 
-	if len(allSlugs) == 0 {
-		if logOutput {
-			fmt.Println("No tools found in search pages")
-		} else {
-			fmt.Println("No tools found.")
-		}
-		return nil
-	}
+	return allSlugs, int(initialResp.Found), nil
+}
 
-	if logOutput {
-		fmt.Printf("Fetching details for %d tools...\n", len(allSlugs))
-	}
+func processDetailsConcurrently(ctx context.Context, fetcher *crawler.Fetcher, slugs []string, ui *UpdateUI) (<-chan crawler.DetailPage, <-chan error) {
+	detailChan := make(chan crawler.DetailPage, 100)
+	errChan := make(chan error, 1)
 
-	ui := NewUpdateUI(len(allSlugs))
-
-	slugChan := make(chan string, len(allSlugs))
-	for _, s := range allSlugs {
+	slugChan := make(chan string, len(slugs))
+	for _, s := range slugs {
 		slugChan <- s
 	}
 	close(slugChan)
-
-	detailChan := make(chan crawler.DetailPage, 100)
 
 	workerCount := 5
 	var detailWg sync.WaitGroup
@@ -334,6 +277,10 @@ func runUpdate(ctx context.Context, database *db.SQLiteDB, fetcher *crawler.Fetc
 		close(detailChan)
 	}()
 
+	return detailChan, errChan
+}
+
+func handleDatabaseWrites(ctx context.Context, database *db.SQLiteDB, detailChan <-chan crawler.DetailPage) {
 	writeChan := make(chan db.InstallInstruction, 200)
 	var writeWg sync.WaitGroup
 
@@ -348,27 +295,31 @@ func runUpdate(ctx context.Context, database *db.SQLiteDB, fetcher *crawler.Fetc
 		}()
 	}
 
+	for detail := range detailChan {
+		database.UpsertTool(ctx, detail.ToTool())
+
+		for _, inst := range detail.ToInstallInstructions() {
+			select {
+			case writeChan <- inst:
+			case <-ctx.Done():
+				break
+			}
+		}
+	}
+
+	close(writeChan)
+	writeWg.Wait()
+}
+
+func runUpdateUI(ctx context.Context, ui *UpdateUI, detailDone <-chan struct{}, logOutput bool) {
 	ticker := time.NewTicker(33 * time.Millisecond)
 	defer ticker.Stop()
 
 	frame := 0
 	for {
 		select {
-		case detail, ok := <-detailChan:
-			if !ok {
-				detailChan = nil
-				break
-			}
-
-			database.UpsertTool(ctx, detail.ToTool())
-
-			for _, inst := range detail.ToInstallInstructions() {
-				select {
-				case writeChan <- inst:
-				case <-ctx.Done():
-					break
-				}
-			}
+		case <-detailDone:
+			return
 
 		case <-ticker.C:
 			frame++
@@ -384,32 +335,78 @@ func runUpdate(ctx context.Context, database *db.SQLiteDB, fetcher *crawler.Fetc
 			}
 
 		case <-ctx.Done():
-			close(writeChan)
-			writeWg.Wait()
-			return ctx.Err()
-		}
-
-		if detailChan == nil {
-			break
+			return
 		}
 	}
+}
 
-	close(writeChan)
-	writeWg.Wait()
-
+func runUpdate(ctx context.Context, database *db.SQLiteDB, fetcher *crawler.Fetcher, limit int, logOutput bool, currentCount int) error {
 	if !logOutput {
 		fmt.Println()
+		fmt.Println(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#00FFFF")).Render("Fetching tools from terminaltrove.com..."))
+		fmt.Println()
 	}
 
-	finalCount, _ := database.ToolCount(context.Background())
+	slugs, total, err := fetchAndParseSlugs(ctx, fetcher, limit)
+	if err != nil {
+		return err
+	}
+
+	if len(slugs) == 0 {
+		if logOutput {
+			fmt.Println("No tools found in search pages")
+		} else {
+			fmt.Println("No tools found.")
+		}
+		return nil
+	}
 
 	if logOutput {
-		fmt.Printf("Update complete! Database now has %d tools\n", finalCount)
+		fmt.Printf("Found %d tools (limited to %d)\n", total, len(slugs))
 	} else {
-		fmt.Println(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#00FF00")).Render("✓ ") +
-			fmt.Sprintf("Update complete! Database has %d tools (+%d new)",
-				finalCount, finalCount-currentCount))
-		fmt.Println()
+		fmt.Printf("Found %d tools\n", len(slugs))
+	}
+
+	if logOutput {
+		fmt.Printf("Fetching details for %d tools...\n", len(slugs))
+	}
+
+	ui := NewUpdateUI(len(slugs))
+
+	detailChan, errChan := processDetailsConcurrently(ctx, fetcher, slugs, ui)
+
+	detailDone := make(chan struct{})
+	go func() {
+		handleDatabaseWrites(ctx, database, detailChan)
+		close(detailDone)
+	}()
+
+	go runUpdateUI(ctx, ui, detailDone, logOutput)
+
+	select {
+	case err := <-errChan:
+		if err != nil {
+			return err
+		}
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-detailDone:
+		if !logOutput {
+			fmt.Println()
+		}
+
+		finalCount, _ := database.ToolCount(context.Background())
+
+		if logOutput {
+			fmt.Printf("Update complete! Database now has %d tools\n", finalCount)
+		} else {
+			fmt.Println(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#00FF00")).Render("✓ ") +
+				fmt.Sprintf("Update complete! Database has %d tools (+%d new)",
+					finalCount, finalCount-currentCount))
+			fmt.Println()
+		}
+
+		return nil
 	}
 
 	return nil

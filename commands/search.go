@@ -9,150 +9,125 @@ import (
 	"github.com/spf13/cobra"
 
 	"troveler/db"
+	"troveler/pkg/ui"
 )
-
-func renderTable(headers []string, rows [][]string) string {
-	if len(headers) == 0 || len(rows) == 0 {
-		return ""
-	}
-
-	colWidths := make([]int, len(headers))
-	for i, h := range headers {
-		colWidths[i] = len(h)
-	}
-	for _, row := range rows {
-		for i, cell := range row {
-			if len(cell) > colWidths[i] {
-				colWidths[i] = len(cell)
-			}
-		}
-	}
-
-	borderChar := "│"
-	topBorder := "┌"
-	midBorder := "├"
-	botBorder := "└"
-	joinChar := "┬"
-	joinMid := "┼"
-	joinBot := "┴"
-	rightEnd := "┐"
-	rightMid := "┤"
-	rightBot := "┘"
-
-	headerStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#00FF00"))
-
-	var b strings.Builder
-
-	b.WriteString(topBorder)
-	for i, w := range colWidths {
-		b.WriteString(strings.Repeat("─", w+2))
-		if i < len(colWidths)-1 {
-			b.WriteString(joinChar)
-		}
-	}
-	b.WriteString(rightEnd + "\n")
-
-	b.WriteString(borderChar)
-	for i, h := range headers {
-		pad := colWidths[i] - len(h)
-		b.WriteString(" ")
-		b.WriteString(headerStyle.Render(h))
-		b.WriteString(strings.Repeat(" ", pad+1))
-		b.WriteString(borderChar)
-	}
-	b.WriteString("\n")
-
-	b.WriteString(midBorder)
-	for i, w := range colWidths {
-		b.WriteString(strings.Repeat("─", w+2))
-		if i < len(colWidths)-1 {
-			b.WriteString(joinMid)
-		}
-	}
-	b.WriteString(rightMid + "\n")
-
-	for rowIdx, row := range rows {
-		b.WriteString(borderChar)
-		for i, cell := range row {
-			pad := colWidths[i] - len(cell)
-			color := getGradientColorSimple(rowIdx)
-			cellStyle := lipgloss.NewStyle().
-				Foreground(lipgloss.Color(color))
-			b.WriteString(" ")
-			b.WriteString(cellStyle.Render(cell))
-			b.WriteString(strings.Repeat(" ", pad+1))
-			b.WriteString(borderChar)
-		}
-		b.WriteString("\n")
-	}
-
-	b.WriteString(botBorder)
-	for i, w := range colWidths {
-		b.WriteString(strings.Repeat("─", w+2))
-		if i < len(colWidths)-1 {
-			b.WriteString(joinBot)
-		}
-	}
-	b.WriteString(rightBot)
-
-	return b.String()
-}
 
 var SearchCmd = &cobra.Command{
 	Use:   "search [query]",
 	Short: "Search the local database for tools",
 	Long:  "Search for tools by name, tagline, or description in the local database.",
 	Args:  cobra.MinimumNArgs(1),
+	Example: "troveler search go-cli --limit 10 --sort language --desc",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		query := strings.Join(args, " ")
+		limit, _ := cmd.Flags().GetInt("limit")
+		sortField, _ := cmd.Flags().GetString("sort")
+		desc, _ := cmd.Flags().GetBool("desc")
 
-		cfg := GetConfig(cmd.Context())
-		if cfg == nil {
-			return fmt.Errorf("config not loaded")
+		sortOrder := "ASC"
+		if desc {
+			sortOrder = "DESC"
 		}
 
-		database, err := db.New(cfg.DSN)
-		if err != nil {
-			return fmt.Errorf("db init: %w", err)
-		}
-		defer database.Close()
+		return WithDB(cmd, func(ctx context.Context, database *db.SQLiteDB) error {
+			opts := db.SearchOptions{
+				Query:     query,
+				Limit:     limit,
+				SortField: sortField,
+				SortOrder: sortOrder,
+			}
 
-		return runSearch(cmd.Context(), database, query)
+			return runSearch(ctx, database, opts)
+		})
 	},
 }
 
-func runSearch(ctx context.Context, database *db.SQLiteDB, query string) error {
-	results, err := database.Search(ctx, query, 50)
+func init() {
+	SearchCmd.Flags().IntP("limit", "l", 0, "Limit number of results to display (0 for default: 50)")
+	SearchCmd.Flags().StringP("sort", "s", "name", "Sort field (name, tagline, language)")
+	SearchCmd.Flags().BoolP("desc", "d", false, "Sort in descending order")
+}
+
+type searchColumn struct {
+	Header string
+	Field  string
+}
+
+var searchColumns = []searchColumn{
+	{"Name", "name"},
+	{"Tagline", "tagline"},
+	{"Language", "language"},
+}
+
+func runSearch(ctx context.Context, database *db.SQLiteDB, opts db.SearchOptions) error {
+	if opts.Limit <= 0 {
+		opts.Limit = 50
+	}
+
+	// Validate sort field
+	validField := false
+	for _, col := range searchColumns {
+		if opts.SortField == col.Field {
+			validField = true
+			break
+		}
+	}
+	if !validField {
+		opts.SortField = "name"
+	}
+
+	results, err := database.Search(ctx, opts)
 	if err != nil {
 		return fmt.Errorf("search failed: %w", err)
 	}
 
 	if len(results) == 0 {
-		fmt.Printf("No tools found matching '%s'\n", query)
+		fmt.Printf("No tools found matching '%s'\n", opts.Query)
 		return nil
 	}
 
 	fmt.Println()
+	title := fmt.Sprintf("Found %d results for '%s' (sorted by %s %s)", len(results), opts.Query, opts.SortField, opts.SortOrder)
 	fmt.Println(lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("#00FFFF")).
-		Render(fmt.Sprintf("Found %d results for '%s'", len(results), query)))
-	fmt.Println(strings.Repeat("─", len(fmt.Sprintf("Found %d results for '%s'", len(results), query))))
+		Render(title))
+	fmt.Println(strings.Repeat("─", len(title)))
 	fmt.Println()
 
-	headers := []string{"#", "Name", "Tagline", "Language"}
-	rows := make([][]string, len(results))
-	for i, r := range results {
-		tagline := r.Tagline
-		if len(tagline) > 50 {
-			tagline = tagline[:47] + "..."
-		}
-		rows[i] = []string{fmt.Sprintf("%d", i+1), r.Name, tagline, r.Language}
+	headers := []string{"#"}
+	for _, col := range searchColumns {
+		headers = append(headers, col.Header)
 	}
 
-	fmt.Println(renderTable(headers, rows))
+	rows := make([][]string, len(results))
+	for i, r := range results {
+		row := []string{fmt.Sprintf("%d", i+1)}
+		for _, col := range searchColumns {
+			val := ""
+			switch col.Field {
+			case "name":
+				val = r.Name
+			case "tagline":
+				val = r.Tagline
+				if len(val) > 50 {
+					val = val[:47] + "..."
+				}
+			case "language":
+				val = r.Language
+			}
+			row = append(row, val)
+		}
+		rows[i] = row
+	}
+
+	config := ui.TableConfig{
+		Headers:    headers,
+		Rows:       rows,
+		ShowHeader: true,
+	}
+
+	fmt.Println(ui.RenderTable(config))
 
 	return nil
 }
