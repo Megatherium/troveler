@@ -45,6 +45,10 @@ func Load(configPath string) (*Config, error) {
 		cfg.DSN = dsn
 	}
 
+	if cfg.Search.TaglineWidth == 0 {
+		cfg.Search.TaglineWidth = 50
+	}
+
 	return cfg, nil
 }
 

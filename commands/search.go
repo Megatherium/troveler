@@ -13,16 +13,17 @@ import (
 )
 
 var SearchCmd = &cobra.Command{
-	Use:   "search [query]",
-	Short: "Search the local database for tools",
-	Long:  "Search for tools by name, tagline, or description in the local database.",
-	Args:  cobra.MinimumNArgs(1),
-	Example: "troveler search go-cli --limit 10 --sort language --desc",
+	Use:     "search [query]",
+	Short:   "Search the local database for tools",
+	Long:    "Search for tools by name, tagline, or description in the local database.",
+	Args:    cobra.MinimumNArgs(1),
+	Example: "troveler search go-cli --limit 10 --sort language --desc --width 40",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		query := strings.Join(args, " ")
 		limit, _ := cmd.Flags().GetInt("limit")
 		sortField, _ := cmd.Flags().GetString("sort")
 		desc, _ := cmd.Flags().GetBool("desc")
+		width, _ := cmd.Flags().GetInt("width")
 
 		sortOrder := "ASC"
 		if desc {
@@ -30,6 +31,16 @@ var SearchCmd = &cobra.Command{
 		}
 
 		return WithDB(cmd, func(ctx context.Context, database *db.SQLiteDB) error {
+			cfg := GetConfig(ctx)
+			if cfg == nil {
+				return fmt.Errorf("config not loaded")
+			}
+
+			taglineWidth := cfg.Search.TaglineWidth
+			if width > 0 {
+				taglineWidth = width
+			}
+
 			opts := db.SearchOptions{
 				Query:     query,
 				Limit:     limit,
@@ -37,7 +48,7 @@ var SearchCmd = &cobra.Command{
 				SortOrder: sortOrder,
 			}
 
-			return runSearch(ctx, database, opts)
+			return runSearch(ctx, database, opts, taglineWidth)
 		})
 	},
 }
@@ -46,6 +57,7 @@ func init() {
 	SearchCmd.Flags().IntP("limit", "l", 0, "Limit number of results to display (0 for default: 50)")
 	SearchCmd.Flags().StringP("sort", "s", "name", "Sort field (name, tagline, language)")
 	SearchCmd.Flags().BoolP("desc", "d", false, "Sort in descending order")
+	SearchCmd.Flags().IntP("width", "w", 0, "Tagline column width in characters (0 for config default)")
 }
 
 type searchColumn struct {
@@ -59,7 +71,7 @@ var searchColumns = []searchColumn{
 	{"Language", "language"},
 }
 
-func runSearch(ctx context.Context, database *db.SQLiteDB, opts db.SearchOptions) error {
+func runSearch(ctx context.Context, database *db.SQLiteDB, opts db.SearchOptions, taglineWidth int) error {
 	if opts.Limit <= 0 {
 		opts.Limit = 50
 	}
@@ -110,8 +122,8 @@ func runSearch(ctx context.Context, database *db.SQLiteDB, opts db.SearchOptions
 				val = r.Name
 			case "tagline":
 				val = r.Tagline
-				if len(val) > 50 {
-					val = val[:47] + "..."
+				if len(val) > taglineWidth {
+					val = val[:taglineWidth-3] + "..."
 				}
 			case "language":
 				val = r.Language
