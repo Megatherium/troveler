@@ -338,12 +338,14 @@ func (m *Model) renderInfoModal() string {
 
 // renderUpdateModal renders the update progress modal
 func (m *Model) renderUpdateModal() string {
-	content := "Updating database...\n\nPress Esc to cancel"
+	content := styles.TitleStyle.Render("Database Update") + "\n\n"
+	content += "Use 'troveler update' from CLI to update database with slug wave animation!\n\n"
+	content += styles.HelpStyle.Render("Press Esc to close")
 
 	modalBox := styles.BorderStyle.
 		BorderForeground(lipgloss.Color("#00FFFF")).
 		Padding(1, 2).
-		Width(min(60, m.width-4)).
+		Width(min(70, m.width-4)).
 		Render(content)
 
 	return lipgloss.Place(

@@ -171,7 +171,7 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.Update):
 		m.showUpdateModal = true
-		// TODO: Start update process
+		// TODO: Wire up actual update - for now just show placeholder
 		return m, nil
 
 	case key.Matches(msg, m.keys.InfoModal):
