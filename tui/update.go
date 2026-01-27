@@ -1,12 +1,15 @@
 package tui
 
 import (
+	"context"
 	"os/exec"
+	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"troveler/db"
+	"troveler/internal/update"
 	"troveler/tui/panels"
 )
 
@@ -95,6 +98,34 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case updateProgressMsg:
+		// Update progress received
+		upd := update.ProgressUpdate(msg)
+		
+		if upd.Type == "slug" && m.updateSlugWave != nil {
+			m.updateSlugWave.AddSlug(upd.Slug)
+			m.updateSlugWave.IncProcessed()
+		}
+		
+		if upd.Type == "complete" {
+			m.updating = false
+		}
+		
+		if upd.Type == "error" {
+			m.updating = false
+			m.err = upd.Error
+		}
+		
+		return m, nil
+
+	case slugTickMsg:
+		// Slug wave animation frame
+		if m.updating && m.updateSlugWave != nil {
+			m.updateSlugWave.AdvanceFrame()
+			return m, m.tickSlugWave()
+		}
+		return m, nil
+
 	case tea.MouseMsg:
 		// Mouse support disabled per spec
 		return m, nil
@@ -153,7 +184,12 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		if m.showUpdateModal {
 			m.showUpdateModal = false
-			// TODO: Cancel update
+			m.updating = false
+			// Close progress channel if exists
+			if m.updateProgress != nil {
+				close(m.updateProgress)
+				m.updateProgress = nil
+			}
 			return m, nil
 		}
 		if m.executeOutput != "" {
@@ -171,8 +207,13 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.Update):
 		m.showUpdateModal = true
-		// TODO: Wire up actual update - for now just show placeholder
-		return m, nil
+		m.updating = true
+		m.updateService = update.NewService(m.db)
+		m.updateProgress = make(chan update.ProgressUpdate, 100)
+		return m, tea.Batch(
+			m.startUpdate(),
+			m.tickSlugWave(),
+		)
 
 	case key.Matches(msg, m.keys.InfoModal):
 		// Only show modal if NOT typing in search
@@ -223,3 +264,70 @@ func (m *Model) executeInstallCommand(command string) tea.Cmd {
 }
 
 
+
+
+// updateProgressMsg wraps update progress events
+type updateProgressMsg update.ProgressUpdate
+
+// slugTickMsg triggers slug wave animation frame
+type slugTickMsg struct{}
+
+// startUpdate begins the database update
+func (m *Model) startUpdate() tea.Cmd {
+	return func() tea.Msg {
+		ctx := context.Background()
+		
+		opts := update.UpdateOptions{
+			Limit:    0, // Fetch all tools
+			Progress: m.updateProgress,
+		}
+		
+		// Run update in background
+		go func() {
+			m.updateService.FetchAndUpdate(ctx, opts)
+		}()
+		
+		// Listen for progress updates
+		return m.listenForUpdates()
+	}
+}
+
+// listenForUpdates converts progress channel to tea messages
+func (m *Model) listenForUpdates() tea.Msg {
+	select {
+	case upd, ok := <-m.updateProgress:
+		if !ok {
+			return nil
+		}
+		
+		// Initialize slug wave on start
+		if upd.Type == "progress" && upd.Total > 0 && m.updateSlugWave == nil {
+			m.updateSlugWave = update.NewSlugWave(upd.Total)
+		}
+		
+		return updateProgressMsg(upd)
+	default:
+		return nil
+	}
+}
+
+// tickSlugWave returns a command that triggers the next animation frame
+func (m *Model) tickSlugWave() tea.Cmd {
+	return tea.Tick(time.Millisecond*100, func(t time.Time) tea.Msg {
+		// Also check for progress updates
+		if m.updateProgress != nil {
+			select {
+			case upd, ok := <-m.updateProgress:
+				if ok {
+					// Initialize slug wave if needed
+					if upd.Type == "progress" && upd.Total > 0 && m.updateSlugWave == nil {
+						m.updateSlugWave = update.NewSlugWave(upd.Total)
+					}
+					return updateProgressMsg(upd)
+				}
+			default:
+			}
+		}
+		return slugTickMsg{}
+	})
+}

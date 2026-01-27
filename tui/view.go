@@ -336,16 +336,27 @@ func (m *Model) renderInfoModal() string {
 	)
 }
 
-// renderUpdateModal renders the update progress modal
+// renderUpdateModal renders the update progress modal with slug wave
 func (m *Model) renderUpdateModal() string {
-	content := styles.TitleStyle.Render("Database Update") + "\n\n"
-	content += "Use 'troveler update' from CLI to update database with slug wave animation!\n\n"
-	content += styles.HelpStyle.Render("Press Esc to close")
+	var content string
+	
+	if m.updating && m.updateSlugWave != nil {
+		// Show slug wave animation
+		content = styles.TitleStyle.Render("🔄 Database Update") + "\n\n"
+		content += m.updateSlugWave.RenderWithProgress() + "\n\n"
+		content += styles.HelpStyle.Render("Press Esc to cancel")
+	} else {
+		// Update complete or not started
+		content = styles.TitleStyle.Render("Database Update") + "\n\n"
+		content += "Updating database...\n\n"
+		content += styles.HelpStyle.Render("Press Esc to close")
+	}
 
 	modalBox := styles.BorderStyle.
 		BorderForeground(lipgloss.Color("#00FFFF")).
 		Padding(1, 2).
-		Width(min(70, m.width-4)).
+		Width(min(80, m.width-4)).
+		Height(min(20, m.height-4)).
 		Render(content)
 
 	return lipgloss.Place(

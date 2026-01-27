@@ -8,6 +8,7 @@ import (
 	"troveler/config"
 	"troveler/db"
 	"troveler/internal/search"
+	"troveler/internal/update"
 	"troveler/tui/panels"
 )
 
@@ -56,6 +57,12 @@ type Model struct {
 	// Install execution state
 	executing     bool
 	executeOutput string
+
+	// Update state
+	updating       bool
+	updateService  *update.Service
+	updateSlugWave *update.SlugWave
+	updateProgress chan update.ProgressUpdate
 
 	// Error state
 	err error
