@@ -46,6 +46,7 @@ func (ps *PlatformSelector) SelectPlatform(detectedOS string) string {
 }
 
 // FilterCommands filters install commands based on platform selection
+// If no matches found, returns all install instructions as fallback
 func FilterCommands(installs []db.InstallInstruction, platform string, toolLanguage string) []db.InstallInstruction {
 	var matched []db.InstallInstruction
 
@@ -64,6 +65,12 @@ func FilterCommands(installs []db.InstallInstruction, platform string, toolLangu
 				matched = append(matched, inst)
 			}
 		}
+	}
+
+	// Fallback: if no matches found, return all instructions
+	// This ensures users always see *something* rather than empty panel
+	if len(matched) == 0 {
+		return installs
 	}
 
 	return matched

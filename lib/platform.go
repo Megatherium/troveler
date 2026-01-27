@@ -15,6 +15,25 @@ var PlatformAliases = map[string]string{
 	"cargo": "rust (cargo)",
 }
 
+// LanguageToPackageManager maps programming languages to their package managers
+// For compiled languages (C, C++, Shell), we return empty to use OS detection
+var LanguageToPackageManager = map[string][]string{
+	"python":     {"python", "pip", "pipx", "uv"},
+	"rust":       {"rust", "cargo"},
+	"javascript": {"javascript", "npm", "yarn", "pnpm", "bun", "deno", "node"},
+	"typescript": {"typescript", "npm", "yarn", "pnpm", "bun", "deno", "node"},
+	"go":         {"go"},
+	"ruby":       {"ruby", "gem"},
+	"perl":       {"perl", "cpan"},
+	"haskell":    {"haskell", "cabal", "stack"},
+	"csharp":     {"csharp", "dotnet", "nuget"},
+	"nim":        {"nim", "nimble"},
+	"ocaml":      {"ocaml", "opam"},
+	"zig":        {"zig"},
+	"common-lisp": {"common-lisp", "quicklisp"},
+	"haxe":       {"haxe", "haxelib"},
+}
+
 func NormalizePlatform(platform string) string {
 	if normalized, ok := PlatformAliases[strings.ToLower(platform)]; ok {
 		return normalized
@@ -73,10 +92,31 @@ func MatchPlatform(detectedID string, installPlatform string) bool {
 }
 
 func MatchLanguage(language string, installPlatform string) bool {
+	language = strings.ToLower(language)
+	installPlatform = strings.ToLower(installPlatform)
+	
 	// Exact match (e.g., "rust" == "rust", "python" == "python")
 	if installPlatform == language {
 		return true
 	}
+	
 	// Prefix match (e.g., "python (pip)", "rust (cargo)")
-	return strings.HasPrefix(installPlatform, language+" ") || strings.HasPrefix(installPlatform, language+"(")
+	if strings.HasPrefix(installPlatform, language+" ") || strings.HasPrefix(installPlatform, language+"(") {
+		return true
+	}
+	
+	// Check language-to-package-manager mappings
+	if managers, ok := LanguageToPackageManager[language]; ok {
+		for _, manager := range managers {
+			// Check if install platform is this manager or starts with it
+			if installPlatform == manager {
+				return true
+			}
+			if strings.HasPrefix(installPlatform, manager+" ") || strings.HasPrefix(installPlatform, manager+"(") {
+				return true
+			}
+		}
+	}
+	
+	return false
 }
