@@ -282,11 +282,45 @@ Press Esc to close this help
 // renderInfoModal renders the full-screen info modal
 func (m *Model) renderInfoModal() string {
 	if m.selectedTool == nil {
-		return "No tool selected"
+		content := styles.MutedStyle.Render("No tool selected\n\nNavigate to a tool first, then press 'i'")
+		modalBox := styles.BorderStyle.
+			BorderForeground(lipgloss.Color("#00FFFF")).
+			Padding(1, 2).
+			Width(min(60, m.width-4)).
+			Render(content)
+		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, modalBox)
 	}
 
-	// TODO: Use internal/info formatter
-	content := fmt.Sprintf("Tool: %s\n\nPress Esc to close", m.selectedTool.Name)
+	// Build full info display
+	var content string
+	content += styles.TitleStyle.Render(m.selectedTool.Name)
+	content += "\n\n"
+	
+	if m.selectedTool.Tagline != "" {
+		content += styles.SubtitleStyle.Render(m.selectedTool.Tagline) + "\n\n"
+	}
+	
+	if m.selectedTool.Description != "" {
+		content += styles.HighlightStyle.Render("Description:") + "\n"
+		content += m.selectedTool.Description + "\n\n"
+	}
+	
+	content += styles.HighlightStyle.Render("Details:") + "\n"
+	if m.selectedTool.Language != "" {
+		content += styles.MutedStyle.Render("  Language: ") + m.selectedTool.Language + "\n"
+	}
+	if m.selectedTool.License != "" {
+		content += styles.MutedStyle.Render("  License: ") + m.selectedTool.License + "\n"
+	}
+	if m.selectedTool.DatePublished != "" {
+		content += styles.MutedStyle.Render("  Published: ") + m.selectedTool.DatePublished + "\n"
+	}
+	
+	if len(m.installs) > 0 {
+		content += fmt.Sprintf("\n💾 %d install options available\n", len(m.installs))
+	}
+	
+	content += "\n" + styles.HelpStyle.Render("Press Esc to close")
 
 	modalBox := styles.BorderStyle.
 		BorderForeground(lipgloss.Color("#00FFFF")).

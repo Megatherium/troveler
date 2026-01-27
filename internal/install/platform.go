@@ -79,17 +79,43 @@ func FilterCommands(installs []db.InstallInstruction, platform string, toolLangu
 }
 
 // SelectDefaultCommand returns the best default command
-// If fallback was used, tries to pick a sensible default (brew, apt, etc.)
+// If fallback was used, tries to pick a sensible default based on detected OS
 // Otherwise returns the first matched command
-func SelectDefaultCommand(commands []db.InstallInstruction, usedFallback bool) *db.InstallInstruction {
+func SelectDefaultCommand(commands []db.InstallInstruction, usedFallback bool, detectedOS string) *db.InstallInstruction {
 	if len(commands) == 0 {
 		return nil
 	}
 	
 	// If we used fallback (showing all commands), try to pick a sensible default
 	if usedFallback {
-		// Priority order for fallback defaults
-		preferredPlatforms := []string{"brew", "linux:brew", "macos:brew", "apt", "apt-get", "linux:ubuntu", "linux:debian", "pacman", "linux:arch"}
+		// Detect OS family to prioritize correctly
+		isLinux := strings.Contains(detectedOS, "linux") || 
+		           detectedOS == "ubuntu" || detectedOS == "debian" || detectedOS == "fedora" || 
+		           detectedOS == "arch" || detectedOS == "manjaro" || detectedOS == "rhel" || detectedOS == "centos"
+		isMac := strings.Contains(detectedOS, "macos") || strings.Contains(detectedOS, "darwin")
+		isBSD := strings.Contains(detectedOS, "bsd") || detectedOS == "freebsd" || detectedOS == "openbsd" || detectedOS == "netbsd"
+		
+		var preferredPlatforms []string
+		
+		if isLinux {
+			// Linux user: prioritize Linux package managers
+			preferredPlatforms = []string{
+				"linux:brew", "apt", "apt-get", "linux:ubuntu", "linux:debian",
+				"pacman", "linux:arch", "linux:manjaro", "dnf", "linux:fedora",
+				"yum", "linux:rhel", "linux:centos", "brew", // generic brew last
+			}
+		} else if isMac {
+			// macOS user: prioritize macOS package managers
+			preferredPlatforms = []string{"macos:brew", "brew", "macos:macports", "macos"}
+		} else if isBSD {
+			// BSD user: prioritize BSD package managers
+			preferredPlatforms = []string{"bsd:freebsd", "bsd:openbsd", "bsd:netbsd", "bsd", "brew"}
+		} else {
+			// Unknown/Windows: try generic package managers
+			preferredPlatforms = []string{"brew", "winget", "chocolatey", "scoop"}
+		}
+		
+		// Try to find preferred platform
 		for _, preferred := range preferredPlatforms {
 			for _, cmd := range commands {
 				if strings.Contains(strings.ToLower(cmd.Platform), preferred) {
@@ -97,6 +123,7 @@ func SelectDefaultCommand(commands []db.InstallInstruction, usedFallback bool) *
 				}
 			}
 		}
+		
 		// If no preferred found, don't mark any as default
 		return nil
 	}

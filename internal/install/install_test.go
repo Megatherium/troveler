@@ -93,7 +93,7 @@ func TestSelectDefaultCommand(t *testing.T) {
 		{ID: "2", Platform: "cargo", Command: "cargo install"},
 	}
 
-	defaultCmd := SelectDefaultCommand(installs, false)
+	defaultCmd := SelectDefaultCommand(installs, false, "ubuntu")
 
 	if defaultCmd == nil {
 		t.Fatal("Expected default command, got nil")
