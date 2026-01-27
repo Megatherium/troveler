@@ -3,10 +3,14 @@ package tui
 import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+
+	"troveler/tui/panels"
 )
 
 // Update handles messages and updates the model
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		return m.handleKeyPress(msg)
@@ -16,19 +20,36 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		return m, nil
 
+	case panels.SearchTriggeredMsg:
+		// Search was triggered (debounced or Enter)
+		m.searching = true
+		return m, m.performSearch(msg.Query)
+
+	case searchResultMsg:
+		// Search results received
+		m.tools = msg.tools
+		m.searching = false
+		return m, nil
+
+	case searchErrorMsg:
+		// Search error
+		m.err = msg.err
+		m.searching = false
+		return m, nil
+
 	case tea.MouseMsg:
 		// Mouse support disabled per spec
 		return m, nil
 	}
 
-	// Forward to active panel
-	if panel := m.GetActivePanel(); panel != nil {
-		updatedPanel, cmd := panel.Update(msg)
-		m.panels[m.activePanel] = updatedPanel
-		return m, cmd
+	// Forward to search panel if active
+	if m.activePanel == PanelSearch {
+		cmd, updatedPanel := m.searchPanel.Update(msg)
+		m.searchPanel = updatedPanel
+		cmds = append(cmds, cmd)
 	}
 
-	return m, nil
+	return m, tea.Batch(cmds...)
 }
 
 // handleKeyPress processes keyboard input
@@ -75,12 +96,14 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Forward to active panel if no global key matched
-	if panel := m.GetActivePanel(); panel != nil {
-		updatedPanel, cmd := panel.Update(msg)
-		m.panels[m.activePanel] = updatedPanel
+	// Forward to search panel if active and no global key matched
+	if m.activePanel == PanelSearch {
+		cmd, updatedPanel := m.searchPanel.Update(msg)
+		m.searchPanel = updatedPanel
 		return m, cmd
 	}
+
+	// TODO: Forward to other panels when implemented
 
 	return m, nil
 }

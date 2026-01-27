@@ -1,10 +1,14 @@
 package tui
 
 import (
+	"context"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"troveler/config"
 	"troveler/db"
+	"troveler/internal/search"
+	"troveler/tui/panels"
 )
 
 // PanelID identifies which panel is active
@@ -20,8 +24,9 @@ const (
 // Model is the main TUI model
 type Model struct {
 	// Core dependencies
-	db     *db.SQLiteDB
-	config *config.Config
+	db            *db.SQLiteDB
+	config        *config.Config
+	searchService *search.Service
 
 	// Terminal size
 	width  int
@@ -29,7 +34,7 @@ type Model struct {
 
 	// Panel management
 	activePanel PanelID
-	panels      map[PanelID]Panel
+	searchPanel *panels.SearchPanel
 
 	// Keybindings
 	keys KeyMap
@@ -38,10 +43,11 @@ type Model struct {
 	tools        []db.SearchResult
 	selectedTool *db.Tool
 	installs     []db.InstallInstruction
+	searching    bool
 
 	// Modal states
-	showHelp       bool
-	showInfoModal  bool
+	showHelp        bool
+	showInfoModal   bool
 	showUpdateModal bool
 
 	// Error state
@@ -59,27 +65,26 @@ type Panel interface {
 
 // NewModel creates a new TUI model
 func NewModel(database *db.SQLiteDB, cfg *config.Config) *Model {
-	m := &Model{
-		db:          database,
-		config:      cfg,
-		keys:        DefaultKeyMap(),
-		activePanel: PanelSearch,
-		panels:      make(map[PanelID]Panel),
-		tools:       []db.SearchResult{},
-	}
+	searchPanel := panels.NewSearchPanel()
+	searchPanel.Focus() // Start with search focused
 
-	// Initialize panels (will be implemented in next phase)
-	// m.panels[PanelSearch] = NewSearchPanel()
-	// m.panels[PanelTools] = NewToolsPanel()
-	// m.panels[PanelInfo] = NewInfoPanel()
-	// m.panels[PanelInstall] = NewInstallPanel()
+	m := &Model{
+		db:            database,
+		config:        cfg,
+		searchService: search.NewService(database),
+		keys:          DefaultKeyMap(),
+		activePanel:   PanelSearch,
+		searchPanel:   searchPanel,
+		tools:         []db.SearchResult{},
+	}
 
 	return m
 }
 
 // Init initializes the model
 func (m *Model) Init() tea.Cmd {
-	return nil
+	// Load initial tools (empty query = all tools)
+	return m.performSearch("")
 }
 
 // SetSize sets the terminal size
@@ -88,31 +93,51 @@ func (m *Model) SetSize(width, height int) {
 	m.height = height
 }
 
-// GetActivePanel returns the currently active panel
-func (m *Model) GetActivePanel() Panel {
-	return m.panels[m.activePanel]
+// performSearch executes a search query
+func (m *Model) performSearch(query string) tea.Cmd {
+	return func() tea.Msg {
+		opts := search.Options{
+			Query:     query,
+			Limit:     1000,
+			SortField: "name",
+			SortOrder: "ASC",
+		}
+
+		result, err := m.searchService.Search(context.Background(), opts)
+		if err != nil {
+			return searchErrorMsg{err: err}
+		}
+
+		return searchResultMsg{
+			tools: result.Tools,
+			query: query,
+		}
+	}
+}
+
+// searchResultMsg contains search results
+type searchResultMsg struct {
+	tools []db.SearchResult
+	query string
+}
+
+// searchErrorMsg contains search errors
+type searchErrorMsg struct {
+	err error
 }
 
 // NextPanel cycles to the next panel
 func (m *Model) NextPanel() {
 	// Blur current panel
-	if p := m.panels[m.activePanel]; p != nil {
-		p.Blur()
-	}
-
-	// Cycle through panels: Search -> Tools -> Install (Info is passive)
 	switch m.activePanel {
 	case PanelSearch:
+		m.searchPanel.Blur()
 		m.activePanel = PanelTools
 	case PanelTools:
 		m.activePanel = PanelInstall
 	case PanelInstall:
 		m.activePanel = PanelSearch
-	}
-
-	// Focus new panel
-	if p := m.panels[m.activePanel]; p != nil {
-		p.Focus()
+		m.searchPanel.Focus()
 	}
 }
 

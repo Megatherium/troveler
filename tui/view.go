@@ -47,9 +47,9 @@ func (m *Model) renderMainLayout() string {
 	infoHeight := (availableHeight * 67) / 100
 	installHeight := availableHeight - infoHeight
 
-	// Render panels (placeholders for now)
-	searchPanel := m.renderPanel(PanelSearch, "Search", leftWidth, searchHeight, "Type to search...")
-	toolsPanel := m.renderPanel(PanelTools, "Tools", leftWidth, toolsHeight, "No tools loaded")
+	// Render panels
+	searchPanel := m.renderSearchPanel(leftWidth, searchHeight)
+	toolsPanel := m.renderToolsPanel(leftWidth, toolsHeight)
 	infoPanel := m.renderPanel(PanelInfo, "Info", rightWidth, infoHeight, "Select a tool to view info")
 	installPanel := m.renderPanel(PanelInstall, "Install", rightWidth, installHeight, "Select a tool to see install options")
 
@@ -103,6 +103,61 @@ func (m *Model) renderPanel(id PanelID, title string, width, height int, placeho
 		Render(lipgloss.JoinVertical(lipgloss.Left, titleStr, panel))
 }
 
+// renderSearchPanel renders the search panel with live input
+func (m *Model) renderSearchPanel(width, height int) string {
+	borderStyle := styles.InactiveBorder
+	titleStyle := styles.MutedStyle
+
+	if m.activePanel == PanelSearch {
+		borderStyle = styles.ActiveBorder
+		titleStyle = styles.TitleStyle
+		m.searchPanel.SetStyles()
+	}
+
+	title := titleStyle.Render(" Search ")
+
+	// Add searching indicator
+	if m.searching {
+		title += styles.MutedStyle.Render(" [searching...]")
+	}
+
+	// Render search input
+	content := m.searchPanel.View(width-4, height-4)
+
+	// Wrap in border
+	return borderStyle.
+		Width(width-1).
+		Height(height-1).
+		Render(lipgloss.JoinVertical(lipgloss.Left, title, content))
+}
+
+// renderToolsPanel renders the tools list
+func (m *Model) renderToolsPanel(width, height int) string {
+	borderStyle := styles.InactiveBorder
+	titleStyle := styles.MutedStyle
+
+	if m.activePanel == PanelTools {
+		borderStyle = styles.ActiveBorder
+		titleStyle = styles.TitleStyle
+	}
+
+	title := titleStyle.Render(fmt.Sprintf(" Tools (%d) ", len(m.tools)))
+
+	// Placeholder content - will be replaced with table in Phase 3
+	content := "Loading tools..."
+	if len(m.tools) > 0 {
+		content = fmt.Sprintf("Found %d tools\n(Table view coming in Phase 3)", len(m.tools))
+	} else if !m.searching {
+		content = "No tools found"
+	}
+
+	return borderStyle.
+		Width(width-1).
+		Height(height-1).
+		Padding(0, 1).
+		Render(lipgloss.JoinVertical(lipgloss.Left, title, content))
+}
+
 // renderStatusBar renders the bottom status bar
 func (m *Model) renderStatusBar() string {
 	// Show keybindings
@@ -112,6 +167,12 @@ func (m *Model) renderStatusBar() string {
 	if m.err != nil {
 		errMsg := styles.ErrorStyle.Render(fmt.Sprintf(" Error: %v ", m.err))
 		return lipgloss.JoinHorizontal(lipgloss.Left, errMsg, " | ", help)
+	}
+
+	// Show tool count
+	if len(m.tools) > 0 {
+		count := styles.StatusBarStyle.Render(fmt.Sprintf(" %d tools ", len(m.tools)))
+		return lipgloss.JoinHorizontal(lipgloss.Left, count, " | ", help)
 	}
 
 	return help

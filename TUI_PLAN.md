@@ -8,7 +8,7 @@
 
 - [x] **Phase 0**: Project setup & refactoring ✅
 - [x] **Phase 1**: Base layout & navigation ✅
-- [ ] **Phase 2**: Search panel
+- [x] **Phase 2**: Search panel ✅
 - [ ] **Phase 3**: Tool list table panel
 - [ ] **Phase 4**: Tool info panel
 - [ ] **Phase 5**: Install options panel
@@ -68,10 +68,34 @@
 
 ---
 
+## Phase 2: Search Panel 🔍
+
+### Status: ✅ Complete
+
+#### Deliverables:
+- ✅ SearchPanel with bubbles.textinput component
+- ✅ Live search filtering as you type
+- ✅ Debounced search (150ms) to prevent excessive queries
+- ✅ ESC to clear search
+- ✅ Enter for immediate search
+- ✅ "Searching..." indicator during query
+- ✅ Integration with internal/search service
+- ✅ Search results populate tool list
+- ✅ Tool count displayed in status bar
+- ✅ Comprehensive tests for search panel
+
+#### Notes:
+- Search starts on app load with empty query (shows all tools)
+- Debouncing prevents database spam while typing
+- Search panel focused by default on launch
+
+---
+
 ## Commits Made
 
 1. **Phase 0**: `cee4fe7` - ♻️ refactor: extract business logic and add TUI dependencies
-2. **Phase 1**: `ce994d6` - ✨ feat(tui): implement base layout and navigation (amended with top margin fix)
+2. **Phase 1**: `2e83a09` - ✨ feat(tui): implement base layout and navigation
+3. **Phase 2**: `b38e13c` - ✨ feat(tui): implement live search panel with debouncing
 
 ---
 
