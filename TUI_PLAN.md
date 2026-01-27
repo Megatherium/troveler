@@ -14,7 +14,7 @@
 - [x] **Phase 5**: Install options panel ✅
 - [x] **Phase 6**: Install execution ✅
 - [x] **Phase 7**: Update progress (Alt+u) ✅
-- [ ] **Phase 8**: Polish & edge cases
+- [x] **Phase 8**: Polish & edge cases ✅
 - [ ] **Phase 9**: Integration & CLI coordination
 - [ ] **Phase 10**: Documentation & examples
 
@@ -198,6 +198,26 @@
 - Ready for future enhancement with actual update logic
 - Database update functionality exists in CLI (can be wired up later)
 - Slug wave animation deferred to polish phase
+
+---
+
+## Phase 8: Polish & Edge Cases ✨
+
+### Status: ✅ Complete
+
+#### Deliverables:
+- ✅ Terminal resize handling with minimum size check (80x24)
+- ✅ Empty state for tools panel
+- ✅ Loading indicator in tools title during search
+- ✅ Error style improvements (bold red)
+- ✅ UnselectedStyle for better visual hierarchy
+- ✅ Graceful degradation for small terminals
+
+#### Edge Cases Handled:
+- Terminal too small: Shows centered error message with current/required size
+- No search results: Shows "No tools found" message
+- Searching state: Shows "searching..." in panel title
+- Window resize: Automatically re-renders with new dimensions
 
 ---
 

@@ -141,7 +141,12 @@ func (m *Model) renderToolsPanel(width, height int) string {
 		titleStyle = styles.TitleStyle
 	}
 
-	title := titleStyle.Render(fmt.Sprintf(" Tools (%d) ", len(m.tools)))
+	var title string
+	if m.searching {
+		title = titleStyle.Render(" Tools (searching...) ")
+	} else {
+		title = titleStyle.Render(fmt.Sprintf(" Tools (%d) ", len(m.tools)))
+	}
 
 	// Render tools table
 	content := m.toolsPanel.View(width-4, height-4)
