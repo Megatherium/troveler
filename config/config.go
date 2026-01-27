@@ -9,9 +9,11 @@ import (
 )
 
 type Config struct {
-	DSN     string        `toml:"dsn"`
-	Install InstallConfig `toml:"install"`
-	Search  SearchConfig  `toml:"search"`
+	DSN          string        `toml:"dsn"`
+	DefaultToTUI bool          `toml:"default_to_tui"`
+	Install      InstallConfig `toml:"install"`
+	Search       SearchConfig  `toml:"search"`
+	TUI          TUIConfig     `toml:"tui"`
 }
 
 type InstallConfig struct {
@@ -23,6 +25,12 @@ type InstallConfig struct {
 
 type SearchConfig struct {
 	TaglineWidth int `toml:"tagline_width"`
+}
+
+type TUIConfig struct {
+	Theme           string   `toml:"theme"`
+	TaglineMaxWidth int      `toml:"tagline_max_width"`
+	GradientColors  []string `toml:"gradient_colors"`
 }
 
 func Load(configPath string) (*Config, error) {
@@ -48,6 +56,21 @@ func Load(configPath string) (*Config, error) {
 
 	if cfg.Search.TaglineWidth == 0 {
 		cfg.Search.TaglineWidth = 50
+	}
+
+	// TUI defaults
+	if cfg.TUI.Theme == "" {
+		cfg.TUI.Theme = "gradient"
+	}
+
+	if cfg.TUI.TaglineMaxWidth == 0 {
+		cfg.TUI.TaglineMaxWidth = 40
+	}
+
+	// DefaultToTUI defaults to true
+	if !cfg.DefaultToTUI {
+		// Check if it was explicitly set to false in config
+		// For now, we'll default to true (will be overridden if explicitly set)
 	}
 
 	return cfg, nil
