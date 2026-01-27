@@ -28,6 +28,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case searchResultMsg:
 		// Search results received
 		m.tools = msg.tools
+		m.toolsPanel.SetTools(msg.tools)
 		m.searching = false
 		return m, nil
 
@@ -37,15 +38,27 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.searching = false
 		return m, nil
 
+	case panels.ToolSelectedMsg:
+		// Tool was selected (Enter pressed in tools panel)
+		m.selectedTool = &msg.Tool.Tool
+		// Jump to install panel
+		m.toolsPanel.Blur()
+		m.activePanel = PanelInstall
+		return m, nil
+
 	case tea.MouseMsg:
 		// Mouse support disabled per spec
 		return m, nil
 	}
 
-	// Forward to search panel if active
-	if m.activePanel == PanelSearch {
+	// Forward to active panel
+	switch m.activePanel {
+	case PanelSearch:
 		cmd, updatedPanel := m.searchPanel.Update(msg)
 		m.searchPanel = updatedPanel
+		cmds = append(cmds, cmd)
+	case PanelTools:
+		cmd := m.toolsPanel.Update(msg)
 		cmds = append(cmds, cmd)
 	}
 

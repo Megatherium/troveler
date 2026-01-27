@@ -35,6 +35,7 @@ type Model struct {
 	// Panel management
 	activePanel PanelID
 	searchPanel *panels.SearchPanel
+	toolsPanel  *panels.ToolsPanel
 
 	// Keybindings
 	keys KeyMap
@@ -68,6 +69,8 @@ func NewModel(database *db.SQLiteDB, cfg *config.Config) *Model {
 	searchPanel := panels.NewSearchPanel()
 	searchPanel.Focus() // Start with search focused
 
+	toolsPanel := panels.NewToolsPanel()
+
 	m := &Model{
 		db:            database,
 		config:        cfg,
@@ -75,6 +78,7 @@ func NewModel(database *db.SQLiteDB, cfg *config.Config) *Model {
 		keys:          DefaultKeyMap(),
 		activePanel:   PanelSearch,
 		searchPanel:   searchPanel,
+		toolsPanel:    toolsPanel,
 		tools:         []db.SearchResult{},
 	}
 
@@ -133,7 +137,9 @@ func (m *Model) NextPanel() {
 	case PanelSearch:
 		m.searchPanel.Blur()
 		m.activePanel = PanelTools
+		m.toolsPanel.Focus()
 	case PanelTools:
+		m.toolsPanel.Blur()
 		m.activePanel = PanelInstall
 	case PanelInstall:
 		m.activePanel = PanelSearch

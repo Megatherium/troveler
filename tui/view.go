@@ -143,13 +143,8 @@ func (m *Model) renderToolsPanel(width, height int) string {
 
 	title := titleStyle.Render(fmt.Sprintf(" Tools (%d) ", len(m.tools)))
 
-	// Placeholder content - will be replaced with table in Phase 3
-	content := "Loading tools..."
-	if len(m.tools) > 0 {
-		content = fmt.Sprintf("Found %d tools\n(Table view coming in Phase 3)", len(m.tools))
-	} else if !m.searching {
-		content = "No tools found"
-	}
+	// Render tools table
+	content := m.toolsPanel.View(width-4, height-4)
 
 	return borderStyle.
 		Width(width-1).

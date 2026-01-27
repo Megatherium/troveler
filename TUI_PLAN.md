@@ -9,7 +9,7 @@
 - [x] **Phase 0**: Project setup & refactoring ✅
 - [x] **Phase 1**: Base layout & navigation ✅
 - [x] **Phase 2**: Search panel ✅
-- [ ] **Phase 3**: Tool list table panel
+- [x] **Phase 3**: Tool list table panel ✅
 - [ ] **Phase 4**: Tool info panel
 - [ ] **Phase 5**: Install options panel
 - [ ] **Phase 6**: Install execution
@@ -88,6 +88,29 @@
 - Search starts on app load with empty query (shows all tools)
 - Debouncing prevents database spam while typing
 - Search panel focused by default on launch
+
+---
+
+## Phase 3: Tool List Table Panel 📊
+
+### Status: ✅ Complete
+
+#### Deliverables:
+- ✅ ToolsPanel with table rendering
+- ✅ Gradient-colored rows using existing gradient colors
+- ✅ k/j navigation through tools
+- ✅ h/l column selection (Name, Tagline, Language)
+- ✅ Alt+s sorting with visual indicators (▲/▼)
+- ✅ Enter to select tool and jump to install panel
+- ✅ Scroll support for long lists
+- ✅ Integration with search results
+- ✅ Comprehensive tests for navigation, sorting, selection
+
+#### Notes:
+- Table uses bubble sort for simplicity (fast enough for UI)
+- Gradient colors cycle through tools for visual appeal
+- Selected row highlighted with background color
+- Column headers show sort direction and selected column
 
 ---
 
