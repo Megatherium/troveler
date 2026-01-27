@@ -17,7 +17,8 @@ var RootCmd = &cobra.Command{
 Use 'troveler update' to fetch all tools from terminaltrove.com.
 Use 'troveler search <query>' to search your local database.
 Use 'troveler info <slug>' to see details of a specific tool.
-Use 'troveler install <slug>' to get install commands for your OS.`,
+Use 'troveler install <slug>' to get install commands for your OS.
+Use 'troveler tui' to launch the interactive Terminal User Interface.`,
 	Version: "0.1.0",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		configPath, _ := cmd.Flags().GetString("config")
@@ -27,6 +28,15 @@ Use 'troveler install <slug>' to get install commands for your OS.`,
 		}
 		cmd.SetContext(commands.WithConfig(cmd.Context(), cfg))
 		return nil
+	},
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// If no subcommand specified and DefaultToTUI is enabled, launch TUI
+		cfg := commands.GetConfig(cmd.Context())
+		if cfg.DefaultToTUI {
+			return commands.TUICmd.RunE(cmd, args)
+		}
+		// Otherwise show help
+		return cmd.Help()
 	},
 }
 

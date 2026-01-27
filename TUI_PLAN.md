@@ -15,7 +15,7 @@
 - [x] **Phase 6**: Install execution ✅
 - [x] **Phase 7**: Update progress (Alt+u) ✅
 - [x] **Phase 8**: Polish & edge cases ✅
-- [ ] **Phase 9**: Integration & CLI coordination
+- [x] **Phase 9**: Integration & CLI coordination ✅
 - [ ] **Phase 10**: Documentation & examples
 
 ---
@@ -218,6 +218,26 @@
 - No search results: Shows "No tools found" message
 - Searching state: Shows "searching..." in panel title
 - Window resize: Automatically re-renders with new dimensions
+
+---
+
+## Phase 9: Integration & CLI Coordination 🔌
+
+### Status: ✅ Complete
+
+#### Deliverables:
+- ✅ TUI command wired up in main.go
+- ✅ DefaultToTUI config respected (launch TUI when running `troveler` with no subcommand)
+- ✅ Database initialization via WithDB helper
+- ✅ Config passed to TUI properly
+- ✅ Help text updated to mention TUI
+- ✅ All commands work alongside TUI
+
+#### Integration Points:
+- `troveler` with DefaultToTUI=true launches TUI automatically
+- `troveler tui` explicitly launches TUI
+- All other commands (search, info, install, update) still work normally
+- Shares same database and config with CLI commands
 
 ---
 
