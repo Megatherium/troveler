@@ -73,5 +73,10 @@ func MatchPlatform(detectedID string, installPlatform string) bool {
 }
 
 func MatchLanguage(language string, installPlatform string) bool {
+	// Exact match (e.g., "rust" == "rust", "python" == "python")
+	if installPlatform == language {
+		return true
+	}
+	// Prefix match (e.g., "python (pip)", "rust (cargo)")
 	return strings.HasPrefix(installPlatform, language+" ") || strings.HasPrefix(installPlatform, language+"(")
 }

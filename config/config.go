@@ -16,6 +16,7 @@ type Config struct {
 
 type InstallConfig struct {
 	FallbackPlatform string `toml:"fallback_platform"`
+	PlatformOverride string `toml:"platform_override"`
 	AlwaysRun        bool   `toml:"always_run"`
 	UseSudo          string `toml:"use_sudo"`
 }

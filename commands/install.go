@@ -16,32 +16,30 @@ import (
 var all bool
 var run bool
 var sudo bool
+var override string
 
 var InstallCmd = &cobra.Command{
-	Use:   "install <slug> [platform]",
+	Use:   "install <slug>",
 	Short: "Show install command for a tool",
 	Long: `Show that appropriate install command for your current OS.
 Without flags, shows only the command for your detected OS.
 Use --all to show all available install commands.
-Specify a platform as a second argument to show commands for that platform.
+Use --override to specify a platform manually.
 Use --run to execute the install command after confirmation.`,
-	Args: cobra.RangeArgs(1, 2),
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		slug := args[0]
-		platform := ""
-		if len(args) > 1 {
-			platform = args[1]
-		}
 
 		return WithDB(cmd, func(ctx context.Context, database *db.SQLiteDB) error {
 			cfg := GetConfig(ctx)
-			return runInstall(database, slug, all, run, sudo, platform, cfg.Install.FallbackPlatform, cfg.Install.AlwaysRun, cfg.Install.UseSudo)
+			return runInstall(database, slug, all, run, sudo, override, cfg.Install.PlatformOverride, cfg.Install.FallbackPlatform, cfg.Install.AlwaysRun, cfg.Install.UseSudo)
 		})
 	},
 }
 
 func init() {
 	InstallCmd.Flags().BoolVarP(&all, "all", "a", false, "Show all install commands")
+	InstallCmd.Flags().StringVarP(&override, "override", "o", "", "Override platform detection (e.g., macos, linux:arch, LANG)")
 	InstallCmd.Flags().BoolVarP(&run, "run", "r", false, "Run the install command after confirmation")
 	InstallCmd.Flags().BoolVarP(&sudo, "sudo", "s", false, "Prepend sudo to the install command")
 }
@@ -58,7 +56,7 @@ func findMatchingInstalls(osID string, installs []db.InstallInstruction) []db.In
 	return matched
 }
 
-func runInstall(database *db.SQLiteDB, slug string, showAll bool, run bool, sudo bool, platform string, fallbackPlatform string, alwaysRun bool, useSudo string) error {
+func runInstall(database *db.SQLiteDB, slug string, showAll bool, run bool, sudo bool, cliOverride string, configOverride string, fallbackPlatform string, alwaysRun bool, useSudo string) error {
 	tools, err := database.GetToolBySlug(slug)
 	if err != nil {
 		return fmt.Errorf("tool not found: %s", slug)
@@ -81,42 +79,66 @@ func runInstall(database *db.SQLiteDB, slug string, showAll bool, run bool, sudo
 		return showAllInstalls(tool.Name, installs)
 	}
 
+	// Priority: CLI override > config override > OS detection > fallback
+	var platform string
 	var matched []db.InstallInstruction
-
-	if platform != "" {
-		normalizedPlatform := lib.NormalizePlatform(platform)
-		if normalizedPlatform != platform {
-			platform = normalizedPlatform
-		}
-		matched = findMatchingInstalls(platform, installs)
-	} else {
-		osInfo, err := lib.DetectOS()
-		if err != nil {
-			fmt.Printf("Warning: Could not detect OS: %v\n\n", err)
-			if fallbackPlatform != "" {
-				fallback := lib.NormalizePlatform(fallbackPlatform)
-				if fallback == "LANG" {
-					fallback = tool.Language
-					for _, inst := range installs {
-						if lib.MatchLanguage(fallback, inst.Platform) {
-							matched = append(matched, inst)
-						}
-					}
-					platform = fallback
-				} else {
-					matched = findMatchingInstalls(fallback, installs)
-					platform = fallback
+	
+	// Check for CLI or config override first
+	override := selectOverride(cliOverride, configOverride)
+	if override != "" {
+		// Override is set, use it
+		if override == "LANG" {
+			// Use language matching
+			for _, inst := range installs {
+				if lib.MatchLanguage(tool.Language, inst.Platform) {
+					matched = append(matched, inst)
 				}
 			}
+			platform = tool.Language
 		} else {
-			matched = findMatchingInstalls(osInfo.ID, installs)
+			// Use platform matching
+			platform = lib.NormalizePlatform(override)
+			matched = findMatchingInstalls(platform, installs)
+		}
+	} else {
+		// No override, try OS detection first
+		osInfo, err := lib.DetectOS()
+		if err == nil {
 			platform = osInfo.ID
+			matched = findMatchingInstalls(platform, installs)
+		}
+		
+		// If OS detection failed or no match, try fallback
+		if len(matched) == 0 && fallbackPlatform != "" {
+			if fallbackPlatform == "LANG" {
+				// Use language matching
+				for _, inst := range installs {
+					if lib.MatchLanguage(tool.Language, inst.Platform) {
+						matched = append(matched, inst)
+					}
+				}
+				platform = tool.Language
+			} else {
+				// Use platform matching
+				platform = lib.NormalizePlatform(fallbackPlatform)
+				matched = findMatchingInstalls(platform, installs)
+			}
+		}
+		
+		// If still no match and OS detection failed, show error
+		if len(matched) == 0 && err != nil {
+			fmt.Printf("Warning: Could not detect OS: %v\n\n", err)
+			fmt.Println("Available commands:")
+			return showAllInstalls(tool.Name, installs)
 		}
 	}
 
+	// No match found, try fallback then show all
 	if len(matched) == 0 {
 		fmt.Printf("No install command found for %s.\n\n", platform)
-		if platform != "LANG" && platform != tool.Language {
+		
+		// If we haven't tried language matching yet, try it as fallback
+		if platform != tool.Language {
 			var langMatched []db.InstallInstruction
 			for _, inst := range installs {
 				if lib.MatchLanguage(tool.Language, inst.Platform) {
@@ -132,6 +154,7 @@ func runInstall(database *db.SQLiteDB, slug string, showAll bool, run bool, sudo
 				return nil
 			}
 		}
+		
 		fmt.Println("Available commands:")
 		return showAllInstalls(tool.Name, installs)
 	}
@@ -150,6 +173,14 @@ func runInstall(database *db.SQLiteDB, slug string, showAll bool, run bool, sudo
 	}
 
 	return nil
+}
+
+// selectOverride returns CLI override if set, otherwise config override
+func selectOverride(cliOverride, configOverride string) string {
+	if cliOverride != "" {
+		return cliOverride
+	}
+	return configOverride
 }
 
 func executeInstall(command string, sudo bool, useSudo string, alwaysRun bool) error {
