@@ -88,7 +88,28 @@ func SelectDefaultCommand(commands []db.InstallInstruction, usedFallback bool, d
 	
 	// If we used fallback (showing all commands), try to pick a sensible default
 	if usedFallback {
-		// Detect OS family to prioritize correctly
+		// First, try exact or prefix match with detected OS
+		// e.g., "fedora" should match "linux:fedora" or "fedora"
+		if detectedOS != "" {
+			detectedLower := strings.ToLower(detectedOS)
+			for _, cmd := range commands {
+				platformLower := strings.ToLower(cmd.Platform)
+				// Exact match
+				if platformLower == detectedLower {
+					return &cmd
+				}
+				// Match "linux:fedora" when detectedOS is "fedora"
+				if strings.HasSuffix(platformLower, ":"+detectedLower) {
+					return &cmd
+				}
+				// Match "fedora" when detectedOS is "linux:fedora"
+				if strings.HasSuffix(detectedLower, ":"+platformLower) {
+					return &cmd
+				}
+			}
+		}
+		
+		// No exact match, fall back to OS family defaults
 		isLinux := strings.Contains(detectedOS, "linux") || 
 		           detectedOS == "ubuntu" || detectedOS == "debian" || detectedOS == "fedora" || 
 		           detectedOS == "arch" || detectedOS == "manjaro" || detectedOS == "rhel" || detectedOS == "centos"
@@ -98,11 +119,13 @@ func SelectDefaultCommand(commands []db.InstallInstruction, usedFallback bool, d
 		var preferredPlatforms []string
 		
 		if isLinux {
-			// Linux user: prioritize Linux package managers
+			// Linux user: prioritize generic Linux package managers
+			// Order: brew (works everywhere) > apt (most common) > pacman > dnf/yum
 			preferredPlatforms = []string{
-				"linux:brew", "apt", "apt-get", "linux:ubuntu", "linux:debian",
-				"pacman", "linux:arch", "linux:manjaro", "dnf", "linux:fedora",
-				"yum", "linux:rhel", "linux:centos", "brew", // generic brew last
+				"linux:brew", "brew",
+				"apt", "apt-get", "linux:ubuntu", "linux:debian",
+				"pacman", "linux:arch", "linux:manjaro",
+				"dnf", "linux:fedora", "yum", "linux:rhel", "linux:centos",
 			}
 		} else if isMac {
 			// macOS user: prioritize macOS package managers
