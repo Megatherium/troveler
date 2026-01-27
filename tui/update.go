@@ -41,6 +41,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case panels.ToolSelectedMsg:
 		// Tool was selected (Enter pressed in tools panel)
 		m.selectedTool = &msg.Tool.Tool
+		
+		// Update info panel
+		m.infoPanel.SetTool(m.selectedTool, []db.InstallInstruction{})
+		
+		// Load install instructions
+		installs, err := m.db.GetInstallInstructions(m.selectedTool.ID)
+		if err == nil {
+			m.installs = installs
+			m.infoPanel.SetTool(m.selectedTool, installs)
+		}
+		
 		// Jump to install panel
 		m.toolsPanel.Blur()
 		m.activePanel = PanelInstall

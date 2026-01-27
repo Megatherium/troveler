@@ -10,7 +10,7 @@
 - [x] **Phase 1**: Base layout & navigation ✅
 - [x] **Phase 2**: Search panel ✅
 - [x] **Phase 3**: Tool list table panel ✅
-- [ ] **Phase 4**: Tool info panel
+- [x] **Phase 4**: Tool info panel ✅
 - [ ] **Phase 5**: Install options panel
 - [ ] **Phase 6**: Install execution
 - [ ] **Phase 7**: Update progress (Alt+u)
@@ -111,6 +111,26 @@
 - Gradient colors cycle through tools for visual appeal
 - Selected row highlighted with background color
 - Column headers show sort direction and selected column
+
+---
+
+## Phase 4: Tool Info Panel ℹ️
+
+### Status: ✅ Complete
+
+#### Deliverables:
+- ✅ InfoPanel with viewport for scrolling
+- ✅ Reuses internal/info formatter for consistency
+- ✅ Displays tool name, tagline, description, metadata
+- ✅ Updates when tool is selected from tools panel
+- ✅ Scrollable for long descriptions
+- ✅ Clean formatting with gradient styling
+
+#### Notes:
+- Uses bubbles.viewport for smooth scrolling
+- Automatically updates when tool selected
+- Shows "Select a tool" message when empty
+- Panel title shows selected tool name
 
 ---
 
