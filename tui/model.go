@@ -33,10 +33,11 @@ type Model struct {
 	height int
 
 	// Panel management
-	activePanel PanelID
-	searchPanel *panels.SearchPanel
-	toolsPanel  *panels.ToolsPanel
-	infoPanel   *panels.InfoPanel
+	activePanel   PanelID
+	searchPanel   *panels.SearchPanel
+	toolsPanel    *panels.ToolsPanel
+	infoPanel     *panels.InfoPanel
+	installPanel  *panels.InstallPanel
 
 	// Keybindings
 	keys KeyMap
@@ -72,6 +73,11 @@ func NewModel(database *db.SQLiteDB, cfg *config.Config) *Model {
 
 	toolsPanel := panels.NewToolsPanel()
 	infoPanel := panels.NewInfoPanel()
+	installPanel := panels.NewInstallPanel(
+		"", // CLI override (will be set from command line later)
+		cfg.Install.PlatformOverride,
+		cfg.Install.FallbackPlatform,
+	)
 
 	m := &Model{
 		db:            database,
@@ -82,6 +88,7 @@ func NewModel(database *db.SQLiteDB, cfg *config.Config) *Model {
 		searchPanel:   searchPanel,
 		toolsPanel:    toolsPanel,
 		infoPanel:     infoPanel,
+		installPanel:  installPanel,
 		tools:         []db.SearchResult{},
 	}
 
@@ -144,7 +151,9 @@ func (m *Model) NextPanel() {
 	case PanelTools:
 		m.toolsPanel.Blur()
 		m.activePanel = PanelInstall
+		m.installPanel.Focus()
 	case PanelInstall:
+		m.installPanel.Blur()
 		m.activePanel = PanelSearch
 		m.searchPanel.Focus()
 	}

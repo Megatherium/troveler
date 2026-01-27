@@ -51,7 +51,7 @@ func (m *Model) renderMainLayout() string {
 	searchPanel := m.renderSearchPanel(leftWidth, searchHeight)
 	toolsPanel := m.renderToolsPanel(leftWidth, toolsHeight)
 	infoPanel := m.renderInfoPanel(rightWidth, infoHeight)
-	installPanel := m.renderPanel(PanelInstall, "Install", rightWidth, installHeight, "Select a tool to see install options")
+	installPanel := m.renderInstallPanel(rightWidth, installHeight)
 
 	// Combine left and right columns
 	leftColumn := lipgloss.JoinVertical(lipgloss.Left, searchPanel, toolsPanel)
@@ -177,6 +177,28 @@ func (m *Model) renderInfoPanel(width, height int) string {
 		Height(height-1).
 		Padding(0, 1).
 		Render(lipgloss.JoinVertical(lipgloss.Left, titleRendered, content))
+}
+
+// renderInstallPanel renders the install options panel
+func (m *Model) renderInstallPanel(width, height int) string {
+	borderStyle := styles.InactiveBorder
+	titleStyle := styles.MutedStyle
+
+	if m.activePanel == PanelInstall {
+		borderStyle = styles.ActiveBorder
+		titleStyle = styles.TitleStyle
+	}
+
+	title := titleStyle.Render(" Install ")
+
+	// Render install options
+	content := m.installPanel.View(width-4, height-4)
+
+	return borderStyle.
+		Width(width-1).
+		Height(height-1).
+		Padding(0, 1).
+		Render(lipgloss.JoinVertical(lipgloss.Left, title, content))
 }
 
 // renderStatusBar renders the bottom status bar

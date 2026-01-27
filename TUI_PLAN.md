@@ -11,7 +11,7 @@
 - [x] **Phase 2**: Search panel ✅
 - [x] **Phase 3**: Tool list table panel ✅
 - [x] **Phase 4**: Tool info panel ✅
-- [ ] **Phase 5**: Install options panel
+- [x] **Phase 5**: Install options panel ✅
 - [ ] **Phase 6**: Install execution
 - [ ] **Phase 7**: Update progress (Alt+u)
 - [ ] **Phase 8**: Polish & edge cases
@@ -131,6 +131,33 @@
 - Automatically updates when tool selected
 - Shows "Select a tool" message when empty
 - Panel title shows selected tool name
+
+---
+
+## Phase 5: Install Options Panel ⚙️
+
+### Status: ✅ Complete
+
+#### Deliverables:
+- ✅ InstallPanel with platform priority logic
+- ✅ j/k navigation through install commands
+- ✅ Alt+i triggers install execution (InstallExecuteMsg)
+- ✅ Shows [DEFAULT] marker and bold styling for auto-selected command
+- ✅ Integrates with internal/install platform selection
+- ✅ Updates when tool selected from tools panel
+
+#### Critical Bug Fixes:
+- 🐛 **FIXED**: 'i' key no longer captured globally - can now type in search!
+- 🐛 **FIXED**: Undefined db import error in update.go
+- 🐛 **FIXED**: Help '?' key now processed before search input
+- 🔧 Regular keys forwarded to search panel AFTER critical globals (quit, help, tab)
+- 🔧 InfoModal only triggers when NOT in search panel
+
+#### Notes:
+- Platform selection uses same logic as CLI install command
+- Commands filtered by detected OS and language
+- Default command pre-selected based on platform priority
+- Alt+i executes selected command (Phase 6 will implement execution)
 
 ---
 
