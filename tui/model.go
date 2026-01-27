@@ -53,6 +53,10 @@ type Model struct {
 	showInfoModal   bool
 	showUpdateModal bool
 
+	// Install execution state
+	executing     bool
+	executeOutput string
+
 	// Error state
 	err error
 }

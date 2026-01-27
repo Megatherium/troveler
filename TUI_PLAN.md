@@ -12,7 +12,7 @@
 - [x] **Phase 3**: Tool list table panel ✅
 - [x] **Phase 4**: Tool info panel ✅
 - [x] **Phase 5**: Install options panel ✅
-- [ ] **Phase 6**: Install execution
+- [x] **Phase 6**: Install execution ✅
 - [ ] **Phase 7**: Update progress (Alt+u)
 - [ ] **Phase 8**: Polish & edge cases
 - [ ] **Phase 9**: Integration & CLI coordination
@@ -158,6 +158,27 @@
 - Commands filtered by detected OS and language
 - Default command pre-selected based on platform priority
 - Alt+i executes selected command (Phase 6 will implement execution)
+
+---
+
+## Phase 6: Install Execution 🚀
+
+### Status: ✅ Complete
+
+#### Deliverables:
+- ✅ Handle InstallExecuteMsg from install panel
+- ✅ Execute command using shell (sh -c)
+- ✅ Show modal during execution with spinner
+- ✅ Display output/errors in modal after completion
+- ✅ ESC to close result modal
+- ✅ Full error handling with user-friendly messages
+
+#### Notes:
+- Commands executed via `sh -c` for shell compatibility
+- Modal shows "⏳ Executing..." during install
+- Shows "✅ Success" or "❌ Failed" with output/errors
+- User can close modal and continue browsing tools
+- Ready for future enhancement: proper terminal output streaming
 
 ---
 

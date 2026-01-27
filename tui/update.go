@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"os/exec"
+
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -58,6 +60,21 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.toolsPanel.Blur()
 		m.activePanel = PanelInstall
 		m.installPanel.Focus()
+		return m, nil
+
+	case panels.InstallExecuteMsg:
+		// User wants to execute install command
+		m.executing = true
+		m.executeOutput = ""
+		return m, m.executeInstallCommand(msg.Command)
+
+	case installCompleteMsg:
+		// Install finished
+		m.executing = false
+		m.executeOutput = msg.output
+		if msg.err != nil {
+			m.err = msg.err
+		}
 		return m, nil
 
 	case tea.MouseMsg:
@@ -121,6 +138,11 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			// TODO: Cancel update
 			return m, nil
 		}
+		if m.executeOutput != "" {
+			m.executeOutput = ""
+			m.err = nil
+			return m, nil
+		}
 		// Also forward ESC to active panel
 		if m.activePanel == PanelSearch {
 			cmd, updatedPanel := m.searchPanel.Update(msg)
@@ -161,3 +183,25 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	return m, nil
 }
+
+// installCompleteMsg is sent when install completes
+type installCompleteMsg struct {
+	output string
+	err    error
+}
+
+// executeInstallCommand runs the install command
+func (m *Model) executeInstallCommand(command string) tea.Cmd {
+	return func() tea.Msg {
+		// Execute command using shell
+		cmd := exec.Command("sh", "-c", command)
+		output, err := cmd.CombinedOutput()
+
+		return installCompleteMsg{
+			output: string(output),
+			err:    err,
+		}
+	}
+}
+
+
