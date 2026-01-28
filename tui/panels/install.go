@@ -22,6 +22,7 @@ type InstallPanel struct {
 	configOverride string
 	fallback      string
 	toolLanguage  string
+	usedFallback  bool // true if platform detection failed and showing all installs
 }
 
 // InstallExecuteMsg is sent when user wants to execute install
@@ -66,6 +67,7 @@ func (p *InstallPanel) SetTool(tool *db.Tool, installs []db.InstallInstruction) 
 
 	// Format for display
 	p.commands = install.FormatCommands(filtered, defaultCmd)
+	p.usedFallback = usedFallback
 	p.cursor = 0
 }
 
@@ -73,6 +75,24 @@ func (p *InstallPanel) SetTool(tool *db.Tool, installs []db.InstallInstruction) 
 func (p *InstallPanel) Clear() {
 	p.commands = []install.CommandInfo{}
 	p.cursor = 0
+}
+
+// GetSelectedCommand returns the currently selected install command
+func (p *InstallPanel) GetSelectedCommand() string {
+	if p.cursor >= 0 && p.cursor < len(p.commands) {
+		return p.commands[p.cursor].Command
+	}
+	return ""
+}
+
+// HasCommands returns true if there are install commands available
+func (p *InstallPanel) HasCommands() bool {
+	return len(p.commands) > 0
+}
+
+// IsFallbackMode returns true if showing all install entries due to platform detection failure
+func (p *InstallPanel) IsFallbackMode() bool {
+	return p.usedFallback
 }
 
 // Update handles messages
@@ -141,9 +161,6 @@ func (p *InstallPanel) View(width, height int) string {
 		b.WriteString(line)
 		b.WriteString("\n")
 	}
-
-	b.WriteString("\n")
-	b.WriteString(styles.HelpStyle.Render("[Alt+i to execute selected]"))
 
 	return b.String()
 }

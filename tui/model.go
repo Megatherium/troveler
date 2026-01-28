@@ -50,9 +50,10 @@ type Model struct {
 	searching    bool
 
 	// Modal states
-	showHelp        bool
-	showInfoModal   bool
-	showUpdateModal bool
+	showHelp          bool
+	showInfoModal     bool
+	showUpdateModal   bool
+	showInstallModal  bool
 
 	// Install execution state
 	executing     bool
@@ -63,6 +64,7 @@ type Model struct {
 	updateService  *update.Service
 	updateSlugWave *update.SlugWave
 	updateProgress chan update.ProgressUpdate
+	updateCancel   context.CancelFunc
 
 	// Error state
 	err error

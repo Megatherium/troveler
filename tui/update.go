@@ -85,6 +85,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case panels.InstallExecuteMsg:
 		// User wants to execute install command
+		m.showInstallModal = true
 		m.executing = true
 		m.executeOutput = ""
 		return m, m.executeInstallCommand(msg.Command)
@@ -204,6 +205,15 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.updateProgress = nil
 			return m, nil
 		}
+		if m.showInstallModal {
+			// Only close if not currently executing
+			if !m.executing {
+				m.showInstallModal = false
+				m.executeOutput = ""
+				m.err = nil
+			}
+			return m, nil
+		}
 		if m.executeOutput != "" {
 			m.executeOutput = ""
 			m.err = nil
@@ -231,6 +241,18 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Only show modal if NOT typing in search
 		if m.selectedTool != nil && m.activePanel != PanelSearch {
 			m.showInfoModal = true
+		}
+		return m, nil
+
+	case msg.Alt && msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 'i':
+		// Execute install from any panel (Alt+i)
+		if m.installPanel.HasCommands() {
+			cmd := m.installPanel.GetSelectedCommand()
+			if cmd != "" {
+				return m, func() tea.Msg {
+					return panels.InstallExecuteMsg{Command: cmd}
+				}
+			}
 		}
 		return m, nil
 	}

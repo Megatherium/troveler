@@ -26,6 +26,10 @@ func (m *Model) View() string {
 		return m.renderUpdateModal()
 	}
 
+	if m.showInstallModal {
+		return m.renderInstallModal()
+	}
+
 	// Render main layout
 	return m.renderMainLayout()
 }
@@ -223,7 +227,7 @@ func (m *Model) renderInstallPanel(width, height int) string {
 // renderStatusBar renders the bottom status bar
 func (m *Model) renderStatusBar() string {
 	// Show keybindings
-	help := styles.HelpStyle.Render("Tab: switch panels | Alt+U: update | Alt+Q: quit | ?: help")
+	help := styles.HelpStyle.Render("Tab: panels | Alt+I: install | Alt+U: update | Alt+Q: quit | ?: help")
 
 	// Show error if present
 	if m.err != nil {
@@ -339,7 +343,7 @@ func (m *Model) renderInfoModal() string {
 // renderUpdateModal renders the update progress modal with slug wave
 func (m *Model) renderUpdateModal() string {
 	var content string
-	
+
 	if m.updating && m.updateSlugWave != nil {
 		// Show slug wave animation
 		content = styles.TitleStyle.Render("🔄 Database Update") + "\n\n"
@@ -357,6 +361,50 @@ func (m *Model) renderUpdateModal() string {
 		Padding(1, 2).
 		Width(min(80, m.width-4)).
 		Height(min(20, m.height-4)).
+		Render(content)
+
+	return lipgloss.Place(
+		m.width, m.height,
+		lipgloss.Center, lipgloss.Center,
+		modalBox,
+	)
+}
+
+// renderInstallModal renders the install execution modal
+func (m *Model) renderInstallModal() string {
+	var content string
+
+	if m.executing {
+		// Show execution in progress
+		content = styles.TitleStyle.Render("💻 Executing Install Command") + "\n\n"
+		content += "Running install command...\n\n"
+		content += styles.MutedStyle.Render("This may take a moment depending on your package manager") + "\n\n"
+		content += styles.HelpStyle.Render("Please wait...")
+	} else {
+		// Show execution results
+		content = styles.TitleStyle.Render("💻 Install Complete") + "\n\n"
+
+		if m.err != nil {
+			// Show error
+			content += styles.ErrorStyle.Render(fmt.Sprintf("Error: %v\n\n", m.err))
+			content += styles.HighlightStyle.Render("Output:\n")
+			content += styles.MutedStyle.Render(m.executeOutput)
+		} else {
+			// Show success
+			content += styles.HighlightStyle.Render("✓ Command executed successfully\n\n")
+			if m.executeOutput != "" {
+				content += styles.HighlightStyle.Render("Output:\n")
+				content += styles.MutedStyle.Render(m.executeOutput)
+			}
+		}
+		content += "\n\n" + styles.HelpStyle.Render("Press Esc to close")
+	}
+
+	modalBox := styles.BorderStyle.
+		BorderForeground(lipgloss.Color("#00FFFF")).
+		Padding(1, 2).
+		Width(min(100, m.width-4)).
+		Height(min(30, m.height-4)).
 		Render(content)
 
 	return lipgloss.Place(
