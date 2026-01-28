@@ -10,6 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"troveler/db"
+	"troveler/internal/install"
 	"troveler/internal/update"
 	"troveler/tui/panels"
 )
@@ -37,13 +38,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.tools = msg.tools
 		m.toolsPanel.SetTools(msg.tools)
 		m.searching = false
-		
+
 		// Auto-select first tool to populate info/install panels
 		if len(msg.tools) > 0 {
 			firstTool := &msg.tools[0].Tool
 			m.selectedTool = firstTool
 			m.infoPanel.SetTool(firstTool, []db.InstallInstruction{})
-			
+
 			// Load install instructions for first tool
 			installs, err := m.db.GetInstallInstructions(firstTool.ID)
 			if err == nil {
@@ -63,10 +64,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case panels.ToolCursorChangedMsg:
 		// Cursor moved to a different tool - update info/install panels
 		m.selectedTool = &msg.Tool.Tool
-		
+
 		// Update info panel
 		m.infoPanel.SetTool(m.selectedTool, []db.InstallInstruction{})
-		
+
 		// Load install instructions
 		installs, err := m.db.GetInstallInstructions(m.selectedTool.ID)
 		if err == nil {
@@ -91,6 +92,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.executeOutput = ""
 		return m, m.executeInstallCommand(msg.Command)
 
+	case panels.InstallExecuteMiseMsg:
+		// User wants to execute install command via mise
+		m.showInstallModal = true
+		m.executing = true
+		m.executeOutput = ""
+		return m, m.executeInstallCommand(msg.Command)
+
 	case installCompleteMsg:
 		// Install finished
 		m.executing = false
@@ -103,28 +111,28 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case updateProgressMsg:
 		// Update progress received
 		upd := update.ProgressUpdate(msg)
-		
+
 		// Initialize slug wave when we know total count
 		if upd.Type == "progress" && upd.Total > 0 && m.updateSlugWave == nil {
 			m.updateSlugWave = update.NewSlugWave(upd.Total)
 		}
-		
+
 		if upd.Type == "slug" && m.updateSlugWave != nil {
 			m.updateSlugWave.AddSlug(upd.Slug)
 			m.updateSlugWave.IncProcessed()
 		}
-		
+
 		if upd.Type == "complete" {
 			m.updating = false
 			return m, nil
 		}
-		
+
 		if upd.Type == "error" {
 			m.updating = false
 			m.err = upd.Error
 			return m, nil
 		}
-		
+
 		// Continue listening for more updates
 		return m, m.listenForUpdates()
 
@@ -257,6 +265,20 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case msg.Alt && msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 'm':
+		// Execute install via mise from any panel (Alt+m) - forces mise transformation
+		if m.installPanel.HasCommands() {
+			cmd := m.installPanel.GetSelectedCommand()
+			if cmd != "" {
+				// Transform to mise
+				transformedCmd := install.TransformToMise(cmd)
+				return m, func() tea.Msg {
+					return panels.InstallExecuteMiseMsg{Command: transformedCmd}
+				}
+			}
+		}
+		return m, nil
+
 	case msg.Alt && msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 'r':
 		// Open repository URL in browser (Alt+r)
 		return m, m.openRepositoryURL()
@@ -327,9 +349,6 @@ func (m *Model) openRepositoryURL() tea.Cmd {
 	}
 }
 
-
-
-
 // updateProgressMsg wraps update progress events
 type updateProgressMsg update.ProgressUpdate
 
@@ -340,22 +359,20 @@ type slugTickMsg struct{}
 func (m *Model) startUpdate() tea.Cmd {
 	ctx, cancel := context.WithCancel(context.Background())
 	m.updateCancel = cancel
-	
+
 	opts := update.UpdateOptions{
 		Limit:    0, // Fetch all tools
 		Progress: m.updateProgress,
 	}
-	
+
 	// Run update in background
 	go func() {
 		m.updateService.FetchAndUpdate(ctx, opts)
 	}()
-	
+
 	// Return a command that listens for progress updates
 	return m.listenForUpdates()
 }
-
-
 
 // listenForUpdates returns a command that blocks waiting for channel updates
 func (m *Model) listenForUpdates() tea.Cmd {

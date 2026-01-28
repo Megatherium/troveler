@@ -31,6 +31,11 @@ type InstallExecuteMsg struct {
 	Command string
 }
 
+// InstallExecuteMiseMsg is sent when user wants to execute install via mise
+type InstallExecuteMiseMsg struct {
+	Command string
+}
+
 // NewInstallPanel creates a new install panel
 func NewInstallPanel(cliOverride, configOverride, fallback string, miseMode bool) *InstallPanel {
 	return &InstallPanel{
@@ -140,6 +145,18 @@ func (p *InstallPanel) Update(msg tea.Msg) tea.Cmd {
 				}
 				return func() tea.Msg {
 					return InstallExecuteMsg{Command: cmd}
+				}
+			}
+			return nil
+
+		case msg.Alt && (msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 'm'):
+			// Execute selected install command via mise (force mise transformation)
+			if p.cursor >= 0 && p.cursor < len(p.commands) {
+				cmd := p.commands[p.cursor].Command
+				// Always transform to mise for Alt+m
+				cmd = install.TransformToMise(cmd)
+				return func() tea.Msg {
+					return InstallExecuteMiseMsg{Command: cmd}
 				}
 			}
 			return nil

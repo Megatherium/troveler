@@ -18,6 +18,7 @@ type KeyMap struct {
 
 	// Special actions
 	Install     key.Binding // Alt+i
+	InstallMise key.Binding // Alt+m
 	Update      key.Binding // Alt+u
 	Sort        key.Binding // Alt+s
 	OpenRepo    key.Binding // Alt+r
@@ -64,6 +65,10 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("alt+i"),
 			key.WithHelp("alt+i", "install"),
 		),
+		InstallMise: key.NewBinding(
+			key.WithKeys("alt+m"),
+			key.WithHelp("alt+m", "install via mise"),
+		),
 		Update: key.NewBinding(
 			key.WithKeys("alt+u"),
 			key.WithHelp("alt+u", "update db"),
@@ -89,7 +94,7 @@ func DefaultKeyMap() KeyMap {
 
 // ShortHelp returns a short help string
 func (k KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Up, k.Down, k.Tab, k.Enter, k.Install, k.Update, k.Quit}
+	return []key.Binding{k.Up, k.Down, k.Tab, k.Enter, k.Install, k.InstallMise, k.Update, k.Quit}
 }
 
 // FullHelp returns the full help keybindings
@@ -97,7 +102,7 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down, k.Left, k.Right},
 		{k.Tab, k.Enter, k.Escape},
-		{k.Install, k.Update, k.Sort, k.InfoModal},
+		{k.Install, k.InstallMise, k.Update, k.Sort, k.InfoModal},
 		{k.Help, k.Quit},
 	}
 }
