@@ -34,11 +34,11 @@ type Model struct {
 	height int
 
 	// Panel management
-	activePanel   PanelID
-	searchPanel   *panels.SearchPanel
-	toolsPanel    *panels.ToolsPanel
-	infoPanel     *panels.InfoPanel
-	installPanel  *panels.InstallPanel
+	activePanel  PanelID
+	searchPanel  *panels.SearchPanel
+	toolsPanel   *panels.ToolsPanel
+	infoPanel    *panels.InfoPanel
+	installPanel *panels.InstallPanel
 
 	// Keybindings
 	keys KeyMap
@@ -50,10 +50,10 @@ type Model struct {
 	searching    bool
 
 	// Modal states
-	showHelp          bool
-	showInfoModal     bool
-	showUpdateModal   bool
-	showInstallModal  bool
+	showHelp         bool
+	showInfoModal    bool
+	showUpdateModal  bool
+	showInstallModal bool
 
 	// Install execution state
 	executing     bool
@@ -90,6 +90,7 @@ func NewModel(database *db.SQLiteDB, cfg *config.Config) *Model {
 		"", // CLI override (will be set from command line later)
 		cfg.Install.PlatformOverride,
 		cfg.Install.FallbackPlatform,
+		cfg.Install.MiseMode,
 	)
 
 	m := &Model{

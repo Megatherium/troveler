@@ -22,7 +22,8 @@ type InstallPanel struct {
 	configOverride string
 	fallback      string
 	toolLanguage  string
-	usedFallback  bool // true if platform detection failed and showing all installs
+	usedFallback  bool
+	miseMode      bool
 }
 
 // InstallExecuteMsg is sent when user wants to execute install
@@ -31,7 +32,7 @@ type InstallExecuteMsg struct {
 }
 
 // NewInstallPanel creates a new install panel
-func NewInstallPanel(cliOverride, configOverride, fallback string) *InstallPanel {
+func NewInstallPanel(cliOverride, configOverride, fallback string, miseMode bool) *InstallPanel {
 	return &InstallPanel{
 		commands:       []install.CommandInfo{},
 		cursor:         0,
@@ -39,6 +40,7 @@ func NewInstallPanel(cliOverride, configOverride, fallback string) *InstallPanel
 		cliOverride:    cliOverride,
 		configOverride: configOverride,
 		fallback:       fallback,
+		miseMode:       miseMode,
 	}
 }
 
@@ -53,9 +55,16 @@ func (p *InstallPanel) SetTool(tool *db.Tool, installs []db.InstallInstruction) 
 		detectedOS = osInfo.ID
 	}
 
+	// If mise mode is enabled, force LANG override
+	cliOverride := p.cliOverride
+	configOverride := p.configOverride
+	if p.miseMode {
+		cliOverride = "LANG"
+	}
+
 	selector := install.NewPlatformSelector(
-		p.cliOverride,
-		p.configOverride,
+		cliOverride,
+		configOverride,
 		p.fallback,
 		tool.Language,
 	)
@@ -65,8 +74,13 @@ func (p *InstallPanel) SetTool(tool *db.Tool, installs []db.InstallInstruction) 
 	filtered, usedFallback := install.FilterCommands(installs, platform, tool.Language)
 	defaultCmd := install.SelectDefaultCommand(filtered, usedFallback, detectedOS)
 
-	// Format for display
+	// Format for display and transform if mise mode is enabled
 	p.commands = install.FormatCommands(filtered, defaultCmd)
+	if p.miseMode {
+		for i := range p.commands {
+			p.commands[i].Command = install.TransformToMise(p.commands[i].Command)
+		}
+	}
 	p.usedFallback = usedFallback
 	p.cursor = 0
 }
@@ -119,8 +133,13 @@ func (p *InstallPanel) Update(msg tea.Msg) tea.Cmd {
 		case msg.Alt && (msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 'i'):
 			// Execute selected install command
 			if p.cursor >= 0 && p.cursor < len(p.commands) {
+				cmd := p.commands[p.cursor].Command
+				// Transform command if mise mode is enabled (already done in SetTool, but for safety)
+				if p.miseMode {
+					cmd = install.TransformToMise(cmd)
+				}
 				return func() tea.Msg {
-					return InstallExecuteMsg{Command: p.commands[p.cursor].Command}
+					return InstallExecuteMsg{Command: cmd}
 				}
 			}
 			return nil

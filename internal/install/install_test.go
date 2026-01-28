@@ -125,3 +125,36 @@ func TestFormatCommands(t *testing.T) {
 		t.Error("Expected second command to NOT be marked as default")
 	}
 }
+
+func TestMiseModeForcesLANG(t *testing.T) {
+	installs := []db.InstallInstruction{
+		{ID: "1", Platform: "go", Command: "go install github.com/user/repo"},
+		{ID: "2", Platform: "rust", Command: "cargo install crate"},
+	}
+
+	matched, usedFallback := FilterCommands(installs, "LANG", "go")
+
+	if len(matched) != 1 {
+		t.Fatalf("Expected 1 match for go language, got %d", len(matched))
+	}
+
+	if matched[0].Platform != "go" {
+		t.Errorf("Expected 'go' platform, got %s", matched[0].Platform)
+	}
+
+	if usedFallback {
+		t.Error("Expected normal match, got fallback")
+	}
+
+	formatted := FormatCommands(matched, &matched[0])
+	if len(formatted) != 1 {
+		t.Fatalf("Expected 1 formatted command, got %d", len(formatted))
+	}
+
+	// Transform with mise mode
+	transformed := TransformToMise(formatted[0].Command)
+	expected := "mise use --global go:github.com/user/repo"
+	if transformed != expected {
+		t.Errorf("Expected %q, got %q", expected, transformed)
+	}
+}

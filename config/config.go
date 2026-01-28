@@ -21,6 +21,7 @@ type InstallConfig struct {
 	PlatformOverride string `toml:"platform_override"`
 	AlwaysRun        bool   `toml:"always_run"`
 	UseSudo          string `toml:"use_sudo"`
+	MiseMode         bool   `toml:"mise_mode"`
 }
 
 type SearchConfig struct {
