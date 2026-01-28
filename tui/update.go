@@ -102,6 +102,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Update progress received
 		upd := update.ProgressUpdate(msg)
 		
+		// Initialize slug wave when we know total count
+		if upd.Type == "progress" && upd.Total > 0 && m.updateSlugWave == nil {
+			m.updateSlugWave = update.NewSlugWave(upd.Total)
+		}
+		
 		if upd.Type == "slug" && m.updateSlugWave != nil {
 			m.updateSlugWave.AddSlug(upd.Slug)
 			m.updateSlugWave.IncProcessed()
@@ -109,19 +114,24 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		
 		if upd.Type == "complete" {
 			m.updating = false
+			return m, nil
 		}
 		
 		if upd.Type == "error" {
 			m.updating = false
 			m.err = upd.Error
+			return m, nil
 		}
 		
-		return m, nil
+		// Continue listening for more updates
+		return m, m.listenForUpdates()
 
 	case slugTickMsg:
-		// Slug wave animation frame
-		if m.updating && m.updateSlugWave != nil {
-			m.updateSlugWave.AdvanceFrame()
+		// Slug wave animation frame - keep ticking while updating
+		if m.updating {
+			if m.updateSlugWave != nil {
+				m.updateSlugWave.AdvanceFrame()
+			}
 			return m, m.tickSlugWave()
 		}
 		return m, nil
@@ -185,11 +195,13 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.showUpdateModal {
 			m.showUpdateModal = false
 			m.updating = false
-			// Close progress channel if exists
-			if m.updateProgress != nil {
-				close(m.updateProgress)
-				m.updateProgress = nil
+			// Cancel update context to stop goroutines
+			if m.updateCancel != nil {
+				m.updateCancel()
+				m.updateCancel = nil
 			}
+			// Don't close channel - let service close it
+			m.updateProgress = nil
 			return m, nil
 		}
 		if m.executeOutput != "" {
@@ -274,60 +286,42 @@ type slugTickMsg struct{}
 
 // startUpdate begins the database update
 func (m *Model) startUpdate() tea.Cmd {
-	return func() tea.Msg {
-		ctx := context.Background()
-		
-		opts := update.UpdateOptions{
-			Limit:    0, // Fetch all tools
-			Progress: m.updateProgress,
-		}
-		
-		// Run update in background
-		go func() {
-			m.updateService.FetchAndUpdate(ctx, opts)
-		}()
-		
-		// Listen for progress updates
-		return m.listenForUpdates()
+	ctx, cancel := context.WithCancel(context.Background())
+	m.updateCancel = cancel
+	
+	opts := update.UpdateOptions{
+		Limit:    0, // Fetch all tools
+		Progress: m.updateProgress,
 	}
+	
+	// Run update in background
+	go func() {
+		m.updateService.FetchAndUpdate(ctx, opts)
+	}()
+	
+	// Return a command that listens for progress updates
+	return m.listenForUpdates()
 }
 
-// listenForUpdates converts progress channel to tea messages
-func (m *Model) listenForUpdates() tea.Msg {
-	select {
-	case upd, ok := <-m.updateProgress:
-		if !ok {
+
+
+// listenForUpdates returns a command that blocks waiting for channel updates
+func (m *Model) listenForUpdates() tea.Cmd {
+	return func() tea.Msg {
+		if m.updateProgress == nil {
 			return nil
 		}
-		
-		// Initialize slug wave on start
-		if upd.Type == "progress" && upd.Total > 0 && m.updateSlugWave == nil {
-			m.updateSlugWave = update.NewSlugWave(upd.Total)
+		upd, ok := <-m.updateProgress
+		if !ok {
+			return updateProgressMsg{Type: "complete"}
 		}
-		
 		return updateProgressMsg(upd)
-	default:
-		return nil
 	}
 }
 
-// tickSlugWave returns a command that triggers the next animation frame
+// tickSlugWave returns a command that triggers the next animation frame at ~30fps
 func (m *Model) tickSlugWave() tea.Cmd {
-	return tea.Tick(time.Millisecond*100, func(t time.Time) tea.Msg {
-		// Also check for progress updates
-		if m.updateProgress != nil {
-			select {
-			case upd, ok := <-m.updateProgress:
-				if ok {
-					// Initialize slug wave if needed
-					if upd.Type == "progress" && upd.Total > 0 && m.updateSlugWave == nil {
-						m.updateSlugWave = update.NewSlugWave(upd.Total)
-					}
-					return updateProgressMsg(upd)
-				}
-			default:
-			}
-		}
+	return tea.Tick(time.Millisecond*33, func(t time.Time) tea.Msg {
 		return slugTickMsg{}
 	})
 }
