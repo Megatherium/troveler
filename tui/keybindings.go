@@ -20,6 +20,7 @@ type KeyMap struct {
 	Install     key.Binding // Alt+i
 	Update      key.Binding // Alt+u
 	Sort        key.Binding // Alt+s
+	OpenRepo    key.Binding // Alt+r
 	InfoModal   key.Binding // i for full-screen info modal
 	Help        key.Binding // ?
 }
@@ -70,6 +71,10 @@ func DefaultKeyMap() KeyMap {
 		Sort: key.NewBinding(
 			key.WithKeys("alt+s"),
 			key.WithHelp("alt+s", "sort"),
+		),
+		OpenRepo: key.NewBinding(
+			key.WithKeys("alt+r"),
+			key.WithHelp("alt+r", "open repo"),
 		),
 		InfoModal: key.NewBinding(
 			key.WithKeys("i"),

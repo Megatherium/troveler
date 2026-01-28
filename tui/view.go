@@ -227,7 +227,7 @@ func (m *Model) renderInstallPanel(width, height int) string {
 // renderStatusBar renders the bottom status bar
 func (m *Model) renderStatusBar() string {
 	// Show keybindings
-	help := styles.HelpStyle.Render("Tab: panels | Alt+I: install | Alt+U: update | Alt+Q: quit | ?: help")
+	help := styles.HelpStyle.Render("Tab: panels | Alt+I: install | Alt+R: repo | Alt+U: update | Alt+Q: quit | ?: help")
 
 	// Show error if present
 	if m.err != nil {
@@ -257,6 +257,7 @@ Navigation:
 
 Actions:
   Alt+I        Execute install command
+  Alt+R        Open repository URL in browser
   Alt+U        Update database
   Alt+S        Toggle sort order
   i            Show full info modal

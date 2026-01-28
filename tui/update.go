@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"os/exec"
+	"runtime"
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -255,6 +256,10 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 		return m, nil
+
+	case msg.Alt && msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 'r':
+		// Open repository URL in browser (Alt+r)
+		return m, m.openRepositoryURL()
 	}
 
 	// Forward to search panel for non-rune keys (Enter, Backspace, etc.)
@@ -294,6 +299,31 @@ func (m *Model) executeInstallCommand(command string) tea.Cmd {
 			output: string(output),
 			err:    err,
 		}
+	}
+}
+
+// openRepositoryURL opens the repository URL in the default browser
+func (m *Model) openRepositoryURL() tea.Cmd {
+	return func() tea.Msg {
+		if m.selectedTool == nil || m.selectedTool.CodeRepository == "" {
+			return nil
+		}
+
+		var cmd *exec.Cmd
+		url := m.selectedTool.CodeRepository
+
+		switch runtime.GOOS {
+		case "darwin":
+			cmd = exec.Command("open", url)
+		case "windows":
+			cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+		default: // Linux and others
+			cmd = exec.Command("xdg-open", url)
+		}
+
+		// Start command but don't wait - runs in background
+		_ = cmd.Start()
+		return nil
 	}
 }
 
