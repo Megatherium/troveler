@@ -43,7 +43,11 @@ type UpdateOptions struct {
 func (s *Service) FetchAndUpdate(ctx context.Context, opts UpdateOptions) error {
 	// Send start message
 	if opts.Progress != nil {
-		opts.Progress <- ProgressUpdate{Type: "start", Message: "Fetching tools from terminaltrove.com..."}
+		select {
+		case opts.Progress <- ProgressUpdate{Type: "start", Message: "Fetching tools from terminaltrove.com..."}:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
 
 	// Fetch all slugs
@@ -63,10 +67,14 @@ func (s *Service) FetchAndUpdate(ctx context.Context, opts UpdateOptions) error 
 	}
 
 	if opts.Progress != nil {
-		opts.Progress <- ProgressUpdate{
+		select {
+		case opts.Progress <- ProgressUpdate{
 			Type:    "progress",
 			Total:   len(slugs),
 			Message: fmt.Sprintf("Found %d tools", len(slugs)),
+		}:
+		case <-ctx.Done():
+			return ctx.Err()
 		}
 	}
 
@@ -90,10 +98,14 @@ func (s *Service) FetchAndUpdate(ctx context.Context, opts UpdateOptions) error 
 
 		processed++
 		if opts.Progress != nil {
-			opts.Progress <- ProgressUpdate{
+			select {
+			case opts.Progress <- ProgressUpdate{
 				Type:      "progress",
 				Processed: processed,
 				Total:     len(slugs),
+			}:
+			case <-ctx.Done():
+				return ctx.Err()
 			}
 		}
 	}
@@ -102,18 +114,25 @@ func (s *Service) FetchAndUpdate(ctx context.Context, opts UpdateOptions) error 
 	select {
 	case err := <-errChan:
 		if err != nil && opts.Progress != nil {
-			opts.Progress <- ProgressUpdate{Type: "error", Error: err}
+			select {
+			case opts.Progress <- ProgressUpdate{Type: "error", Error: err}:
+			case <-ctx.Done():
+			}
 		}
 	default:
 	}
 
 	if opts.Progress != nil {
-		opts.Progress <- ProgressUpdate{
+		select {
+		case opts.Progress <- ProgressUpdate{
 			Type:      "complete",
 			Processed: processed,
 			Total:     total,
 			Message:   fmt.Sprintf("Update complete! Saved %d tools.", processed),
+		}:
+		case <-ctx.Done():
 		}
+		close(opts.Progress) // Close channel when done
 	}
 
 	return nil
@@ -198,11 +217,15 @@ func (s *Service) fetchDetailsConcurrently(ctx context.Context, slugs []string, 
 					continue
 				}
 
-				// Send slug progress update
+				// Send slug progress update (safely)
 				if progress != nil {
-					progress <- ProgressUpdate{
+					select {
+					case progress <- ProgressUpdate{
 						Type: "slug",
 						Slug: slug,
+					}:
+					case <-ctx.Done():
+						return
 					}
 				}
 
