@@ -16,13 +16,14 @@ import (
 type ToolsPanel struct {
 	tools         []db.SearchResult
 	cursor        int
-	selectedCol   int // 0=slug, 1=tagline, 2=language
+	selectedCol   int // 0=slug, 1=tagline, 2=language, 3=installed
 	sortCol       int
 	sortAscending bool
 	focused       bool
 	width         int
 	height        int
 	scrollOffset  int
+	installedMap  map[string]bool // Cache of installed status by tool ID
 }
 
 // ToolSelectedMsg is sent when a tool is selected (Enter pressed)
@@ -96,7 +97,7 @@ func (p *ToolsPanel) Update(msg tea.Msg) tea.Cmd {
 			return nil
 
 		case key.Matches(msg, key.NewBinding(key.WithKeys("right", "l"))):
-			if p.selectedCol < 2 {
+			if p.selectedCol < 3 {
 				p.selectedCol++
 			}
 			return nil
@@ -165,6 +166,12 @@ func (p *ToolsPanel) sortTools() {
 				} else {
 					swap = p.tools[j].Language < p.tools[j+1].Language
 				}
+			case 3: // installed (installed first when ascending)
+				if p.sortAscending {
+					swap = !p.tools[j].Installed && p.tools[j+1].Installed
+				} else {
+					swap = p.tools[j].Installed && !p.tools[j+1].Installed
+				}
 			}
 			if swap {
 				p.tools[j], p.tools[j+1] = p.tools[j+1], p.tools[j]
@@ -184,9 +191,9 @@ func (p *ToolsPanel) View(width, height int) string {
 
 	var b strings.Builder
 
-	// Calculate column widths
-	nameWidth := 20
-	taglineWidth := width - nameWidth - 15 - 10 // Adjust for language and borders
+	installedWidth := 9
+	nameWidth := 25
+	taglineWidth := width - nameWidth - installedWidth - 15 - 10
 	langWidth := 10
 
 	// Render header
@@ -194,6 +201,7 @@ func (p *ToolsPanel) View(width, height int) string {
 		p.renderHeader("Name", 0, nameWidth),
 		p.renderHeader("Tagline", 1, taglineWidth),
 		p.renderHeader("Language", 2, langWidth),
+		p.renderHeader("Installed", 3, installedWidth),
 	}
 	b.WriteString(strings.Join(headers, " │ "))
 	b.WriteString("\n")
@@ -213,7 +221,7 @@ func (p *ToolsPanel) View(width, height int) string {
 
 	for i := p.scrollOffset; i < end; i++ {
 		tool := p.tools[i]
-		row := p.renderRow(i, tool, nameWidth, taglineWidth, langWidth)
+		row := p.renderRow(i, tool, nameWidth, taglineWidth, langWidth, installedWidth)
 		b.WriteString(row)
 		b.WriteString("\n")
 	}
@@ -248,7 +256,7 @@ func (p *ToolsPanel) renderHeader(title string, col int, width int) string {
 }
 
 // renderRow renders a single tool row
-func (p *ToolsPanel) renderRow(idx int, tool db.SearchResult, nameWidth, taglineWidth, langWidth int) string {
+func (p *ToolsPanel) renderRow(idx int, tool db.SearchResult, nameWidth, taglineWidth, langWidth, installedWidth int) string {
 	// Truncate fields to fit
 	name := tool.Name
 	if len(name) > nameWidth {
@@ -265,6 +273,11 @@ func (p *ToolsPanel) renderRow(idx int, tool db.SearchResult, nameWidth, tagline
 		lang = lang[:langWidth-3] + "..."
 	}
 
+	installed := ""
+	if tool.Installed {
+		installed = "✓"
+	}
+
 	// Apply gradient color
 	gradient := styles.GetGradientColor(idx)
 
@@ -273,21 +286,24 @@ func (p *ToolsPanel) renderRow(idx int, tool db.SearchResult, nameWidth, tagline
 		nameStyle := styles.SelectedStyle.Foreground(gradient)
 		taglineStyle := styles.SelectedStyle.Foreground(gradient)
 		langStyle := styles.SelectedStyle.Foreground(gradient)
+		installedStyle := styles.SelectedStyle.Foreground(gradient)
 
-		return fmt.Sprintf("%s │ %s │ %s",
+		return fmt.Sprintf("%s │ %s │ %s │ %s",
 			nameStyle.Width(nameWidth).Render(name),
 			taglineStyle.Width(taglineWidth).Render(tagline),
 			langStyle.Width(langWidth).Render(lang),
+			installedStyle.Width(installedWidth).Render(installed),
 		)
 	}
 
 	// Normal style with gradient
 	style := lipgloss.NewStyle().Foreground(gradient)
 
-	return fmt.Sprintf("%s │ %s │ %s",
+	return fmt.Sprintf("%s │ %s │ %s │ %s",
 		style.Width(nameWidth).Render(name),
 		style.Width(taglineWidth).Render(tagline),
 		style.Width(langWidth).Render(lang),
+		style.Width(installedWidth).Render(installed),
 	)
 }
 
@@ -310,6 +326,38 @@ func (p *ToolsPanel) IsFocused() bool {
 func (p *ToolsPanel) GetSelectedTool() *db.SearchResult {
 	if p.cursor >= 0 && p.cursor < len(p.tools) {
 		return &p.tools[p.cursor]
+	}
+	return nil
+}
+
+// UpdateInstalledStatus updates the installed status for all tools
+// This should be called when install instructions are available
+func (p *ToolsPanel) UpdateInstalledStatus(installs []db.InstallInstruction) {
+	for i := range p.tools {
+		if _, ok := p.installedMap[p.tools[i].ID]; !ok {
+			isInstalled := db.IsInstalled(&p.tools[i].Tool, installs)
+			p.installedMap[p.tools[i].ID] = isInstalled
+			p.tools[i].Installed = isInstalled
+		}
+	}
+}
+
+// UpdateToolInstalledStatus updates the installed status for a specific tool
+func (p *ToolsPanel) UpdateToolInstalledStatus(toolID string, installs []db.InstallInstruction) {
+	for i := range p.tools {
+		if p.tools[i].ID == toolID {
+			isInstalled := db.IsInstalled(&p.tools[i].Tool, installs)
+			p.installedMap[toolID] = isInstalled
+			p.tools[i].Installed = isInstalled
+			break
+		}
+	}
+}
+
+// GetTool returns a tool by index
+func (p *ToolsPanel) GetTool(idx int) *db.SearchResult {
+	if idx >= 0 && idx < len(p.tools) {
+		return &p.tools[idx]
 	}
 	return nil
 }

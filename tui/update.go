@@ -51,6 +51,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.installs = installs
 				m.infoPanel.SetTool(firstTool, installs)
 				m.installPanel.SetTool(firstTool, installs)
+				// Update installed status for the first tool
+				m.toolsPanel.UpdateToolInstalledStatus(firstTool.ID, installs)
 			}
 		}
 		return m, nil

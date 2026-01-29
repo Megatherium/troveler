@@ -102,16 +102,22 @@ func TestToolsPanelColumnSelection(t *testing.T) {
 		t.Errorf("Expected column 2, got %d", panel.selectedCol)
 	}
 
+	// Move right to installed column
+	panel.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'l'}})
+	if panel.selectedCol != 3 {
+		t.Errorf("Expected column 3, got %d", panel.selectedCol)
+	}
+
 	// Try to move past end
 	panel.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'l'}})
-	if panel.selectedCol != 2 {
-		t.Errorf("Expected to stay at column 2, got %d", panel.selectedCol)
+	if panel.selectedCol != 3 {
+		t.Errorf("Expected to stay at column 3, got %d", panel.selectedCol)
 	}
 
 	// Move left
 	panel.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
-	if panel.selectedCol != 1 {
-		t.Errorf("Expected column 1, got %d", panel.selectedCol)
+	if panel.selectedCol != 2 {
+		t.Errorf("Expected column 2, got %d", panel.selectedCol)
 	}
 }
 
