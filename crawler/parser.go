@@ -118,6 +118,7 @@ func ParseDetailPage(data []byte) (*DetailPage, error) {
 	if desc, ok := softwareApp["description"].(string); ok {
 		cleanDesc := regexp.MustCompile(`<[^>]+>`).ReplaceAllString(desc, "")
 		cleanDesc = strings.ReplaceAll(cleanDesc, "&nbsp;", " ")
+		cleanDesc = html.UnescapeString(cleanDesc)
 		cleanDesc = strings.TrimSpace(cleanDesc)
 		page.Tool.Description = cleanDesc
 	}
@@ -146,7 +147,9 @@ func ParseDetailPage(data []byte) (*DetailPage, error) {
 
 	taglineMatch := taglineRegex.FindStringSubmatch(string(data))
 	if len(taglineMatch) >= 2 {
-		page.Tool.Tagline = strings.TrimSpace(taglineMatch[1])
+		tagline := strings.TrimSpace(taglineMatch[1])
+		tagline = html.UnescapeString(tagline)
+		page.Tool.Tagline = tagline
 	}
 
 	if installMatch := installRegex.FindStringSubmatch(string(data)); len(installMatch) >= 2 {
