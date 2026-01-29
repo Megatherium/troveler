@@ -1,5 +1,10 @@
 # Go Details
 
+## MANDATORY: Use td for Task Management
+
+You must run td usage --new-session at conversation start (or after /clear) to see current work.
+Use td usage -q for subsequent reads.
+
 We can use modern Go (1.25+). Use any instead of interface{}, range instead of for where appropriate, Waitgroup where useful
 
 # File Editing Strategy

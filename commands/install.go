@@ -3,6 +3,8 @@ package commands
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -208,9 +210,10 @@ func executeInstall(command string, sudo bool, useSudo string, alwaysRun bool) e
 		fmt.Print("Use sudo? [y/N] ")
 		var confirm string
 		if _, err := fmt.Scanln(&confirm); err != nil {
-			return fmt.Errorf("aborted")
+			shouldSudo = false
+		} else {
+			shouldSudo = confirm == "y" || confirm == "Y"
 		}
-		shouldSudo = confirm == "y" || confirm == "Y"
 	} else if !sudo && useSudo == "true" {
 		shouldSudo = true
 	}
@@ -223,7 +226,7 @@ func executeInstall(command string, sudo bool, useSudo string, alwaysRun bool) e
 		fmt.Print("Execute this command? [y/N] ")
 		var confirm string
 		if _, err := fmt.Scanln(&confirm); err != nil {
-			return fmt.Errorf("aborted")
+			confirm = ""
 		}
 
 		if confirm != "y" && confirm != "Y" {
@@ -233,7 +236,11 @@ func executeInstall(command string, sudo bool, useSudo string, alwaysRun bool) e
 	}
 
 	fmt.Printf("\nExecuting: %s\n\n", command)
-	return nil
+	
+	cmd := exec.Command("sh", "-c", command)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
 
 func showAllInstalls(name string, installs []db.InstallInstruction) error {
