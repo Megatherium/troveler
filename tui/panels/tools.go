@@ -344,11 +344,10 @@ func (p *ToolsPanel) UpdateInstalledStatus(installs []db.InstallInstruction) {
 }
 
 // UpdateToolInstalledStatus updates the installed status for a specific tool
-func (p *ToolsPanel) UpdateToolInstalledStatus(toolID string, installs []db.InstallInstruction) {
+func (p *ToolsPanel) UpdateToolInstalledStatus(toolID string, isInstalled bool) {
+	p.installedMap[toolID] = isInstalled
 	for i := range p.tools {
 		if p.tools[i].ID == toolID {
-			isInstalled := db.IsInstalled(&p.tools[i].Tool, installs)
-			p.installedMap[toolID] = isInstalled
 			p.tools[i].Installed = isInstalled
 			break
 		}
