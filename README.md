@@ -82,6 +82,9 @@ troveler tui
 
 # Search tools (CLI mode)
 troveler search <query>
+troveler search language=go
+troveler search "name=bat | name=batcat"
+troveler search "(name=git|tagline=git)&language=go"
 
 # Show tool info
 troveler info <tool-slug>
@@ -94,6 +97,51 @@ troveler update
 
 # Shell completion
 troveler completion [bash|zsh|fish]
+```
+
+### Search Filters
+
+Search supports powerful field-based filtering with the following syntax:
+
+- **Field filters**: Use `field=value` to filter on specific fields
+  - `name=bat` - Search for tools with name matching "bat"
+  - `tagline=cli` - Search for tools with "cli" in tagline
+  - `language=go` - Filter by programming language
+  - `installed=true` - Show only installed tools
+  - `installed=false` - Show only uninstalled tools
+
+- **Boolean operators**: Combine filters with `&` (AND) and `|` (OR)
+  - `name=git&language=go` - Tools named "git" AND written in Go
+  - `name=bat|name=batcat` - Tools named "bat" OR "batcat"
+
+- **Parentheses**: Group expressions for complex queries
+  - `(name=git|tagline=git)&language=go` - (name=git OR tagline=git) AND language=go
+
+- **Wildcards**: Search terms automatically use glob matching (*foo* matches "foo")
+  - Field filters also use glob matching (e.g., `tagline=cli` matches "*cli*")
+
+- **Fallback**: If no `=` is found, query is treated as a general search term
+
+**Examples**:
+```bash
+# Simple field filter
+troveler search language=rust
+
+# Multiple filters with AND
+troveler search "language=go&tagline=cli"
+
+# Multiple filters with OR
+troveler search "name=bat|name=batcat"
+
+# Complex query with parentheses
+troveler search "(name=git|tagline=git)&language=go"
+
+# Filter by installed status
+troveler search installed=true
+
+# Combine filters with sort
+troveler search language=python --sort name
+troveler search installed=true --limit 20
 ```
 
 ## ⚙️ Configuration

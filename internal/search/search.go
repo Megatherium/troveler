@@ -41,8 +41,14 @@ var ValidSortFields = map[string]bool{
 	"language": true,
 }
 
-// Search performs a tool search with the given options
+// Search performs a tool search with:: given options
 func (s *Service) Search(ctx context.Context, opts Options) (*Result, error) {
+	// Parse filters from query
+	filter, searchTerm, err := ParseFilters(opts.Query)
+	if err != nil {
+		return nil, fmt.Errorf("invalid filter syntax: %w", err)
+	}
+
 	// Apply defaults
 	if opts.Limit <= 0 {
 		opts.Limit = 50
@@ -60,10 +66,11 @@ func (s *Service) Search(ctx context.Context, opts Options) (*Result, error) {
 
 	// Perform search
 	dbOpts := db.SearchOptions{
-		Query:     opts.Query,
+		Query:     searchTerm,
 		Limit:     opts.Limit,
 		SortField: opts.SortField,
 		SortOrder: opts.SortOrder,
+		Filter:    filter,
 	}
 
 	tools, err := s.db.Search(ctx, dbOpts)
@@ -74,7 +81,7 @@ func (s *Service) Search(ctx context.Context, opts Options) (*Result, error) {
 	return &Result{
 		Tools:      tools,
 		TotalCount: len(tools),
-		Query:      opts.Query,
+		Query:      searchTerm,
 		SortField:  opts.SortField,
 		SortOrder:  opts.SortOrder,
 	}, nil

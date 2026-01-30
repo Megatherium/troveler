@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"troveler/db"
+	"troveler/internal/search"
 	"troveler/pkg/ui"
 )
 
@@ -17,7 +18,11 @@ var SearchCmd = &cobra.Command{
 	Short:   "Search the local database for tools",
 	Long:    "Search for tools by name, tagline, or description in the local database.",
 	Args:    cobra.MinimumNArgs(1),
-	Example: "troveler search go-cli --limit 10 --sort language --desc --width 40",
+	Example: "troveler search go-cli --limit 10 --sort language --desc --width 40\n\n" +
+		"troveler search tagline=cli\n" +
+		"troveler search installed=true\n" +
+		"troveler search \"name=bat | name=batcat\"\n" +
+		"troveler search \"(name=git|tagline=git)&language=go\"",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		query := strings.Join(args, " ")
 		limit, _ := cmd.Flags().GetInt("limit")
@@ -73,26 +78,19 @@ var searchColumns = []searchColumn{
 }
 
 func runSearch(ctx context.Context, database *db.SQLiteDB, opts db.SearchOptions, taglineWidth int) error {
-	if opts.Limit <= 0 {
-		opts.Limit = 50
-	}
+	searchService := search.NewService(database)
 
-	// Validate sort field
-	validField := false
-	for _, col := range searchColumns {
-		if opts.SortField == col.Field {
-			validField = true
-			break
-		}
-	}
-	if !validField {
-		opts.SortField = "name"
-	}
-
-	results, err := database.Search(ctx, opts)
+	result, err := searchService.Search(ctx, search.Options{
+		Query:     opts.Query,
+		Limit:     opts.Limit,
+		SortField: opts.SortField,
+		SortOrder: opts.SortOrder,
+	})
 	if err != nil {
 		return fmt.Errorf("search failed: %w", err)
 	}
+
+	results := result.Tools
 
 	if len(results) == 0 {
 		fmt.Printf("No tools found matching '%s'\n", opts.Query)
@@ -116,11 +114,7 @@ func runSearch(ctx context.Context, database *db.SQLiteDB, opts db.SearchOptions
 	rows := make([][]string, len(results))
 	for i, r := range results {
 		row := []string{fmt.Sprintf("%d", i+1)}
-		
-		// Check if tool is installed
-		installs, _ := database.GetInstallInstructions(r.ID)
-		isInstalled := db.IsInstalled(&r.Tool, installs)
-		
+
 		for _, col := range searchColumns {
 			val := ""
 			switch col.Field {
@@ -134,7 +128,7 @@ func runSearch(ctx context.Context, database *db.SQLiteDB, opts db.SearchOptions
 			case "language":
 				val = r.Language
 			case "installed":
-				if isInstalled {
+				if r.Installed {
 					val = "✓"
 				}
 			}

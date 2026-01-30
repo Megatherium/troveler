@@ -111,7 +111,7 @@ func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResu
 	allowedFields := map[string]string{
 		"name":     "name",
 		"tagline":  "tagline",
-		"language": "language",
+		"language":  "language",
 	}
 
 	sortField, ok := allowedFields[opts.SortField]
@@ -124,16 +124,28 @@ func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResu
 		sortOrder = "DESC"
 	}
 
+	// Build WHERE clause from filters
+	whereClause, args := BuildWhereClause(opts.Filter, opts.Query)
+
+	// If no where clause, use default search
+	if whereClause == "" {
+		whereClause = "name LIKE ? OR tagline LIKE ? OR description LIKE ?"
+		likeQuery := "%" + opts.Query + "%"
+		args = []interface{}{likeQuery, likeQuery, likeQuery}
+	}
+
 	sqlQuery := fmt.Sprintf(`
 		SELECT id, slug, name, tagline, description, language, license, date_published, code_repository
 		FROM tools
-		WHERE name LIKE ? OR tagline LIKE ? OR description LIKE ?
+		WHERE %s
 		ORDER BY %s %s
 		LIMIT ?
-	`, sortField, sortOrder)
+	`, whereClause, sortField, sortOrder)
 
-	likeQuery := "%" + opts.Query + "%"
-	rows, err := s.db.QueryContext(ctx, sqlQuery, likeQuery, likeQuery, likeQuery, opts.Limit)
+	// Add limit to args
+	args = append(args, opts.Limit)
+
+	rows, err := s.db.QueryContext(ctx, sqlQuery, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -150,6 +162,11 @@ func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResu
 			return nil, err
 		}
 		results = append(results, r)
+	}
+
+	// Handle installed filter (post-query filtering since it's not in DB)
+	if opts.Filter != nil {
+		results = filterByInstalled(results, opts.Filter)
 	}
 
 	return results, rows.Err()

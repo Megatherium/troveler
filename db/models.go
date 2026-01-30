@@ -34,5 +34,24 @@ type SearchOptions struct {
 	Query     string
 	Limit     int
 	SortField string
-	SortOrder string // ASC or DESC
+	SortOrder string  // ASC or DESC
+	Filter    *Filter // Optional filter AST
+}
+
+// FilterType represents the type of filter
+type FilterType int
+
+const (
+	FilterAnd FilterType = iota
+	FilterOr
+	FilterField
+)
+
+// Filter represents a parsed filter expression
+type Filter struct {
+	Type  FilterType
+	Field string
+	Value string
+	Left  *Filter
+	Right *Filter
 }

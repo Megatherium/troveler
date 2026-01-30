@@ -1,0 +1,143 @@
+package db
+
+import (
+	"fmt"
+	"strings"
+)
+
+// BuildWhereClause converts a Filter AST to SQL WHERE clauses
+func BuildWhereClause(filter *Filter, searchTerm string) (string, []interface{}) {
+	var clauses []string
+	var args []interface{}
+
+	// Add search term if provided
+	if searchTerm != "" {
+		clauses = append(clauses, "(name LIKE ? OR tagline LIKE ? OR description LIKE ?)")
+		likeQuery := "%" + searchTerm + "%"
+		args = append(args, likeQuery, likeQuery, likeQuery)
+	}
+
+	// Add filter clauses
+	if filter != nil {
+		filterClause, filterArgs := buildFilterSQL(filter)
+		if filterClause != "" {
+			if searchTerm != "" {
+				clauses = append(clauses, "("+filterClause+")")
+			} else {
+				clauses = append(clauses, filterClause)
+			}
+			args = append(args, filterArgs...)
+		}
+	}
+
+	whereClause := strings.Join(clauses, " AND ")
+	return whereClause, args
+}
+
+// buildFilterSQL recursively builds SQL from Filter AST
+func buildFilterSQL(filter *Filter) (string, []interface{}) {
+	if filter == nil {
+		return "", nil
+	}
+
+	switch filter.Type {
+	case FilterAnd:
+		leftClause, leftArgs := buildFilterSQL(filter.Left)
+		rightClause, rightArgs := buildFilterSQL(filter.Right)
+		args := append(leftArgs, rightArgs...)
+		return fmt.Sprintf("(%s AND %s)", leftClause, rightClause), args
+
+	case FilterOr:
+		leftClause, leftArgs := buildFilterSQL(filter.Left)
+		rightClause, rightArgs := buildFilterSQL(filter.Right)
+		args := append(leftArgs, rightArgs...)
+		return fmt.Sprintf("(%s OR %s)", leftClause, rightClause), args
+
+	case FilterField:
+		return buildFieldFilter(filter.Field, filter.Value)
+
+	default:
+		return "", nil
+	}
+}
+
+// buildFieldFilter creates SQL for a single field filter
+func buildFieldFilter(field, value string) (string, []interface{}) {
+	switch strings.ToLower(field) {
+	case "name":
+		return "name LIKE ?", []interface{}{"%" + value + "%"}
+	case "tagline":
+		return "tagline LIKE ?", []interface{}{"%" + value + "%"}
+	case "language":
+		return "language LIKE ?", []interface{}{"%" + value + "%"}
+	case "installed":
+		// Special case: handled in Go after query
+		return "", nil
+	default:
+		// Unknown field - return always true to not filter out results
+		return "1=1", nil
+	}
+}
+
+// filterByInstalled handles the special 'installed' field filter (post-query)
+func filterByInstalled(results []SearchResult, filter *Filter) []SearchResult {
+	if filter == nil {
+		return results
+	}
+
+	// Check if there's an installed filter in the AST
+	if !hasInstalledFilter(filter) {
+		return results
+	}
+
+	// Get the installed filter value
+	value := getInstalledFilterValue(filter)
+
+	// Filter results based on installed status
+	var filtered []SearchResult
+	for _, r := range results {
+		if (value == "true" || value == "1") && r.Installed {
+			filtered = append(filtered, r)
+		} else if (value == "false" || value == "0") && !r.Installed {
+			filtered = append(filtered, r)
+		}
+	}
+
+	return filtered
+}
+
+// hasInstalledFilter checks if the filter AST contains an installed field filter
+func hasInstalledFilter(filter *Filter) bool {
+	if filter == nil {
+		return false
+	}
+
+	if filter.Type == FilterField && filter.Field == "installed" {
+		return true
+	}
+
+	if filter.Left != nil && hasInstalledFilter(filter.Left) {
+		return true
+	}
+	if filter.Right != nil && hasInstalledFilter(filter.Right) {
+		return true
+	}
+
+	return false
+}
+
+// getInstalledFilterValue extracts the value from an installed filter
+func getInstalledFilterValue(filter *Filter) string {
+	if filter == nil {
+		return ""
+	}
+
+	if filter.Type == FilterField && filter.Field == "installed" {
+		return filter.Value
+	}
+
+	if value := getInstalledFilterValue(filter.Left); value != "" {
+		return value
+	}
+	return getInstalledFilterValue(filter.Right)
+}
