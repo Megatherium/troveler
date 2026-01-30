@@ -354,6 +354,17 @@ func (p *ToolsPanel) UpdateToolInstalledStatus(toolID string, isInstalled bool) 
 	}
 }
 
+// UpdateAllInstalledStatus updates the installed status for all tools using their install instructions
+func (p *ToolsPanel) UpdateAllInstalledStatus(getInstalls func(string) ([]db.InstallInstruction, error)) {
+	for i := range p.tools {
+		installs, err := getInstalls(p.tools[i].ID)
+		if err == nil {
+			p.tools[i].Installed = db.IsInstalled(&p.tools[i].Tool, installs)
+			p.installedMap[p.tools[i].ID] = p.tools[i].Installed
+		}
+	}
+}
+
 // GetTool returns a tool by index
 func (p *ToolsPanel) GetTool(idx int) *db.SearchResult {
 	if idx >= 0 && idx < len(p.tools) {

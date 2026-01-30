@@ -40,13 +40,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.searching = false
 
 		// Update installed status for all tools
-		for i := range msg.tools {
-			installs, err := m.db.GetInstallInstructions(msg.tools[i].ID)
-			if err == nil {
-				isInstalled := db.IsInstalled(&msg.tools[i].Tool, installs)
-				m.toolsPanel.UpdateToolInstalledStatus(msg.tools[i].ID, isInstalled)
-			}
-		}
+		m.toolsPanel.UpdateAllInstalledStatus(m.db.GetInstallInstructions)
 
 		// Auto-select first tool to populate info/install panels
 		if len(msg.tools) > 0 {
