@@ -45,6 +45,7 @@ func NewToolsPanel() *ToolsPanel {
 		sortCol:       0,
 		sortAscending: true,
 		focused:       false,
+		installedMap:  make(map[string]bool),
 	}
 }
 
