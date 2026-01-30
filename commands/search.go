@@ -69,6 +69,7 @@ var searchColumns = []searchColumn{
 	{"Name", "name"},
 	{"Tagline", "tagline"},
 	{"Language", "language"},
+	{"Installed", "installed"},
 }
 
 func runSearch(ctx context.Context, database *db.SQLiteDB, opts db.SearchOptions, taglineWidth int) error {
@@ -115,6 +116,11 @@ func runSearch(ctx context.Context, database *db.SQLiteDB, opts db.SearchOptions
 	rows := make([][]string, len(results))
 	for i, r := range results {
 		row := []string{fmt.Sprintf("%d", i+1)}
+		
+		// Check if tool is installed
+		installs, _ := database.GetInstallInstructions(r.ID)
+		isInstalled := db.IsInstalled(&r.Tool, installs)
+		
 		for _, col := range searchColumns {
 			val := ""
 			switch col.Field {
@@ -127,6 +133,10 @@ func runSearch(ctx context.Context, database *db.SQLiteDB, opts db.SearchOptions
 				}
 			case "language":
 				val = r.Language
+			case "installed":
+				if isInstalled {
+					val = "✓"
+				}
 			}
 			row = append(row, val)
 		}
