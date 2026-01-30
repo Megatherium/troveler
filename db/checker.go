@@ -68,8 +68,8 @@ func parseToolName(command string) string {
 			if idx := strings.Index(name, "@"); idx > 0 {
 				name = name[:idx]
 			}
-			// Strip git URLs
-			if strings.HasPrefix(name, "github.com/") || strings.HasPrefix(name, "git+") {
+			// Extract last component from paths (e.g., github.com/user/repo -> repo, org/formulae/name -> name)
+			if strings.Contains(name, "/") {
 				parts := strings.Split(name, "/")
 				if len(parts) > 0 {
 					name = parts[len(parts)-1]
@@ -98,8 +98,16 @@ func parseToolName(command string) string {
 	if len(fields) > 0 {
 		// Return the last field, usually the package/executable name
 		name := fields[len(fields)-1]
+		// Strip version specifiers like package@1.2.3
 		if idx := strings.Index(name, "@"); idx > 0 {
 			name = name[:idx]
+		}
+		// Extract last component from paths (e.g., owner/repo -> repo)
+		if strings.Contains(name, "/") {
+			parts := strings.Split(name, "/")
+			if len(parts) > 0 {
+				name = parts[len(parts)-1]
+			}
 		}
 		return name
 	}
