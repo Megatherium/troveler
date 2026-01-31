@@ -43,6 +43,40 @@ troveler tui
 troveler
 ```
 
+## 🧪 Testing
+
+### Integration Tests with Docker
+
+Troveler includes comprehensive integration tests using Docker to verify functionality across different scenarios:
+
+```bash
+# Build the Docker image
+cd integration
+docker build -t troveler-test .
+
+# Run all integration tests
+docker run --rm troveler-test
+
+# Run specific tests interactively
+docker run -it --rm troveler-test /bin/sh
+./run_tests.sh
+```
+
+The test suite includes:
+- Basic search functionality
+- Install command display (apk, go, cargo, npm, etc.)
+- Toolchain verification (mise integration)
+- Search filters with complex queries
+- Sudo flow as non-root user
+- Batch install (dry run)
+
+Dockerfile features:
+- Multi-stage build with golang:1.25-alpine
+- Pre-installed mise with Go toolchain
+- Test user with passwordless sudo
+- Pre-populated database for offline testing
+- CGO enabled for SQLite support
+
 ## ⌨️ Keybindings
 
 ### Global
@@ -199,6 +233,7 @@ troveler/
 ├── config/           # Configuration management
 ├── crawler/          # terminaltrove.com scraper
 ├── db/              # SQLite database layer
+├── integration/      # Dockerfile and integration tests
 ├── internal/        # Business logic
 │   ├── search/      # Search service
 │   ├── install/     # Platform selection & command filtering
