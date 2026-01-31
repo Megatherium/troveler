@@ -111,7 +111,7 @@ func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResu
 	allowedFields := map[string]string{
 		"name":     "name",
 		"tagline":  "tagline",
-		"language":  "language",
+		"language": "language",
 	}
 
 	sortField, ok := allowedFields[opts.SortField]
@@ -161,6 +161,9 @@ func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResu
 		if err != nil {
 			return nil, err
 		}
+		// Populate installed status by checking install instructions
+		installs, _ := s.GetInstallInstructions(r.ID)
+		r.Installed = IsInstalled(&r.Tool, installs)
 		results = append(results, r)
 	}
 

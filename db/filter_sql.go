@@ -30,6 +30,12 @@ func BuildWhereClause(filter *Filter, searchTerm string) (string, []interface{})
 		}
 	}
 
+	// If no clauses (no search term and no non-empty filter), add default clause
+	// This ensures we still query the DB for filtering in Go code (e.g., installed filter)
+	if len(clauses) == 0 {
+		clauses = append(clauses, "1=1")
+	}
+
 	whereClause := strings.Join(clauses, " AND ")
 	return whereClause, args
 }
@@ -71,8 +77,9 @@ func buildFieldFilter(field, value string) (string, []interface{}) {
 	case "language":
 		return "language LIKE ?", []interface{}{"%" + value + "%"}
 	case "installed":
-		// Special case: handled in Go after query
-		return "", nil
+		// Special case: handled in Go after query, but needs to return a clause
+		// for AND/OR combinations to work properly
+		return "1=1", nil
 	default:
 		// Unknown field - return always true to not filter out results
 		return "1=1", nil
