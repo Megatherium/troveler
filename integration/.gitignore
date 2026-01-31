@@ -1,0 +1,6 @@
+# Binary and database (generated during build)
+troveler
+troveler.db
+
+# Test results
+results/
