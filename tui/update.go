@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"fmt"
 	"os/exec"
 	"runtime"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"troveler/db"
 	"troveler/internal/install"
 	"troveler/internal/update"
+	"troveler/lib"
 	"troveler/tui/panels"
 )
 
@@ -64,6 +66,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.searching = false
 		return m, nil
 
+	case panels.ToolMarkedMsg:
+		// Tool mark status changed - just update display
+		return m, nil
+
 	case panels.ToolCursorChangedMsg:
 		// Cursor moved to a different tool - update info/install panels
 		m.selectedTool = &msg.Tool.Tool
@@ -108,6 +114,42 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.executeOutput = msg.output
 		if msg.err != nil {
 			m.err = msg.err
+		}
+		return m, nil
+
+	case batchInstallStartMsg:
+		// Start processing first tool
+		return m, m.processBatchTool(0)
+
+	case batchInstallProgressMsg:
+		// Update progress for completed tool
+		if m.batchProgress != nil {
+			if msg.skipped {
+				m.batchProgress.Skipped = append(m.batchProgress.Skipped, msg.toolID)
+			} else if msg.err != nil {
+				m.batchProgress.Failed = append(m.batchProgress.Failed, msg.toolID)
+			} else {
+				m.batchProgress.Completed = append(m.batchProgress.Completed, msg.toolID)
+			}
+			m.batchProgress.CurrentOutput = msg.output
+			m.batchProgress.CurrentError = msg.err
+			m.batchProgress.CurrentIndex++
+
+			// Process next tool or complete
+			if m.batchProgress.CurrentIndex < len(m.batchProgress.Tools) {
+				return m, m.processBatchTool(m.batchProgress.CurrentIndex)
+			}
+			// All done
+			m.batchProgress.IsComplete = true
+			m.executing = false
+			m.toolsPanel.ClearMarks()
+		}
+		return m, nil
+
+	case batchInstallCompleteMsg:
+		m.executing = false
+		if m.batchProgress != nil {
+			m.batchProgress.IsComplete = true
 		}
 		return m, nil
 
@@ -185,6 +227,21 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	// Handle batch config modal input
+	if m.showBatchConfigModal && m.batchConfig != nil && msg.Type == tea.KeyRunes && len(msg.Runes) > 0 {
+		r := msg.Runes[0]
+		if r == '1' || r == '2' {
+			optionIndex := int(r - '1')
+			m.batchConfig.SetCurrentStepValue(optionIndex)
+			if !m.batchConfig.NextStep() {
+				// Config complete, start batch install
+				m.showBatchConfigModal = false
+				return m, m.startBatchInstall()
+			}
+		}
+		return m, nil
+	}
+
 	// CRITICAL: Forward regular keys to search panel FIRST when it's focused
 	// This allows typing characters like 'i', 'u', etc. in the search box
 	if m.activePanel == PanelSearch && !msg.Alt && msg.Type == tea.KeyRunes {
@@ -223,7 +280,14 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.showInstallModal = false
 				m.executeOutput = ""
 				m.err = nil
+				m.batchProgress = nil
+				m.batchConfig = nil
 			}
+			return m, nil
+		}
+		if m.showBatchConfigModal {
+			m.showBatchConfigModal = false
+			m.batchConfig = nil
 			return m, nil
 		}
 		if m.executeOutput != "" {
@@ -258,6 +322,13 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case msg.Alt && msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 'i':
 		// Execute install from any panel (Alt+i)
+		// If tools are marked, show batch config modal
+		if m.toolsPanel.GetMarkedCount() > 0 {
+			m.batchConfig = NewBatchInstallConfig()
+			m.showBatchConfigModal = true
+			return m, nil
+		}
+		// Otherwise, single tool install
 		if m.installPanel.HasCommands() {
 			cmd := m.installPanel.GetSelectedCommand()
 			if cmd != "" {
@@ -270,10 +341,17 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case msg.Alt && msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 'm':
 		// Execute install via mise from any panel (Alt+m) - forces mise transformation
+		// If tools are marked, show batch config modal with mise enabled
+		if m.toolsPanel.GetMarkedCount() > 0 {
+			m.batchConfig = NewBatchInstallConfig()
+			m.batchConfig.UseMise = true
+			m.showBatchConfigModal = true
+			return m, nil
+		}
+		// Otherwise, single tool install
 		if m.installPanel.HasCommands() {
 			cmd := m.installPanel.GetSelectedCommand()
 			if cmd != "" {
-				// Transform to mise
 				transformedCmd := install.TransformToMise(cmd)
 				return m, func() tea.Msg {
 					return panels.InstallExecuteMiseMsg{Command: transformedCmd}
@@ -396,4 +474,126 @@ func (m *Model) tickSlugWave() tea.Cmd {
 	return tea.Tick(time.Millisecond*33, func(t time.Time) tea.Msg {
 		return slugTickMsg{}
 	})
+}
+
+// batchInstallStartMsg signals batch install is starting
+type batchInstallStartMsg struct {
+	tools []db.SearchResult
+}
+
+// batchInstallProgressMsg contains progress for a single tool
+type batchInstallProgressMsg struct {
+	toolID  string
+	output  string
+	err     error
+	skipped bool
+}
+
+// batchInstallCompleteMsg signals all tools are processed
+type batchInstallCompleteMsg struct{}
+
+// startBatchInstall begins the batch installation process
+func (m *Model) startBatchInstall() tea.Cmd {
+	markedTools := m.toolsPanel.GetMarkedTools()
+	if len(markedTools) == 0 {
+		return nil
+	}
+
+	m.batchProgress = NewBatchInstallProgress(markedTools)
+	m.showInstallModal = true
+	m.executing = true
+
+	return func() tea.Msg {
+		return batchInstallStartMsg{tools: markedTools}
+	}
+}
+
+// processBatchTool processes a single tool in the batch
+func (m *Model) processBatchTool(index int) tea.Cmd {
+	if m.batchProgress == nil || index >= len(m.batchProgress.Tools) {
+		return func() tea.Msg { return batchInstallCompleteMsg{} }
+	}
+
+	tool := m.batchProgress.Tools[index]
+	config := m.batchConfig
+
+	return func() tea.Msg {
+		// Get install instructions for this tool
+		installs, err := m.db.GetInstallInstructions(tool.ID)
+		if err != nil || len(installs) == 0 {
+			if config != nil && config.SkipIfBlind {
+				return batchInstallProgressMsg{
+					toolID:  tool.ID,
+					skipped: true,
+				}
+			}
+			return batchInstallProgressMsg{
+				toolID: tool.ID,
+				err:    fmt.Errorf("no install instructions found"),
+			}
+		}
+
+		// Select install command using same logic as InstallPanel
+		selector := install.NewPlatformSelector("", "", "", tool.Language)
+		osInfo, _ := lib.DetectOS()
+		detectedOS := ""
+		if osInfo != nil {
+			detectedOS = osInfo.ID
+		}
+		platform := selector.SelectPlatform(detectedOS)
+
+		filtered, _ := install.FilterCommands(installs, platform, tool.Language)
+		if len(filtered) == 0 {
+			if config != nil && config.SkipIfBlind {
+				return batchInstallProgressMsg{
+					toolID:  tool.ID,
+					skipped: true,
+				}
+			}
+			return batchInstallProgressMsg{
+				toolID: tool.ID,
+				err:    fmt.Errorf("no compatible install method"),
+			}
+		}
+
+		// Get command
+		defaultCmd := install.SelectDefaultCommand(filtered, false, detectedOS)
+		cmd := filtered[0].Command
+		if defaultCmd != nil {
+			cmd = defaultCmd.Command
+		}
+
+		// Transform if mise mode
+		if config != nil && config.UseMise {
+			cmd = install.TransformToMise(cmd)
+		}
+
+		// Add sudo if needed
+		if config != nil && config.UseSudo {
+			isSystemPM := isSystemPackageManager(filtered[0].Platform)
+			if !config.SudoOnlySystem || isSystemPM {
+				cmd = "sudo " + cmd
+			}
+		}
+
+		// Execute the command
+		execCmd := exec.Command("sh", "-c", cmd)
+		output, err := execCmd.CombinedOutput()
+
+		return batchInstallProgressMsg{
+			toolID: tool.ID,
+			output: string(output),
+			err:    err,
+		}
+	}
+}
+
+// isSystemPackageManager returns true for system package managers that typically need sudo
+func isSystemPackageManager(platform string) bool {
+	switch platform {
+	case "apt", "dnf", "yum", "pacman", "apk", "zypper", "nix":
+		return true
+	default:
+		return false
+	}
 }

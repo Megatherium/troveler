@@ -50,14 +50,19 @@ type Model struct {
 	searching    bool
 
 	// Modal states
-	showHelp         bool
-	showInfoModal    bool
-	showUpdateModal  bool
-	showInstallModal bool
+	showHelp             bool
+	showInfoModal        bool
+	showUpdateModal      bool
+	showInstallModal     bool
+	showBatchConfigModal bool
 
 	// Install execution state
 	executing     bool
 	executeOutput string
+
+	// Batch install state
+	batchConfig     *BatchInstallConfig
+	batchProgress   *BatchInstallProgress
 
 	// Update state
 	updating       bool

@@ -24,11 +24,18 @@ type ToolsPanel struct {
 	height        int
 	scrollOffset  int
 	installedMap  map[string]bool // Cache of installed status by tool ID
+	markedTools   map[string]bool // Set of marked tool IDs for batch install
 }
 
 // ToolSelectedMsg is sent when a tool is selected (Enter pressed)
 type ToolSelectedMsg struct {
 	Tool db.SearchResult
+}
+
+// ToolMarkedMsg is sent when a tool's mark status changes
+type ToolMarkedMsg struct {
+	Tool     db.SearchResult
+	IsMarked bool
 }
 
 // ToolCursorChangedMsg is sent when the cursor moves to a different tool
@@ -46,6 +53,7 @@ func NewToolsPanel() *ToolsPanel {
 		sortAscending: true,
 		focused:       false,
 		installedMap:  make(map[string]bool),
+		markedTools:   make(map[string]bool),
 	}
 }
 
@@ -119,6 +127,22 @@ func (p *ToolsPanel) Update(msg tea.Msg) tea.Cmd {
 			if p.cursor < len(p.tools) {
 				return func() tea.Msg {
 					return ToolSelectedMsg{Tool: p.tools[p.cursor]}
+				}
+			}
+			return nil
+
+		case key.Matches(msg, key.NewBinding(key.WithKeys("m"))):
+			// Toggle mark for batch install
+			if p.cursor < len(p.tools) {
+				tool := p.tools[p.cursor]
+				isMarked := p.markedTools[tool.ID]
+				if isMarked {
+					delete(p.markedTools, tool.ID)
+				} else {
+					p.markedTools[tool.ID] = true
+				}
+				return func() tea.Msg {
+					return ToolMarkedMsg{Tool: tool, IsMarked: !isMarked}
 				}
 			}
 			return nil
@@ -279,29 +303,52 @@ func (p *ToolsPanel) renderRow(idx int, tool db.SearchResult, nameWidth, tagline
 		installed = "✓"
 	}
 
+	// Check if tool is marked for batch install
+	isMarked := p.markedTools[tool.ID]
+	markIndicator := "  "
+	if isMarked {
+		markIndicator = "● "
+	}
+
 	// Apply gradient color
 	gradient := styles.GetGradientColor(idx)
 
-	// Highlight if selected
+	// Highlight if selected (cursor on this row)
 	if idx == p.cursor && p.focused {
-		nameStyle := styles.SelectedStyle.Foreground(gradient)
-		taglineStyle := styles.SelectedStyle.Foreground(gradient)
-		langStyle := styles.SelectedStyle.Foreground(gradient)
-		installedStyle := styles.SelectedStyle.Foreground(gradient)
+		var baseStyle lipgloss.Style
+		if isMarked {
+			baseStyle = styles.MarkedSelectedStyle.Foreground(gradient)
+		} else {
+			baseStyle = styles.SelectedStyle.Foreground(gradient)
+		}
 
-		return fmt.Sprintf("%s │ %s │ %s │ %s",
-			nameStyle.Width(nameWidth).Render(name),
-			taglineStyle.Width(taglineWidth).Render(tagline),
-			langStyle.Width(langWidth).Render(lang),
-			installedStyle.Width(installedWidth).Render(installed),
+		return fmt.Sprintf("%s%s │ %s │ %s │ %s",
+			baseStyle.Width(2).Render(markIndicator),
+			baseStyle.Width(nameWidth-2).Render(name),
+			baseStyle.Width(taglineWidth).Render(tagline),
+			baseStyle.Width(langWidth).Render(lang),
+			baseStyle.Width(installedWidth).Render(installed),
+		)
+	}
+
+	// Marked but not selected
+	if isMarked {
+		markedStyle := styles.MarkedStyle.Foreground(gradient)
+		return fmt.Sprintf("%s%s │ %s │ %s │ %s",
+			markedStyle.Width(2).Render(markIndicator),
+			markedStyle.Width(nameWidth-2).Render(name),
+			markedStyle.Width(taglineWidth).Render(tagline),
+			markedStyle.Width(langWidth).Render(lang),
+			markedStyle.Width(installedWidth).Render(installed),
 		)
 	}
 
 	// Normal style with gradient
 	style := lipgloss.NewStyle().Foreground(gradient)
 
-	return fmt.Sprintf("%s │ %s │ %s │ %s",
-		style.Width(nameWidth).Render(name),
+	return fmt.Sprintf("%s%s │ %s │ %s │ %s",
+		style.Width(2).Render(markIndicator),
+		style.Width(nameWidth-2).Render(name),
 		style.Width(taglineWidth).Render(tagline),
 		style.Width(langWidth).Render(lang),
 		style.Width(installedWidth).Render(installed),
@@ -371,4 +418,30 @@ func (p *ToolsPanel) GetTool(idx int) *db.SearchResult {
 		return &p.tools[idx]
 	}
 	return nil
+}
+
+// GetMarkedTools returns all marked tools for batch install
+func (p *ToolsPanel) GetMarkedTools() []db.SearchResult {
+	var marked []db.SearchResult
+	for _, tool := range p.tools {
+		if p.markedTools[tool.ID] {
+			marked = append(marked, tool)
+		}
+	}
+	return marked
+}
+
+// GetMarkedCount returns the number of marked tools
+func (p *ToolsPanel) GetMarkedCount() int {
+	return len(p.markedTools)
+}
+
+// ClearMarks clears all marked tools
+func (p *ToolsPanel) ClearMarks() {
+	p.markedTools = make(map[string]bool)
+}
+
+// IsMarked returns true if a tool is marked
+func (p *ToolsPanel) IsMarked(toolID string) bool {
+	return p.markedTools[toolID]
 }

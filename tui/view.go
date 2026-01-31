@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"troveler/tui/styles"
@@ -28,6 +29,10 @@ func (m *Model) View() string {
 
 	if m.showInstallModal {
 		return m.renderInstallModal()
+	}
+
+	if m.showBatchConfigModal {
+		return m.renderBatchConfigModal()
 	}
 
 	// Render main layout
@@ -226,8 +231,8 @@ func (m *Model) renderInstallPanel(width, height int) string {
 
 // renderStatusBar renders the bottom status bar
 func (m *Model) renderStatusBar() string {
-	// Show keybindings
-	help := styles.HelpStyle.Render("Tab: panels | Alt+I: install | Alt+M: install via mise | Alt+R: repo | Alt+U: update | Alt+Q: quit | ?: help")
+	// Show keybindings - include 'm' for marking
+	help := styles.HelpStyle.Render("Tab: panels | m: mark | Alt+I: install | Alt+M: mise | Alt+R: repo | Alt+U: update | Alt+Q: quit | ?: help")
 
 	// Show error if present
 	if m.err != nil {
@@ -235,10 +240,26 @@ func (m *Model) renderStatusBar() string {
 		return lipgloss.JoinHorizontal(lipgloss.Left, errMsg, " | ", help)
 	}
 
+	// Build status info
+	var statusParts []string
+
 	// Show tool count
 	if len(m.tools) > 0 {
-		count := styles.StatusBarStyle.Render(fmt.Sprintf(" %d tools ", len(m.tools)))
-		return lipgloss.JoinHorizontal(lipgloss.Left, count, " | ", help)
+		statusParts = append(statusParts, fmt.Sprintf("%d tools", len(m.tools)))
+	}
+
+	// Show marked count
+	markedCount := m.toolsPanel.GetMarkedCount()
+	if markedCount > 0 {
+		statusParts = append(statusParts, styles.HighlightStyle.Render(fmt.Sprintf("%d marked", markedCount)))
+	}
+
+	if len(statusParts) > 0 {
+		status := styles.StatusBarStyle.Render(" " + statusParts[0] + " ")
+		for i := 1; i < len(statusParts); i++ {
+			status = lipgloss.JoinHorizontal(lipgloss.Left, status, " | ", statusParts[i])
+		}
+		return lipgloss.JoinHorizontal(lipgloss.Left, status, " | ", help)
 	}
 
 	return help
@@ -255,9 +276,12 @@ Navigation:
   Tab          Cycle between panels
   Enter        Select tool / jump to install panel
 
+Selection:
+  m            Mark/unmark tool for batch install
+  Alt+I        Install (single or batch if marked)
+  Alt+M        Install via mise (single or batch)
+
 Actions:
-  Alt+I        Execute install command
-  Alt+M        Execute install via mise
   Alt+R        Open repository URL in browser
   Alt+U        Update database
   Alt+S        Toggle sort order
@@ -376,6 +400,11 @@ func (m *Model) renderUpdateModal() string {
 func (m *Model) renderInstallModal() string {
 	var content string
 
+	// Check if this is a batch install
+	if m.batchProgress != nil {
+		return m.renderBatchInstallModal()
+	}
+
 	if m.executing {
 		// Show execution in progress
 		content = styles.TitleStyle.Render("💻 Executing Install Command") + "\n\n"
@@ -407,6 +436,102 @@ func (m *Model) renderInstallModal() string {
 		Padding(1, 2).
 		Width(min(100, m.width-4)).
 		Height(min(30, m.height-4)).
+		Render(content)
+
+	return lipgloss.Place(
+		m.width, m.height,
+		lipgloss.Center, lipgloss.Center,
+		modalBox,
+	)
+}
+
+// renderBatchInstallModal renders the batch install progress modal
+func (m *Model) renderBatchInstallModal() string {
+	var content string
+	bp := m.batchProgress
+
+	if bp.IsComplete {
+		// Show summary
+		content = styles.TitleStyle.Render("🔧 Batch Install Complete") + "\n\n"
+
+		if len(bp.Completed) > 0 {
+			content += styles.HighlightStyle.Render(fmt.Sprintf("✓ Completed: %d\n", len(bp.Completed)))
+		}
+		if len(bp.Failed) > 0 {
+			content += styles.ErrorStyle.Render(fmt.Sprintf("✗ Failed: %d\n", len(bp.Failed)))
+		}
+		if len(bp.Skipped) > 0 {
+			content += styles.MutedStyle.Render(fmt.Sprintf("○ Skipped: %d\n", len(bp.Skipped)))
+		}
+
+		content += "\n" + styles.HelpStyle.Render("Press Esc to close")
+	} else {
+		// Show progress
+		current := bp.CurrentIndex + 1
+		total := len(bp.Tools)
+		content = styles.TitleStyle.Render(fmt.Sprintf("🔧 Batch Install (%d/%d)", current, total)) + "\n\n"
+
+		if bp.CurrentIndex < len(bp.Tools) {
+			tool := bp.Tools[bp.CurrentIndex]
+			content += styles.HighlightStyle.Render("Installing: ") + tool.Name + "\n\n"
+		}
+
+		content += styles.MutedStyle.Render("Please wait...") + "\n"
+
+		// Progress bar
+		progressWidth := 40
+		completed := bp.CurrentIndex
+		pct := float64(completed) / float64(total)
+		filled := int(pct * float64(progressWidth))
+		empty := progressWidth - filled
+		bar := "[" + strings.Repeat("=", filled) + strings.Repeat(" ", empty) + "]"
+		content += styles.SubtitleStyle.Render(bar) + "\n"
+	}
+
+	modalBox := styles.BorderStyle.
+		BorderForeground(lipgloss.Color("#00FFFF")).
+		Padding(1, 2).
+		Width(min(70, m.width-4)).
+		Render(content)
+
+	return lipgloss.Place(
+		m.width, m.height,
+		lipgloss.Center, lipgloss.Center,
+		modalBox,
+	)
+}
+
+// renderBatchConfigModal renders the batch install configuration modal
+func (m *Model) renderBatchConfigModal() string {
+	if m.batchConfig == nil {
+		return ""
+	}
+
+	var content string
+	markedCount := m.toolsPanel.GetMarkedCount()
+	content += styles.TitleStyle.Render(fmt.Sprintf("🔧 Batch Install Configuration (%d tools)", markedCount)) + "\n\n"
+
+	// Show current step
+	stepNum := m.batchConfig.ConfigStep + 1
+	totalSteps := m.batchConfig.ConfigStepCount()
+	content += styles.MutedStyle.Render(fmt.Sprintf("Step %d of %d", stepNum, totalSteps)) + "\n\n"
+
+	// Show question
+	content += styles.HighlightStyle.Render(m.batchConfig.GetCurrentStepTitle()) + "\n\n"
+
+	// Show options
+	options := m.batchConfig.GetCurrentStepOptions()
+	for i, opt := range options {
+		key := fmt.Sprintf("[%d]", i+1)
+		content += styles.SubtitleStyle.Render(key) + " " + opt + "\n"
+	}
+
+	content += "\n" + styles.HelpStyle.Render("Press 1 or 2 to select | Esc to cancel")
+
+	modalBox := styles.BorderStyle.
+		BorderForeground(lipgloss.Color("#00FFFF")).
+		Padding(1, 2).
+		Width(min(70, m.width-4)).
 		Render(content)
 
 	return lipgloss.Place(
