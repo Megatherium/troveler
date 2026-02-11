@@ -75,6 +75,41 @@ func TestTransformToMise(t *testing.T) {
 			input:    "  go install github.com/user/repo  ",
 			expected: "mise use --global go:github.com/user/repo",
 		},
+		{
+			name:     "eget basic",
+			input:    "eget foo/bar",
+			expected: "mise use --global github:foo/bar",
+		},
+		{
+			name:     "eget with github prefix",
+			input:    "eget github.com/foo/bar",
+			expected: "mise use --global github:foo/bar",
+		},
+		{
+			name:     "eget with extra flags",
+			input:    "eget --to /usr/local/bin foo/bar",
+			expected: "mise use --global github:foo/bar",
+		},
+		{
+			name:     "eget with whitespace",
+			input:    "  eget foo/bar  ",
+			expected: "mise use --global github:foo/bar",
+		},
+		{
+			name:     "eget single segment repo",
+			input:    "eget foo",
+			expected: "mise use --global github:foo",
+		},
+		{
+			name:     "eget too many segments",
+			input:    "eget foo/bar/baz",
+			expected: "mise use --global github:foo/bar/baz",
+		},
+		{
+			name:     "eget with version flag",
+			input:    "eget foo/bar --version 1.0",
+			expected: "mise use --global github:1.0",
+		},
 	}
 
 	for _, tt := range tests {

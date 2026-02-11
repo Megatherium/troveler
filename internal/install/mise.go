@@ -9,14 +9,14 @@ import (
 func TransformToMise(command string) string {
 	command = strings.TrimSpace(command)
 
-	if strings.HasPrefix(command, "go install ") {
-		pkg := strings.TrimPrefix(command, "go install ")
+	if after, ok := strings.CutPrefix(command, "go install "); ok {
+		pkg := after
 		pkg = strings.TrimPrefix(pkg, "https://")
 		return "mise use --global go:" + pkg
 	}
 
-	if strings.HasPrefix(command, "cargo install ") {
-		crate := strings.TrimPrefix(command, "cargo install ")
+	if after, ok := strings.CutPrefix(command, "cargo install "); ok {
+		crate := after
 		return "mise use --global cargo:" + crate
 	}
 
@@ -35,6 +35,15 @@ func TransformToMise(command string) string {
 	if matches := pipRegex.FindStringSubmatch(command); len(matches) > 2 {
 		pkg := matches[2]
 		return "mise use --global pipx:" + pkg
+	}
+
+	if after, ok := strings.CutPrefix(command, "eget "); ok {
+		fields := strings.Fields(after)
+		if len(fields) > 0 {
+			repo := fields[len(fields)-1]
+			repo = strings.TrimPrefix(repo, "github.com/")
+			return "mise use --global github:" + repo
+		}
 	}
 
 	return command
