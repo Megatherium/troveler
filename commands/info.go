@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"troveler/db"
+	"troveler/internal/install"
 	"troveler/pkg/ui"
 )
 
@@ -79,10 +80,23 @@ func runInfo(database *db.SQLiteDB, slug string) error {
 	}
 
 	if len(installs) > 0 {
-		instRows := make([][]string, len(installs))
-		for i, inst := range installs {
-			instRows[i] = []string{inst.Platform, inst.Command}
+		// Generate virtual install instructions from raw commands
+		virtuals := install.GenerateVirtualInstallInstructions(installs)
+
+		// Combine raw installs with virtual installs
+		totalRows := len(installs) + len(virtuals)
+		instRows := make([][]string, 0, totalRows)
+
+		// Add raw install instructions first
+		for _, inst := range installs {
+			instRows = append(instRows, []string{inst.Platform, inst.Command})
 		}
+
+		// Add virtual install instructions
+		for _, v := range virtuals {
+			instRows = append(instRows, []string{v.Platform, v.Command})
+		}
+
 		fmt.Println(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#00FF00")).Render("Install Instructions:"))
 		fmt.Println(ui.RenderKeyValueTable(instRows))
 	}

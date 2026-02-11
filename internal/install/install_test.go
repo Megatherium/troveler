@@ -158,3 +158,202 @@ func TestMiseModeForcesLANG(t *testing.T) {
 		t.Errorf("Expected %q, got %q", expected, transformed)
 	}
 }
+
+func TestGenerateVirtualInstallInstructions(t *testing.T) {
+	tests := []struct {
+		name              string
+		input             []db.InstallInstruction
+		expectedCount     int
+		expectedPlatforms []string
+	}{
+		{
+			name: "go_install_generates_virtual",
+			input: []db.InstallInstruction{
+				{ID: "1", Platform: "linux", Command: "go install github.com/user/repo@latest"},
+			},
+			expectedCount:     1,
+			expectedPlatforms: []string{"mise:go"},
+		},
+		{
+			name: "cargo_install_generates_virtual",
+			input: []db.InstallInstruction{
+				{ID: "1", Platform: "linux", Command: "cargo install some-crate"},
+			},
+			expectedCount:     1,
+			expectedPlatforms: []string{"mise:cargo"},
+		},
+		{
+			name: "npm_install_generates_virtual",
+			input: []db.InstallInstruction{
+				{ID: "1", Platform: "linux", Command: "npm install -g package-name"},
+			},
+			expectedCount:     1,
+			expectedPlatforms: []string{"mise:npm"},
+		},
+		{
+			name: "yarn_generates_npm_virtual",
+			input: []db.InstallInstruction{
+				{ID: "1", Platform: "linux", Command: "yarn global add package-name"},
+			},
+			expectedCount:     1,
+			expectedPlatforms: []string{"mise:npm"},
+		},
+		{
+			name: "pip_install_generates_pipx_virtual",
+			input: []db.InstallInstruction{
+				{ID: "1", Platform: "linux", Command: "pip install package-name"},
+			},
+			expectedCount:     1,
+			expectedPlatforms: []string{"mise:pipx"},
+		},
+		{
+			name: "eget_generates_github_virtual",
+			input: []db.InstallInstruction{
+				{ID: "1", Platform: "linux", Command: "eget foo/bar"},
+			},
+			expectedCount:     1,
+			expectedPlatforms: []string{"mise:github"},
+		},
+		{
+			name: "multiple_backends_all_generate_virtuals",
+			input: []db.InstallInstruction{
+				{ID: "1", Platform: "linux", Command: "go install github.com/user/repo"},
+				{ID: "2", Platform: "linux", Command: "cargo install some-crate"},
+				{ID: "3", Platform: "linux", Command: "npm install -g package"},
+				{ID: "4", Platform: "linux", Command: "pip install py-package"},
+				{ID: "5", Platform: "linux", Command: "eget user/repo"},
+			},
+			expectedCount:     5,
+			expectedPlatforms: []string{"mise:go", "mise:cargo", "mise:npm", "mise:pipx", "mise:github"},
+		},
+		{
+			name: "npm_variants_generate_single_virtual",
+			input: []db.InstallInstruction{
+				{ID: "1", Platform: "linux", Command: "npm install -g package"},
+				{ID: "2", Platform: "linux", Command: "yarn global add package"},
+				{ID: "3", Platform: "linux", Command: "pnpm add -g package"},
+			},
+			expectedCount:     1,
+			expectedPlatforms: []string{"mise:npm"},
+		},
+		{
+			name: "brew_install_no_virtual",
+			input: []db.InstallInstruction{
+				{ID: "1", Platform: "linux", Command: "brew install package"},
+			},
+			expectedCount:     0,
+			expectedPlatforms: []string{},
+		},
+		{
+			name: "apt_install_no_virtual",
+			input: []db.InstallInstruction{
+				{ID: "1", Platform: "linux", Command: "apt install package"},
+			},
+			expectedCount:     0,
+			expectedPlatforms: []string{},
+		},
+		{
+			name: "existing_mise_platform_skipped",
+			input: []db.InstallInstruction{
+				{ID: "1", Platform: "mise:go", Command: "mise use --global go:github.com/user/repo"},
+				{ID: "2", Platform: "linux", Command: "go install github.com/user/repo"},
+			},
+			expectedCount:     1,
+			expectedPlatforms: []string{"mise:go"},
+		},
+		{
+			name: "empty_input",
+			input: []db.InstallInstruction{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := GenerateVirtualInstallInstructions(tt.input)
+
+			if len(result) != tt.expectedCount {
+				t.Errorf("Expected %d virtuals, got %d", tt.expectedCount, len(result))
+			}
+
+			if len(result) > 0 {
+				actualPlatforms := make([]string, len(result))
+				for i, v := range result {
+					actualPlatforms[i] = v.Platform
+				}
+
+				for i, expected := range tt.expectedPlatforms {
+					if i >= len(actualPlatforms) {
+						t.Errorf("Missing expected platform %s at index %d", expected, i)
+						continue
+					}
+					if actualPlatforms[i] != expected {
+						t.Errorf("Platform at index %d: expected %s, got %s", i, expected, actualPlatforms[i])
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestExtractBackendType(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected BackendType
+	}{
+		{
+			name:     "go_backend",
+			input:    "mise use --global go:github.com/user/repo",
+			expected: BackendGo,
+		},
+		{
+			name:     "cargo_backend",
+			input:    "mise use --global cargo:crate-name",
+			expected: BackendCargo,
+		},
+		{
+			name:     "npm_backend",
+			input:    "mise use --global npm:package-name",
+			expected: BackendNPM,
+		},
+		{
+			name:     "pipx_backend",
+			input:    "mise use --global pipx:package-name",
+			expected: BackendPipx,
+		},
+		{
+			name:     "github_backend",
+			input:    "mise use --global github:user/repo",
+			expected: BackendGithub,
+		},
+		{
+			name:     "invalid_backend",
+			input:    "mise use --global invalid:package",
+			expected: "",
+		},
+		{
+			name:     "no_backend",
+			input:    "mise use --global package",
+			expected: "",
+		},
+		{
+			name:     "not_mise_command",
+			input:    "brew install package",
+			expected: "",
+		},
+		{
+			name:     "empty_string",
+			input:    "",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := extractBackendType(tt.input)
+			if result != tt.expected {
+				t.Errorf("extractBackendType(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}

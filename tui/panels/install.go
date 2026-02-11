@@ -60,10 +60,17 @@ func (p *InstallPanel) SetTool(tool *db.Tool, installs []db.InstallInstruction) 
 		detectedOS = osInfo.ID
 	}
 
-	// If mise mode is enabled, force LANG override
+	// If mise mode is enabled AND no CLI override was provided, force LANG override
+	// CLI parameters have higher priority than config settings
 	cliOverride := p.cliOverride
 	configOverride := p.configOverride
-	if p.miseMode {
+	
+	// Resolve virtual platforms (mise:* → source platform)
+	if cliOverride != "" {
+		cliOverride = p.resolveVirtualPlatform(cliOverride)
+	}
+	
+	if p.miseMode && p.cliOverride == "" {
 		cliOverride = "LANG"
 	}
 
@@ -79,8 +86,22 @@ func (p *InstallPanel) SetTool(tool *db.Tool, installs []db.InstallInstruction) 
 	filtered, usedFallback := install.FilterCommands(installs, platform, tool.Language)
 	defaultCmd := install.SelectDefaultCommand(filtered, usedFallback, detectedOS)
 
+	// Generate virtual install instructions
+	virtuals := install.GenerateVirtualInstallInstructions(installs)
+
 	// Format for display and transform if mise mode is enabled
 	p.commands = install.FormatCommands(filtered, defaultCmd)
+	
+	// Add virtual commands to the display
+	for _, v := range virtuals {
+		cmd := install.CommandInfo{
+			Platform:  v.Platform,
+			Command:   v.Command,
+			IsDefault: false, // Virtuals are never the default
+		}
+		p.commands = append(p.commands, cmd)
+	}
+
 	if p.miseMode {
 		for i := range p.commands {
 			p.commands[i].Command = install.TransformToMise(p.commands[i].Command)
@@ -209,6 +230,15 @@ func (p *InstallPanel) Focus() {
 // Blur unfocuses the panel
 func (p *InstallPanel) Blur() {
 	p.focused = false
+}
+
+// resolveVirtualPlatform resolves virtual mise:* platforms back to their source platforms
+// For example: mise:github → github, mise:go → go
+func (p *InstallPanel) resolveVirtualPlatform(platform string) string {
+	if strings.HasPrefix(platform, "mise:") {
+		return strings.TrimPrefix(platform, "mise:")
+	}
+	return platform
 }
 
 // IsFocused returns focus state

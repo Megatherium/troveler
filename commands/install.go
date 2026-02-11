@@ -68,7 +68,7 @@ func init() {
 	InstallCmd.Flags().BoolVar(&skipIfBlind, "skip-if-blind", false, "Skip tools without compatible install method")
 }
 
-func findMatchingInstalls(osID string, installs []db.InstallInstruction) []db.InstallInstruction {
+func FindMatchingInstalls(osID string, installs []db.InstallInstruction) []db.InstallInstruction {
 	var matched []db.InstallInstruction
 
 	for _, inst := range installs {
@@ -78,6 +78,13 @@ func findMatchingInstalls(osID string, installs []db.InstallInstruction) []db.In
 	}
 
 	return matched
+}
+
+func ResolveVirtualPlatform(platform string) string {
+	if strings.HasPrefix(platform, "mise:") {
+		return strings.TrimPrefix(platform, "mise:")
+	}
+	return platform
 }
 
 func runInstall(database *db.SQLiteDB, slug string, showAll bool, run bool, sudo bool, cliOverride string, configOverride string, fallbackPlatform string, alwaysRun bool, useSudo string, miseEnabled bool) error {
@@ -107,13 +114,18 @@ func runInstall(database *db.SQLiteDB, slug string, showAll bool, run bool, sudo
 	var platform string
 	var matched []db.InstallInstruction
 
-	// If mise mode is enabled, force LANG override
-	if miseEnabled {
+	// If mise mode is enabled AND no CLI override was provided, force LANG override
+	// CLI parameters have higher priority than config settings
+	if miseEnabled && override == "" {
 		cliOverride = "LANG"
 	}
 
 	// Check for CLI or config override first
 	override := selectOverride(cliOverride, configOverride)
+	
+	// Resolve virtual platforms (mise:* → source platform)
+	override = ResolveVirtualPlatform(override)
+	
 	if override != "" {
 		// Override is set, use it
 		if override == "LANG" {
@@ -127,14 +139,14 @@ func runInstall(database *db.SQLiteDB, slug string, showAll bool, run bool, sudo
 		} else {
 			// Use platform matching
 			platform = lib.NormalizePlatform(override)
-			matched = findMatchingInstalls(platform, installs)
+			matched = FindMatchingInstalls(platform, installs)
 		}
 	} else {
 		// No override, try OS detection first
 		osInfo, err := lib.DetectOS()
 		if err == nil {
 			platform = osInfo.ID
-			matched = findMatchingInstalls(platform, installs)
+			matched = FindMatchingInstalls(platform, installs)
 		}
 
 		// If OS detection failed or no match, try fallback
@@ -150,7 +162,7 @@ func runInstall(database *db.SQLiteDB, slug string, showAll bool, run bool, sudo
 			} else {
 				// Use platform matching
 				platform = lib.NormalizePlatform(fallbackPlatform)
-				matched = findMatchingInstalls(platform, installs)
+				matched = FindMatchingInstalls(platform, installs)
 			}
 		}
 
@@ -266,10 +278,24 @@ func showAllInstalls(name string, installs []db.InstallInstruction) error {
 	fmt.Println(strings.Repeat("─", len(name)+len(" - All Install Commands:")))
 	fmt.Println()
 
+	// Generate virtual install instructions from raw commands
+	virtuals := install.GenerateVirtualInstallInstructions(installs)
+
+	// Combine raw installs with virtual installs
 	headers := []string{"Platform", "Command"}
-	rows := make([][]string, len(installs))
-	for i, inst := range installs {
-		rows[i] = []string{inst.Platform, inst.Command}
+	
+	// Calculate total rows needed
+	totalRows := len(installs) + len(virtuals)
+	rows := make([][]string, 0, totalRows)
+
+	// Add raw install instructions first
+	for _, inst := range installs {
+		rows = append(rows, []string{inst.Platform, inst.Command})
+	}
+
+	// Add virtual install instructions
+	for _, v := range virtuals {
+		rows = append(rows, []string{v.Platform, v.Command})
 	}
 
 	config := ui.TableConfig{
