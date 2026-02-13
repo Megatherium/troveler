@@ -34,11 +34,10 @@ type SearchOptions struct {
 	Query     string
 	Limit     int
 	SortField string
-	SortOrder string  // ASC or DESC
-	Filter    *Filter // Optional filter AST
+	SortOrder string
+	Filter    *Filter
 }
 
-// FilterType represents the type of filter
 type FilterType int
 
 const (
@@ -48,7 +47,6 @@ const (
 	FilterField
 )
 
-// Filter represents a parsed filter expression
 type Filter struct {
 	Type  FilterType
 	Field string
@@ -58,7 +56,6 @@ type Filter struct {
 }
 
 type Tag struct {
-	ID        string    `json:"id" db:"id"`
 	Name      string    `json:"name" db:"name"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 }

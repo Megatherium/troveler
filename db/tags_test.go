@@ -39,7 +39,7 @@ func TestAddTag(t *testing.T) {
 		t.Errorf("AddTag failed: %v", err)
 	}
 
-	tags, err := database.GetTags("tool-fzf")
+	tags, err := database.GetTags("fzf")
 	if err != nil {
 		t.Fatalf("GetTags failed: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestAddTagDuplicate(t *testing.T) {
 		t.Errorf("AddTag duplicate should be idempotent, got: %v", err)
 	}
 
-	tags, _ := database.GetTags("tool-fzf")
+	tags, _ := database.GetTags("fzf")
 	if len(tags) != 1 {
 		t.Errorf("Expected 1 tag after duplicate add, got %d", len(tags))
 	}
@@ -85,7 +85,7 @@ func TestAddMultipleTags(t *testing.T) {
 	database.AddTag("fzf", "fuzzy")
 	database.AddTag("fzf", "cli")
 
-	tags, _ := database.GetTags("tool-fzf")
+	tags, _ := database.GetTags("fzf")
 	if len(tags) != 2 {
 		t.Errorf("Expected 2 tags, got %d: %v", len(tags), tags)
 	}
@@ -103,7 +103,7 @@ func TestGetTagsEmpty(t *testing.T) {
 
 	seedTool(t, database, "fzf", "fzf")
 
-	tags, err := database.GetTags("tool-fzf")
+	tags, err := database.GetTags("fzf")
 	if err != nil {
 		t.Errorf("GetTags on untagged tool should not error: %v", err)
 	}
@@ -125,7 +125,7 @@ func TestRemoveTag(t *testing.T) {
 		t.Errorf("RemoveTag failed: %v", err)
 	}
 
-	tags, _ := database.GetTags("tool-fzf")
+	tags, _ := database.GetTags("fzf")
 	if len(tags) != 1 || tags[0] != "cli" {
 		t.Errorf("Expected [cli], got %v", tags)
 	}
@@ -167,7 +167,7 @@ func TestClearTags(t *testing.T) {
 		t.Errorf("ClearTags failed: %v", err)
 	}
 
-	tags, _ := database.GetTags("tool-fzf")
+	tags, _ := database.GetTags("fzf")
 	if len(tags) != 0 {
 		t.Errorf("Expected empty tags after clear, got %v", tags)
 	}
@@ -296,11 +296,7 @@ func TestForeignKeyCascade(t *testing.T) {
 
 func TestTagModel(t *testing.T) {
 	tag := Tag{
-		ID:   "tag-fuzzy",
 		Name: "fuzzy",
-	}
-	if tag.ID != "tag-fuzzy" {
-		t.Errorf("Tag.ID = %v, want %v", tag.ID, "tag-fuzzy")
 	}
 	if tag.Name != "fuzzy" {
 		t.Errorf("Tag.Name = %v, want %v", tag.Name, "fuzzy")

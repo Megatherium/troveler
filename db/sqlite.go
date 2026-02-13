@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"time"
 
@@ -63,21 +62,20 @@ func (s *SQLiteDB) createTables() error {
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)`,
 		`CREATE TABLE IF NOT EXISTS tags (
-			id TEXT PRIMARY KEY,
-			name TEXT UNIQUE NOT NULL,
+			name TEXT PRIMARY KEY COLLATE NOCASE,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)`,
 		`CREATE TABLE IF NOT EXISTS tool_tags (
 			tool_id TEXT REFERENCES tools(id) ON DELETE CASCADE,
-			tag_id TEXT REFERENCES tags(id) ON DELETE CASCADE,
+			tag_name TEXT REFERENCES tags(name) ON DELETE CASCADE,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			PRIMARY KEY (tool_id, tag_id)
+			PRIMARY KEY (tool_id, tag_name)
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_tools_name ON tools(name)`,
 		`CREATE INDEX IF NOT EXISTS idx_tools_language ON tools(language)`,
 		`CREATE INDEX IF NOT EXISTS idx_tools_slug ON tools(slug)`,
 		`CREATE INDEX IF NOT EXISTS idx_install_tool_id ON install_instructions(tool_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_tool_tags_tag_id ON tool_tags(tag_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_tool_tags_tag_name ON tool_tags(tag_name)`,
 	}
 
 	for _, q := range queries {
@@ -278,13 +276,21 @@ func (s *SQLiteDB) ToolCount(ctx context.Context) (int, error) {
 	return count, err
 }
 
-func (s *SQLiteDB) GetTags(toolID string) ([]string, error) {
+func (s *SQLiteDB) GetTags(slug string) ([]string, error) {
+	tools, err := s.GetToolBySlug(slug)
+	if err != nil {
+		return nil, err
+	}
+	if len(tools) == 0 {
+		return nil, fmt.Errorf("tool not found: %s", slug)
+	}
+	toolID := tools[0].ID
+
 	query := `
-		SELECT t.name
-		FROM tags t
-		JOIN tool_tags tt ON t.id = tt.tag_id
+		SELECT tt.tag_name
+		FROM tool_tags tt
 		WHERE tt.tool_id = ?
-		ORDER BY t.name
+		ORDER BY tt.tag_name
 	`
 	rows, err := s.db.QueryContext(context.Background(), query, toolID)
 	if err != nil {
@@ -305,11 +311,10 @@ func (s *SQLiteDB) GetTags(toolID string) ([]string, error) {
 
 func (s *SQLiteDB) GetAllTags() ([]TagCount, error) {
 	query := `
-		SELECT t.name, COUNT(tt.tool_id) as count
-		FROM tags t
-		LEFT JOIN tool_tags tt ON t.id = tt.tag_id
-		GROUP BY t.id, t.name
-		ORDER BY t.name
+		SELECT tt.tag_name, COUNT(tt.tool_id) as count
+		FROM tool_tags tt
+		GROUP BY tt.tag_name
+		ORDER BY tt.tag_name
 	`
 	rows, err := s.db.QueryContext(context.Background(), query)
 	if err != nil {
@@ -338,22 +343,14 @@ func (s *SQLiteDB) AddTag(slug, tagName string) error {
 	}
 	toolID := tools[0].ID
 
-	var tagID string
-	err = s.db.QueryRowContext(context.Background(),
-		"SELECT id FROM tags WHERE name = ?", tagName).Scan(&tagID)
-	if errors.Is(err, sql.ErrNoRows) {
-		tagID = fmt.Sprintf("tag-%s", tagName)
-		_, err = s.db.ExecContext(context.Background(),
-			"INSERT INTO tags (id, name) VALUES (?, ?)", tagID, tagName)
-		if err != nil {
-			return fmt.Errorf("failed to create tag: %w", err)
-		}
-	} else if err != nil {
-		return fmt.Errorf("failed to lookup tag: %w", err)
+	_, err = s.db.ExecContext(context.Background(),
+		"INSERT OR IGNORE INTO tags (name) VALUES (?)", tagName)
+	if err != nil {
+		return fmt.Errorf("failed to create tag: %w", err)
 	}
 
 	_, err = s.db.ExecContext(context.Background(),
-		"INSERT OR IGNORE INTO tool_tags (tool_id, tag_id) VALUES (?, ?)", toolID, tagID)
+		"INSERT OR IGNORE INTO tool_tags (tool_id, tag_name) VALUES (?, ?)", toolID, tagName)
 	return err
 }
 
@@ -368,9 +365,7 @@ func (s *SQLiteDB) RemoveTag(slug, tagName string) error {
 	toolID := tools[0].ID
 
 	result, err := s.db.ExecContext(context.Background(),
-		`DELETE FROM tool_tags WHERE tool_id = ? AND tag_id = (
-			SELECT id FROM tags WHERE name = ?
-		)`, toolID, tagName)
+		"DELETE FROM tool_tags WHERE tool_id = ? AND tag_name = ?", toolID, tagName)
 	if err != nil {
 		return err
 	}
@@ -406,8 +401,7 @@ func (s *SQLiteDB) GetToolsByTag(tagName string) ([]Tool, error) {
 			t.date_published, t.code_repository, t.created_at, t.updated_at
 		FROM tools t
 		JOIN tool_tags tt ON t.id = tt.tool_id
-		JOIN tags tag ON tt.tag_id = tag.id
-		WHERE tag.name = ?
+		WHERE tt.tag_name = ?
 		ORDER BY t.name
 	`
 	rows, err := s.db.QueryContext(context.Background(), query, tagName)
