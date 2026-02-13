@@ -124,5 +124,6 @@ func wrapText(text string, width int) string {
 	if currentLine != "" {
 		result.WriteString(currentLine)
 	}
+
 	return result.String()
 }

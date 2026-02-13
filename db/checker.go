@@ -110,6 +110,7 @@ func parseToolName(command string) string {
 				name = parts[len(parts)-1]
 			}
 		}
+
 		return name
 	}
 
@@ -119,5 +120,6 @@ func parseToolName(command string) string {
 // isCommandAvailable checks if a command is available on PATH
 func isCommandAvailable(name string) bool {
 	_, err := exec.LookPath(name)
+
 	return err == nil
 }

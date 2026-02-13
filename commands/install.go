@@ -90,6 +90,7 @@ func ResolveVirtualPlatform(platform string) string {
 	if strings.HasPrefix(platform, "mise:") {
 		return strings.TrimPrefix(platform, "mise:")
 	}
+
 	return platform
 }
 
@@ -127,7 +128,7 @@ func runInstall(
 	// If mise mode is enabled AND no CLI override was provided, force LANG override
 	// CLI parameters have higher priority than config settings
 	if miseEnabled && override == "" {
-		cliOverride = "LANG"
+		cliOverride = platformLang
 	}
 
 	// Check for CLI or config override first
@@ -138,7 +139,7 @@ func runInstall(
 
 	if override != "" {
 		// Override is set, use it
-		if override == "LANG" {
+		if override == platformLang {
 			// Use language matching
 			for _, inst := range installs {
 				if lib.MatchLanguage(tool.Language, inst.Platform) {
@@ -161,7 +162,7 @@ func runInstall(
 
 		// If OS detection failed or no match, try fallback
 		if len(matched) == 0 && fallbackPlatform != "" {
-			if fallbackPlatform == "LANG" {
+			if fallbackPlatform == platformLang {
 				// Use language matching
 				for _, inst := range installs {
 					if lib.MatchLanguage(tool.Language, inst.Platform) {
@@ -180,6 +181,7 @@ func runInstall(
 		if len(matched) == 0 && err != nil {
 			fmt.Printf("Warning: Could not detect OS: %v\n\n", err)
 			fmt.Println("Available commands:")
+
 			return showAllInstalls(tool.Name, installs)
 		}
 	}
@@ -202,11 +204,13 @@ func runInstall(
 					fmt.Println(lipgloss.NewStyle().Bold(true).Render(inst.Command))
 				}
 				fmt.Println()
+
 				return nil
 			}
 		}
 
 		fmt.Println("Available commands:")
+
 		return showAllInstalls(tool.Name, installs)
 	}
 
@@ -231,6 +235,7 @@ func runInstall(
 		if miseEnabled {
 			cmd = install.TransformToMise(cmd)
 		}
+
 		return executeInstall(cmd, sudo, useSudo, alwaysRun)
 	}
 
@@ -242,6 +247,7 @@ func selectOverride(cliOverride, configOverride string) string {
 	if cliOverride != "" {
 		return cliOverride
 	}
+
 	return configOverride
 }
 
@@ -273,6 +279,7 @@ func executeInstall(command string, sudo bool, useSudo string, alwaysRun bool) e
 
 		if confirm != "y" && confirm != "Y" {
 			fmt.Println("Aborted.")
+
 			return nil
 		}
 	}
@@ -282,6 +289,7 @@ func executeInstall(command string, sudo bool, useSudo string, alwaysRun bool) e
 	cmd := exec.Command("sh", "-c", command) //nolint:noctx
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+
 	return cmd.Run()
 }
 
@@ -324,6 +332,7 @@ func showAllInstalls(name string, installs []db.InstallInstruction) error {
 			} else {
 				color = ui.GetGradientColorSimple((rowIdx + len(rows)/2) % len(ui.GradientColors))
 			}
+
 			return lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(cell)
 		},
 		ShowHeader: true,
@@ -358,7 +367,7 @@ func runBatchInstall(
 	if shouldAsk {
 		fmt.Print("Use same configuration for all tools? [Y/n] ")
 		var confirm string
-		fmt.Scanln(&confirm)
+		_, _ = fmt.Scanln(&confirm)
 		shouldReuse = confirm != "n" && confirm != "N"
 	}
 
@@ -375,10 +384,11 @@ func runBatchInstall(
 		if !sudo && !sudoOnlySystem {
 			fmt.Print("Use sudo? [y/N/s=system-only] ")
 			var confirm string
-			fmt.Scanln(&confirm)
-			if confirm == "y" || confirm == "Y" {
+			_, _ = fmt.Scanln(&confirm)
+			switch confirm {
+			case "y", "Y":
 				batchCfg.UseSudo = true
-			} else if confirm == "s" || confirm == "S" {
+			case "s", "S":
 				batchCfg.SudoOnlySystem = true
 			}
 		}
@@ -386,14 +396,14 @@ func runBatchInstall(
 		if !skipIfBlind {
 			fmt.Print("Skip tools without install method? [y/N] ")
 			var confirm string
-			fmt.Scanln(&confirm)
+			_, _ = fmt.Scanln(&confirm)
 			batchCfg.SkipIfBlind = confirm == "y" || confirm == "Y"
 		}
 
 		if !miseEnabled {
 			fmt.Print("Use mise for installations? [y/N] ")
 			var confirm string
-			fmt.Scanln(&confirm)
+			_, _ = fmt.Scanln(&confirm)
 			batchCfg.UseMise = confirm == "y" || confirm == "Y"
 		}
 	}
@@ -448,6 +458,7 @@ func installSingleTool(database *db.SQLiteDB, slug string, batchCfg *BatchConfig
 		if batchCfg != nil && batchCfg.SkipIfBlind {
 			return fmt.Errorf("skipped: no install instructions")
 		}
+
 		return fmt.Errorf("no install instructions available")
 	}
 
@@ -474,6 +485,7 @@ func installSingleTool(database *db.SQLiteDB, slug string, batchCfg *BatchConfig
 		if batchCfg != nil && batchCfg.SkipIfBlind {
 			return fmt.Errorf("skipped: no compatible install method")
 		}
+
 		return fmt.Errorf("no compatible install method for %s", platform)
 	}
 
@@ -509,7 +521,7 @@ func installSingleTool(database *db.SQLiteDB, slug string, batchCfg *BatchConfig
 	if !alwaysRun {
 		fmt.Print("Execute? [y/N] ")
 		var confirm string
-		fmt.Scanln(&confirm)
+		_, _ = fmt.Scanln(&confirm)
 		if confirm != "y" && confirm != "Y" {
 			return fmt.Errorf("skipped: user declined")
 		}
@@ -518,6 +530,7 @@ func installSingleTool(database *db.SQLiteDB, slug string, batchCfg *BatchConfig
 	execCmd := exec.Command("sh", "-c", cmd)
 	execCmd.Stdout = os.Stdout
 	execCmd.Stderr = os.Stderr
+
 	return execCmd.Run()
 }
 

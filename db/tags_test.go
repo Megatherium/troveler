@@ -5,12 +5,19 @@ import (
 	"testing"
 )
 
+const (
+	testTagCLI    = "cli"
+	testTagFuzzy  = "fuzzy"
+	testTagSearch = "search"
+)
+
 func setupTestDB(t *testing.T) *SQLiteDB {
 	t.Helper()
 	database, err := New(":memory:")
 	if err != nil {
 		t.Fatalf("Failed to create database: %v", err)
 	}
+
 	return database
 }
 
@@ -40,7 +47,7 @@ func TestAddTag(t *testing.T) {
 
 	seedTool(t, database, "fzf", "fzf")
 
-	err := database.AddTag("fzf", "fuzzy")
+	err := database.AddTag("fzf", testTagFuzzy)
 	if err != nil {
 		t.Errorf("AddTag failed: %v", err)
 	}
@@ -49,7 +56,7 @@ func TestAddTag(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetTags failed: %v", err)
 	}
-	if len(tags) != 1 || tags[0] != "fuzzy" {
+	if len(tags) != 1 || tags[0] != testTagFuzzy {
 		t.Errorf("Expected [fuzzy], got %v", tags)
 	}
 }
@@ -142,7 +149,7 @@ func TestRemoveTag(t *testing.T) {
 	}
 
 	tags, _ := database.GetTags("fzf")
-	if len(tags) != 1 || tags[0] != "cli" {
+	if len(tags) != 1 || tags[0] != testTagCLI {
 		t.Errorf("Expected [cli], got %v", tags)
 	}
 }
@@ -339,10 +346,10 @@ func TestTagModel(t *testing.T) {
 
 func TestTagCountModel(t *testing.T) {
 	tc := TagCount{
-		Name:  "cli",
+		Name:  testTagCLI,
 		Count: 5,
 	}
-	if tc.Name != "cli" {
+	if tc.Name != testTagCLI {
 		t.Errorf("TagCount.Name = %v, want %v", tc.Name, "cli")
 	}
 	if tc.Count != 5 {
@@ -692,5 +699,257 @@ func TestReapplyTagsMissingTool(t *testing.T) {
 
 	if len(tags) != 1 {
 		t.Errorf("Expected 1 tag, got %d: %v", len(tags), tags)
+	}
+}
+
+func TestSearchWithTagFilter(t *testing.T) {
+	database := setupTestDB(t)
+	defer checkClose(t, database)
+
+	seedTool(t, database, "fzf", "fzf")
+	seedTool(t, database, "bat", "bat")
+	seedTool(t, database, "ripgrep", "ripgrep")
+
+	if err := database.AddTag("fzf", "cli"); err != nil {
+		t.Fatalf("AddTag fzf/cli failed: %v", err)
+	}
+	if err := database.AddTag("fzf", "fuzzy"); err != nil {
+		t.Fatalf("AddTag fzf/fuzzy failed: %v", err)
+	}
+	if err := database.AddTag("bat", "cli"); err != nil {
+		t.Fatalf("AddTag bat/cli failed: %v", err)
+	}
+	if err := database.AddTag("ripgrep", "search"); err != nil {
+		t.Fatalf("AddTag ripgrep/search failed: %v", err)
+	}
+
+	filter := &Filter{
+		Type:  FilterField,
+		Field: "tag",
+		Value: "cli",
+	}
+
+	results, err := database.Search(context.Background(), SearchOptions{
+		Filter: filter,
+		Limit:  10,
+	})
+	if err != nil {
+		t.Fatalf("Search failed: %v", err)
+	}
+
+	if len(results) != 2 {
+		t.Errorf("Expected 2 results for tag=cli, got %d", len(results))
+	}
+
+	names := make(map[string]bool)
+	for _, r := range results {
+		names[r.Name] = true
+	}
+	if !names["fzf"] || !names["bat"] {
+		t.Errorf("Expected fzf and bat, got %v", names)
+	}
+}
+
+func TestSearchWithTagNotFilter(t *testing.T) {
+	database := setupTestDB(t)
+	defer checkClose(t, database)
+
+	seedTool(t, database, "fzf", "fzf")
+	seedTool(t, database, "bat", "bat")
+	seedTool(t, database, "ripgrep", "ripgrep")
+
+	if err := database.AddTag("fzf", "experimental"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
+	if err := database.AddTag("bat", "cli"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
+	if err := database.AddTag("ripgrep", "cli"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
+
+	filter := &Filter{
+		Type: FilterNot,
+		Left: &Filter{
+			Type:  FilterField,
+			Field: "tag",
+			Value: "experimental",
+		},
+	}
+
+	results, err := database.Search(context.Background(), SearchOptions{
+		Filter: filter,
+		Limit:  10,
+	})
+	if err != nil {
+		t.Fatalf("Search failed: %v", err)
+	}
+
+	for _, r := range results {
+		if r.Name == "fzf" {
+			t.Errorf("fzf should have been excluded by !tag=experimental")
+		}
+	}
+}
+
+func TestSearchWithMultipleTagFilters(t *testing.T) {
+	database := setupTestDB(t)
+	defer checkClose(t, database)
+
+	seedTool(t, database, "fzf", "fzf")
+	seedTool(t, database, "bat", "bat")
+	seedTool(t, database, "ripgrep", "ripgrep")
+
+	if err := database.AddTag("fzf", "cli"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
+	if err := database.AddTag("fzf", "fuzzy"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
+	if err := database.AddTag("bat", "cli"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
+	if err := database.AddTag("ripgrep", "search"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
+
+	filter := &Filter{
+		Type: FilterAnd,
+		Left: &Filter{
+			Type:  FilterField,
+			Field: "tag",
+			Value: "cli",
+		},
+		Right: &Filter{
+			Type:  FilterField,
+			Field: "tag",
+			Value: "fuzzy",
+		},
+	}
+
+	results, err := database.Search(context.Background(), SearchOptions{
+		Filter: filter,
+		Limit:  10,
+	})
+	if err != nil {
+		t.Fatalf("Search failed: %v", err)
+	}
+
+	if len(results) != 1 {
+		t.Errorf("Expected 1 result for tag=cli&tag=fuzzy, got %d", len(results))
+	}
+	if len(results) > 0 && results[0].Name != "fzf" {
+		t.Errorf("Expected fzf, got %s", results[0].Name)
+	}
+}
+
+func TestSearchWithTagOrFilter(t *testing.T) {
+	database := setupTestDB(t)
+	defer checkClose(t, database)
+
+	seedTool(t, database, "fzf", "fzf")
+	seedTool(t, database, "bat", "bat")
+	seedTool(t, database, "ripgrep", "ripgrep")
+
+	if err := database.AddTag("fzf", "fuzzy"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
+	if err := database.AddTag("bat", "cli"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
+	if err := database.AddTag("ripgrep", "search"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
+
+	filter := &Filter{
+		Type: FilterOr,
+		Left: &Filter{
+			Type:  FilterField,
+			Field: "tag",
+			Value: "fuzzy",
+		},
+		Right: &Filter{
+			Type:  FilterField,
+			Field: "tag",
+			Value: "search",
+		},
+	}
+
+	results, err := database.Search(context.Background(), SearchOptions{
+		Filter: filter,
+		Limit:  10,
+	})
+	if err != nil {
+		t.Fatalf("Search failed: %v", err)
+	}
+
+	if len(results) != 2 {
+		t.Errorf("Expected 2 results for tag=fuzzy|tag=search, got %d", len(results))
+	}
+
+	names := make(map[string]bool)
+	for _, r := range results {
+		names[r.Name] = true
+	}
+	if !names["fzf"] || !names["ripgrep"] {
+		t.Errorf("Expected fzf and ripgrep, got %v", names)
+	}
+}
+
+func TestSearchWithTagAndLanguageFilter(t *testing.T) {
+	database := setupTestDB(t)
+	defer checkClose(t, database)
+
+	tool1 := &Tool{ID: "tool-fzf", Slug: "fzf", Name: "fzf", Language: "Go"}
+	tool2 := &Tool{ID: "tool-bat", Slug: "bat", Name: "bat", Language: "Rust"}
+	tool3 := &Tool{ID: "tool-rg", Slug: "ripgrep", Name: "ripgrep", Language: "Rust"}
+
+	if err := database.UpsertTool(context.Background(), tool1); err != nil {
+		t.Fatalf("UpsertTool failed: %v", err)
+	}
+	if err := database.UpsertTool(context.Background(), tool2); err != nil {
+		t.Fatalf("UpsertTool failed: %v", err)
+	}
+	if err := database.UpsertTool(context.Background(), tool3); err != nil {
+		t.Fatalf("UpsertTool failed: %v", err)
+	}
+
+	if err := database.AddTag("fzf", "cli"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
+	if err := database.AddTag("bat", "cli"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
+	if err := database.AddTag("ripgrep", "search"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
+
+	filter := &Filter{
+		Type: FilterAnd,
+		Left: &Filter{
+			Type:  FilterField,
+			Field: "language",
+			Value: "Rust",
+		},
+		Right: &Filter{
+			Type:  FilterField,
+			Field: "tag",
+			Value: "cli",
+		},
+	}
+
+	results, err := database.Search(context.Background(), SearchOptions{
+		Filter: filter,
+		Limit:  10,
+	})
+	if err != nil {
+		t.Fatalf("Search failed: %v", err)
+	}
+
+	if len(results) != 1 {
+		t.Errorf("Expected 1 result for language=Rust&tag=cli, got %d", len(results))
+	}
+	if len(results) > 0 && results[0].Name != "bat" {
+		t.Errorf("Expected bat, got %s", results[0].Name)
 	}
 }

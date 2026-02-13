@@ -28,11 +28,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+
 		return m, nil
 
 	case panels.SearchTriggeredMsg:
 		// Search was triggered (debounced or Enter)
 		m.searching = true
+
 		return m, m.performSearch(msg.Query)
 
 	case searchResultMsg:
@@ -58,12 +60,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.installPanel.SetTool(firstTool, installs)
 			}
 		}
+
 		return m, nil
 
 	case searchErrorMsg:
 		// Search error
 		m.err = msg.err
 		m.searching = false
+
 		return m, nil
 
 	case panels.ToolMarkedMsg:
@@ -84,6 +88,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.infoPanel.SetTool(m.selectedTool, installs)
 			m.installPanel.SetTool(m.selectedTool, installs)
 		}
+
 		return m, nil
 
 	case panels.ToolSelectedMsg:
@@ -92,6 +97,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.toolsPanel.Blur()
 		m.activePanel = PanelInstall
 		m.installPanel.Focus()
+
 		return m, nil
 
 	case panels.InstallExecuteMsg:
@@ -99,6 +105,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.showInstallModal = true
 		m.executing = true
 		m.executeOutput = ""
+
 		return m, m.executeInstallCommand(msg.Command)
 
 	case panels.InstallExecuteMiseMsg:
@@ -106,6 +113,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.showInstallModal = true
 		m.executing = true
 		m.executeOutput = ""
+
 		return m, m.executeInstallCommand(msg.Command)
 
 	case installCompleteMsg:
@@ -115,6 +123,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.err = msg.err
 		}
+
 		return m, nil
 
 	case batchInstallStartMsg:
@@ -144,6 +153,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.executing = false
 			m.toolsPanel.ClearMarks()
 		}
+
 		return m, nil
 
 	case batchInstallCompleteMsg:
@@ -151,6 +161,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.batchProgress != nil {
 			m.batchProgress.IsComplete = true
 		}
+
 		return m, nil
 
 	case updateProgressMsg:
@@ -169,12 +180,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if upd.Type == "complete" {
 			m.updating = false
+
 			return m, nil
 		}
 
 		if upd.Type == "error" {
 			m.updating = false
 			m.err = upd.Error
+
 			return m, nil
 		}
 
@@ -187,8 +200,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.updateSlugWave != nil {
 				m.updateSlugWave.AdvanceFrame()
 			}
+
 			return m, m.tickSlugWave()
 		}
+
 		return m, nil
 
 	case tea.MouseMsg:
@@ -221,9 +236,11 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	case key.Matches(msg, m.keys.Help):
 		m.showHelp = !m.showHelp
+
 		return m, nil
 	case key.Matches(msg, m.keys.Tab):
 		m.NextPanel()
+
 		return m, nil
 	}
 
@@ -236,9 +253,11 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if !m.batchConfig.NextStep() {
 				// Config complete, start batch install
 				m.showBatchConfigModal = false
+
 				return m, m.startBatchInstall()
 			}
 		}
+
 		return m, nil
 	}
 
@@ -247,6 +266,7 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.activePanel == PanelSearch && !msg.Alt && msg.Type == tea.KeyRunes {
 		cmd, updatedPanel := m.searchPanel.Update(msg)
 		m.searchPanel = updatedPanel
+
 		return m, cmd
 	}
 
@@ -256,10 +276,12 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Close modals if open
 		if m.showHelp {
 			m.showHelp = false
+
 			return m, nil
 		}
 		if m.showInfoModal {
 			m.showInfoModal = false
+
 			return m, nil
 		}
 		if m.showUpdateModal {
@@ -272,6 +294,7 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			// Don't close channel - let service close it
 			m.updateProgress = nil
+
 			return m, nil
 		}
 		if m.showInstallModal {
@@ -283,24 +306,29 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.batchProgress = nil
 				m.batchConfig = nil
 			}
+
 			return m, nil
 		}
 		if m.showBatchConfigModal {
 			m.showBatchConfigModal = false
 			m.batchConfig = nil
+
 			return m, nil
 		}
 		if m.executeOutput != "" {
 			m.executeOutput = ""
 			m.err = nil
+
 			return m, nil
 		}
 		// Also forward ESC to active panel
 		if m.activePanel == PanelSearch {
 			cmd, updatedPanel := m.searchPanel.Update(msg)
 			m.searchPanel = updatedPanel
+
 			return m, cmd
 		}
+
 		return m, nil
 
 	case key.Matches(msg, m.keys.Update):
@@ -308,6 +336,7 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.updating = true
 		m.updateService = update.NewService(m.db)
 		m.updateProgress = make(chan update.ProgressUpdate, 100)
+
 		return m, tea.Batch(
 			m.startUpdate(),
 			m.tickSlugWave(),
@@ -318,6 +347,7 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.selectedTool != nil && m.activePanel != PanelSearch {
 			m.showInfoModal = true
 		}
+
 		return m, nil
 
 	case msg.Alt && msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 'i':
@@ -326,6 +356,7 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.toolsPanel.GetMarkedCount() > 0 {
 			m.batchConfig = NewBatchInstallConfig()
 			m.showBatchConfigModal = true
+
 			return m, nil
 		}
 		// Otherwise, single tool install
@@ -337,6 +368,7 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
+
 		return m, nil
 
 	case msg.Alt && msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 'm':
@@ -346,6 +378,7 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.batchConfig = NewBatchInstallConfig()
 			m.batchConfig.UseMise = true
 			m.showBatchConfigModal = true
+
 			return m, nil
 		}
 		// Otherwise, single tool install
@@ -353,11 +386,13 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			cmd := m.installPanel.GetSelectedCommand()
 			if cmd != "" {
 				transformedCmd := install.TransformToMise(cmd)
+
 				return m, func() tea.Msg {
 					return panels.InstallExecuteMiseMsg{Command: transformedCmd}
 				}
 			}
 		}
+
 		return m, nil
 
 	case msg.Alt && msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 'r':
@@ -369,6 +404,7 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.activePanel == PanelSearch {
 		cmd, updatedPanel := m.searchPanel.Update(msg)
 		m.searchPanel = updatedPanel
+
 		return m, cmd
 	}
 
@@ -376,9 +412,11 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch m.activePanel {
 	case PanelTools:
 		cmd := m.toolsPanel.Update(msg)
+
 		return m, cmd
 	case PanelInstall:
 		cmd := m.installPanel.Update(msg)
+
 		return m, cmd
 	}
 
@@ -426,6 +464,7 @@ func (m *Model) openRepositoryURL() tea.Cmd {
 
 		// Start command but don't wait - runs in background
 		_ = cmd.Start()
+
 		return nil
 	}
 }
@@ -448,7 +487,7 @@ func (m *Model) startUpdate() tea.Cmd {
 
 	// Run update in background
 	go func() {
-		m.updateService.FetchAndUpdate(ctx, opts)
+		_ = m.updateService.FetchAndUpdate(ctx, opts)
 	}()
 
 	// Return a command that listens for progress updates
@@ -465,6 +504,7 @@ func (m *Model) listenForUpdates() tea.Cmd {
 		if !ok {
 			return updateProgressMsg{Type: "complete"}
 		}
+
 		return updateProgressMsg(upd)
 	}
 }
@@ -527,6 +567,7 @@ func (m *Model) processBatchTool(index int) tea.Cmd {
 					skipped: true,
 				}
 			}
+
 			return batchInstallProgressMsg{
 				toolID: tool.ID,
 				err:    fmt.Errorf("no install instructions found"),
@@ -550,6 +591,7 @@ func (m *Model) processBatchTool(index int) tea.Cmd {
 					skipped: true,
 				}
 			}
+
 			return batchInstallProgressMsg{
 				toolID: tool.ID,
 				err:    fmt.Errorf("no compatible install method"),

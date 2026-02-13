@@ -43,6 +43,7 @@ func TestParseSearchResponse(t *testing.T) {
 			resp, err := ParseSearchResponse([]byte(tt.input))
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ParseSearchResponse() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
 			if err == nil && len(resp.Hits) != tt.wantLen {
@@ -52,7 +53,7 @@ func TestParseSearchResponse(t *testing.T) {
 	}
 }
 
-func TestParseDetailPage(t *testing.T) { //nolint:lll
+func TestParseDetailPage(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   string
@@ -95,6 +96,7 @@ func TestParseDetailPage(t *testing.T) { //nolint:lll
 			page, err := ParseDetailPage([]byte(tt.input))
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ParseDetailPage() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
 			if err == nil {

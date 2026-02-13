@@ -84,6 +84,7 @@ func (p *ToolsPanel) Update(msg tea.Msg) tea.Cmd {
 					}
 				}
 			}
+
 			return nil
 
 		case key.Matches(msg, key.NewBinding(key.WithKeys("up", "k"))):
@@ -97,18 +98,21 @@ func (p *ToolsPanel) Update(msg tea.Msg) tea.Cmd {
 					}
 				}
 			}
+
 			return nil
 
 		case key.Matches(msg, key.NewBinding(key.WithKeys("left", "h"))):
 			if p.selectedCol > 0 {
 				p.selectedCol--
 			}
+
 			return nil
 
 		case key.Matches(msg, key.NewBinding(key.WithKeys("right", "l"))):
 			if p.selectedCol < 3 {
 				p.selectedCol++
 			}
+
 			return nil
 
 		case msg.Alt && (msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 's'):
@@ -120,6 +124,7 @@ func (p *ToolsPanel) Update(msg tea.Msg) tea.Cmd {
 				p.sortAscending = true
 			}
 			p.sortTools()
+
 			return nil
 
 		case key.Matches(msg, key.NewBinding(key.WithKeys("enter"))):
@@ -129,6 +134,7 @@ func (p *ToolsPanel) Update(msg tea.Msg) tea.Cmd {
 					return ToolSelectedMsg{Tool: p.tools[p.cursor]}
 				}
 			}
+
 			return nil
 
 		case key.Matches(msg, key.NewBinding(key.WithKeys("m"))):
@@ -141,10 +147,12 @@ func (p *ToolsPanel) Update(msg tea.Msg) tea.Cmd {
 				} else {
 					p.markedTools[tool.ID] = true
 				}
+
 				return func() tea.Msg {
 					return ToolMarkedMsg{Tool: tool, IsMarked: !isMarked}
 				}
 			}
+
 			return nil
 		}
 	}
@@ -352,6 +360,7 @@ func (p *ToolsPanel) renderRow(
 	// Marked but not selected
 	if isMarked {
 		markedStyle := styles.MarkedStyle.Foreground(gradient)
+
 		return fmt.Sprintf("%s%s │ %s │ %s │ %s",
 			markedStyle.Width(2).Render(markIndicator),
 			markedStyle.Width(nameWidth-2).Render(name),
@@ -393,6 +402,7 @@ func (p *ToolsPanel) GetSelectedTool() *db.SearchResult {
 	if p.cursor >= 0 && p.cursor < len(p.tools) {
 		return &p.tools[p.cursor]
 	}
+
 	return nil
 }
 
@@ -436,6 +446,7 @@ func (p *ToolsPanel) GetTool(idx int) *db.SearchResult {
 	if idx >= 0 && idx < len(p.tools) {
 		return &p.tools[idx]
 	}
+
 	return nil
 }
 
@@ -447,6 +458,7 @@ func (p *ToolsPanel) GetMarkedTools() []db.SearchResult {
 			marked = append(marked, tool)
 		}
 	}
+
 	return marked
 }
 

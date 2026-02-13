@@ -110,6 +110,7 @@ func (s *SQLiteDB) UpsertTool(ctx context.Context, tool *Tool) error {
 		tool.ID, tool.Slug, tool.Name, tool.Tagline, tool.Description,
 		tool.Language, tool.License, tool.DatePublished, tool.CodeRepository, tool.UpdatedAt,
 	)
+
 	return err
 }
 
@@ -124,6 +125,7 @@ func (s *SQLiteDB) UpsertInstallInstruction(ctx context.Context, inst *InstallIn
 	`
 
 	_, err := s.db.ExecContext(ctx, query, inst.ID, inst.ToolID, inst.Platform, inst.Command)
+
 	return err
 }
 
@@ -170,22 +172,33 @@ func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResu
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var results []SearchResult
+	var tools []Tool
 	for rows.Next() {
-		var r SearchResult
+		var t Tool
 		err := rows.Scan(
-			&r.ID, &r.Slug, &r.Name, &r.Tagline, &r.Description,
-			&r.Language, &r.License, &r.DatePublished, &r.CodeRepository,
+			&t.ID, &t.Slug, &t.Name, &t.Tagline, &t.Description,
+			&t.Language, &t.License, &t.DatePublished, &t.CodeRepository,
 		)
 		if err != nil {
+			_ = rows.Close()
+
 			return nil, err
 		}
-		// Populate installed status by checking install instructions
-		installs, _ := s.GetInstallInstructions(r.ID)
-		r.Installed = IsInstalled(&r.Tool, installs)
-		results = append(results, r)
+		tools = append(tools, t)
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+
+		return nil, err
+	}
+	_ = rows.Close()
+
+	var results []SearchResult
+	for _, t := range tools {
+		installs, _ := s.GetInstallInstructions(t.ID)
+		t.Installed = IsInstalled(&t, installs)
+		results = append(results, SearchResult{Tool: t})
 	}
 
 	// Handle installed filter (post-query filtering since it's not in DB)
@@ -193,7 +206,7 @@ func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResu
 		results = filterByInstalled(results, opts.Filter)
 	}
 
-	return results, rows.Err()
+	return results, nil
 }
 
 func (s *SQLiteDB) GetAllTools(ctx context.Context) ([]Tool, error) {
@@ -203,7 +216,7 @@ func (s *SQLiteDB) GetAllTools(ctx context.Context) ([]Tool, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var tools []Tool
 	for rows.Next() {
@@ -229,7 +242,7 @@ func (s *SQLiteDB) GetToolBySlug(slug string) ([]Tool, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var tools []Tool
 	for rows.Next() {
@@ -254,7 +267,7 @@ func (s *SQLiteDB) GetInstallInstructions(toolID string) ([]InstallInstruction, 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var insts []InstallInstruction
 	for rows.Next() {
@@ -274,6 +287,7 @@ func (s *SQLiteDB) GetInstallInstructions(toolID string) ([]InstallInstruction, 
 func (s *SQLiteDB) ToolCount(ctx context.Context) (int, error) {
 	var count int
 	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM tools").Scan(&count)
+
 	return count, err
 }
 
@@ -297,7 +311,7 @@ func (s *SQLiteDB) GetTags(slug string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var tags []string
 	for rows.Next() {
@@ -307,6 +321,7 @@ func (s *SQLiteDB) GetTags(slug string) ([]string, error) {
 		}
 		tags = append(tags, name)
 	}
+
 	return tags, rows.Err()
 }
 
@@ -321,7 +336,7 @@ func (s *SQLiteDB) GetAllTags() ([]TagCount, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var tags []TagCount
 	for rows.Next() {
@@ -331,6 +346,7 @@ func (s *SQLiteDB) GetAllTags() ([]TagCount, error) {
 		}
 		tags = append(tags, tc)
 	}
+
 	return tags, rows.Err()
 }
 
@@ -339,12 +355,14 @@ func normalizeTagName(tagName string) (string, error) {
 	if normalized == "" {
 		return "", fmt.Errorf("tag name cannot be empty")
 	}
+
 	return normalized, nil
 }
 
 func (s *SQLiteDB) pruneOrphanedTags() error {
 	_, err := s.db.ExecContext(context.Background(),
 		"DELETE FROM tags WHERE name NOT IN (SELECT DISTINCT tag_name FROM tool_tags)")
+
 	return err
 }
 
@@ -371,6 +389,7 @@ func (s *SQLiteDB) AddTag(slug, tagName string) error {
 
 	_, err = s.db.ExecContext(context.Background(),
 		"INSERT OR IGNORE INTO tool_tags (tool_id, tag_name) VALUES (?, ?)", toolID, normalized)
+
 	return err
 }
 
@@ -443,7 +462,7 @@ func (s *SQLiteDB) GetToolsByTag(tagName string) ([]Tool, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var tools []Tool
 	for rows.Next() {
@@ -458,6 +477,7 @@ func (s *SQLiteDB) GetToolsByTag(tagName string) ([]Tool, error) {
 		}
 		tools = append(tools, t)
 	}
+
 	return tools, rows.Err()
 }
 

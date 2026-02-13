@@ -48,12 +48,14 @@ func (p *SearchPanel) Update(msg tea.Msg) (tea.Cmd, *SearchPanel) {
 			// Clear search
 			p.textInput.SetValue("")
 			p.lastQuery = ""
+
 			return p.triggerSearch(""), p
 
 		case tea.KeyEnter:
 			// Immediate search on Enter
 			query := p.textInput.Value()
 			p.lastQuery = query
+
 			return p.triggerSearch(query), p
 		}
 	}
@@ -73,6 +75,7 @@ func (p *SearchPanel) Update(msg tea.Msg) (tea.Cmd, *SearchPanel) {
 
 		// Start new debounce timer
 		query := currentQuery
+
 		return tea.Batch(
 			cmd,
 			p.debounceSearchCmd(query),
@@ -86,6 +89,7 @@ func (p *SearchPanel) Update(msg tea.Msg) (tea.Cmd, *SearchPanel) {
 func (p *SearchPanel) debounceSearchCmd(query string) tea.Cmd {
 	return func() tea.Msg {
 		time.Sleep(p.debounceTime)
+
 		return SearchTriggeredMsg{Query: query}
 	}
 }

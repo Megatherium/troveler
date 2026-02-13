@@ -144,7 +144,7 @@ func TestOutputJSON(t *testing.T) {
 
 	err := outputJSON(results)
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
 
 	if err != nil {
@@ -152,7 +152,7 @@ func TestOutputJSON(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
 	var decoded []db.SearchResult
@@ -189,7 +189,7 @@ func TestOutputJSONEmpty(t *testing.T) {
 
 	err := outputJSON(results)
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
 
 	if err != nil {
@@ -197,7 +197,7 @@ func TestOutputJSONEmpty(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := strings.TrimSpace(buf.String())
 
 	if output != "[]" {

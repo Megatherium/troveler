@@ -122,6 +122,7 @@ func (p *InstallPanel) GetSelectedCommand() string {
 	if p.cursor >= 0 && p.cursor < len(p.commands) {
 		return p.commands[p.cursor].Command
 	}
+
 	return ""
 }
 
@@ -148,12 +149,14 @@ func (p *InstallPanel) Update(msg tea.Msg) tea.Cmd {
 			if p.cursor < len(p.commands)-1 {
 				p.cursor++
 			}
+
 			return nil
 
 		case key.Matches(msg, key.NewBinding(key.WithKeys("up", "k"))):
 			if p.cursor > 0 {
 				p.cursor--
 			}
+
 			return nil
 
 		case msg.Alt && (msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 'i'):
@@ -164,10 +167,12 @@ func (p *InstallPanel) Update(msg tea.Msg) tea.Cmd {
 				if p.miseMode {
 					cmd = install.TransformToMise(cmd)
 				}
+
 				return func() tea.Msg {
 					return InstallExecuteMsg{Command: cmd}
 				}
 			}
+
 			return nil
 
 		case msg.Alt && (msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 'm'):
@@ -176,10 +181,12 @@ func (p *InstallPanel) Update(msg tea.Msg) tea.Cmd {
 				cmd := p.commands[p.cursor].Command
 				// Always transform to mise for Alt+m
 				cmd = install.TransformToMise(cmd)
+
 				return func() tea.Msg {
 					return InstallExecuteMiseMsg{Command: cmd}
 				}
 			}
+
 			return nil
 		}
 	}
@@ -238,6 +245,7 @@ func (p *InstallPanel) resolveVirtualPlatform(platform string) string {
 	if strings.HasPrefix(platform, "mise:") {
 		return strings.TrimPrefix(platform, "mise:")
 	}
+
 	return platform
 }
 

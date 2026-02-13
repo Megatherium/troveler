@@ -25,6 +25,7 @@ Use Alt+Q to quit, ? for help.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return WithDB(cmd, func(ctx context.Context, database *db.SQLiteDB) error {
 			cfg := GetConfig(ctx)
+
 			return tui.Run(database, cfg)
 		})
 	},

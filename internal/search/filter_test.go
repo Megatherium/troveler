@@ -8,10 +8,14 @@ import (
 
 const (
 	filterFieldLanguage = "language"
+	testToolBat         = "bat"
+	testFilterCLI       = "cli"
+	testFilterTag       = "tag"
+	testFilterName      = "name"
 )
 
 func TestParseFiltersNoFilters(t *testing.T) {
-	ast, searchTerm, err := ParseFilters("bat")
+	ast, searchTerm, err := ParseFilters(testToolBat)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -19,7 +23,7 @@ func TestParseFiltersNoFilters(t *testing.T) {
 	if ast != nil {
 		t.Errorf("expected nil AST, got %+v", ast)
 	}
-	if searchTerm != "bat" {
+	if searchTerm != testToolBat {
 		t.Errorf("expected searchTerm 'bat', got '%s'", searchTerm)
 	}
 }
@@ -37,10 +41,10 @@ func TestParseFiltersSimpleField(t *testing.T) {
 	if ast.Type != db.FilterField {
 		t.Errorf("expected db.FilterField, got %v", ast.Type)
 	}
-	if ast.Field != "name" {
+	if ast.Field != testFilterName {
 		t.Errorf("expected field 'name', got '%s'", ast.Field)
 	}
-	if ast.Value != "bat" {
+	if ast.Value != testToolBat {
 		t.Errorf("expected value 'bat', got '%s'", ast.Value)
 	}
 }
@@ -55,7 +59,7 @@ func TestParseFiltersAnd(t *testing.T) {
 	if ast.Type != db.FilterAnd {
 		t.Errorf("expected db.FilterAnd, got %v", ast.Type)
 	}
-	if ast.Left.Type != db.FilterField || ast.Left.Field != "name" || ast.Left.Value != "bat" {
+	if ast.Left.Type != db.FilterField || ast.Left.Field != testFilterName || ast.Left.Value != testToolBat {
 		t.Errorf("unexpected left filter: %+v", ast.Left)
 	}
 	if ast.Right.Type != db.FilterField || ast.Right.Field != filterFieldLanguage || ast.Right.Value != "rust" {
@@ -73,7 +77,7 @@ func TestParseFiltersOr(t *testing.T) {
 	if ast.Type != db.FilterOr {
 		t.Errorf("expected db.FilterOr, got %v", ast.Type)
 	}
-	if ast.Left.Type != db.FilterField || ast.Left.Field != "name" || ast.Left.Value != "bat" {
+	if ast.Left.Type != db.FilterField || ast.Left.Field != testFilterName || ast.Left.Value != testToolBat {
 		t.Errorf("unexpected left filter: %+v", ast.Left)
 	}
 	if ast.Right.Type != db.FilterField || ast.Right.Field != "name" || ast.Right.Value != "batcat" {
@@ -137,7 +141,7 @@ func TestParseFiltersTagline(t *testing.T) {
 	if ast.Field != "tagline" {
 		t.Errorf("expected field 'tagline', got '%s'", ast.Field)
 	}
-	if ast.Value != "cli" {
+	if ast.Value != testFilterCLI {
 		t.Errorf("expected value 'cli', got '%s'", ast.Value)
 	}
 }
@@ -231,5 +235,115 @@ func TestParseFiltersDoubleNot(t *testing.T) {
 	}
 	if ast.Left.Left.Type != db.FilterField {
 		t.Errorf("expected FilterField at deepest level, got %v", ast.Left.Left.Type)
+	}
+}
+
+func TestParseFiltersTag(t *testing.T) {
+	ast, _, err := ParseFilters("tag=cli")
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if ast.Type != db.FilterField {
+		t.Errorf("expected db.FilterField, got %v", ast.Type)
+	}
+	if ast.Field != testFilterTag {
+		t.Errorf("expected field 'tag', got '%s'", ast.Field)
+	}
+	if ast.Value != testFilterCLI {
+		t.Errorf("expected value 'cli', got '%s'", ast.Value)
+	}
+}
+
+func TestParseFiltersTagAndTag(t *testing.T) {
+	ast, _, err := ParseFilters("tag=cli&tag=fuzzy")
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if ast.Type != db.FilterAnd {
+		t.Errorf("expected db.FilterAnd, got %v", ast.Type)
+	}
+	if ast.Left.Type != db.FilterField || ast.Left.Field != testFilterTag || ast.Left.Value != testFilterCLI {
+		t.Errorf("unexpected left filter: %+v", ast.Left)
+	}
+	if ast.Right.Type != db.FilterField || ast.Right.Field != testFilterTag || ast.Right.Value != "fuzzy" {
+		t.Errorf("unexpected right filter: %+v", ast.Right)
+	}
+}
+
+func TestParseFiltersTagOrTag(t *testing.T) {
+	ast, _, err := ParseFilters("tag=cli|tag=tui")
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if ast.Type != db.FilterOr {
+		t.Errorf("expected db.FilterOr, got %v", ast.Type)
+	}
+	if ast.Left.Type != db.FilterField || ast.Left.Field != testFilterTag || ast.Left.Value != testFilterCLI {
+		t.Errorf("unexpected left filter: %+v", ast.Left)
+	}
+	if ast.Right.Type != db.FilterField || ast.Right.Field != testFilterTag || ast.Right.Value != "tui" {
+		t.Errorf("unexpected right filter: %+v", ast.Right)
+	}
+}
+
+func TestParseFiltersNotTag(t *testing.T) {
+	ast, _, err := ParseFilters("!tag=experimental")
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if ast.Type != db.FilterNot {
+		t.Errorf("expected db.FilterNot, got %v", ast.Type)
+	}
+	if ast.Left == nil || ast.Left.Type != db.FilterField {
+		t.Errorf("expected FilterField child, got %+v", ast.Left)
+	}
+	if ast.Left.Field != "tag" || ast.Left.Value != "experimental" {
+		t.Errorf("expected tag=experimental, got field=%s value=%s", ast.Left.Field, ast.Left.Value)
+	}
+}
+
+func TestParseFiltersTagWithLanguage(t *testing.T) {
+	ast, _, err := ParseFilters("language=go&tag=ai")
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if ast.Type != db.FilterAnd {
+		t.Errorf("expected db.FilterAnd, got %v", ast.Type)
+	}
+	if ast.Left.Type != db.FilterField || ast.Left.Field != "language" || ast.Left.Value != "go" {
+		t.Errorf("unexpected left filter: %+v", ast.Left)
+	}
+	if ast.Right.Type != db.FilterField || ast.Right.Field != "tag" || ast.Right.Value != "ai" {
+		t.Errorf("unexpected right filter: %+v", ast.Right)
+	}
+}
+
+func TestParseFiltersComplexTagExpression(t *testing.T) {
+	ast, _, err := ParseFilters("(tag=cli|tag=tui)&!tag=experimental")
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if ast.Type != db.FilterAnd {
+		t.Errorf("expected db.FilterAnd at root, got %v", ast.Type)
+	}
+
+	if ast.Left.Type != db.FilterOr {
+		t.Errorf("expected db.FilterOr on left, got %v", ast.Left.Type)
+	}
+
+	if ast.Right.Type != db.FilterNot {
+		t.Errorf("expected db.FilterNot on right, got %v", ast.Right.Type)
 	}
 }

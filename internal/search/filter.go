@@ -50,10 +50,7 @@ func ParseFilters(query string) (*db.Filter, string, error) {
 		return nil, query, err
 	}
 
-	// Extract search term from filters
-	searchTerm := p.extractSearchTerm(ast)
-
-	return ast, searchTerm, nil
+	return ast, "", nil
 }
 
 func (p *Parser) tokenize(query string) {
@@ -237,27 +234,4 @@ func (p *Parser) parseTerm() (*db.Filter, error) {
 	}
 
 	return nil, fmt.Errorf("expected field=value or parenthesis at position %d", p.pos)
-}
-
-func (p *Parser) extractSearchTerm(ast *db.Filter) string {
-	// Collect values that don't have a field filter (pure search terms)
-	var terms []string
-	p.collectSearchTerms(ast, &terms)
-	return strings.Join(terms, " ")
-}
-
-func (p *Parser) collectSearchTerms(f *db.Filter, terms *[]string) { //nolint:unparam
-	if f == nil {
-		return
-	}
-
-	// For AND/OR/NOT, recursively collect from children
-	if f.Type == db.FilterAnd || f.Type == db.FilterOr || f.Type == db.FilterNot {
-		if f.Left != nil {
-			p.collectSearchTerms(f.Left, terms)
-		}
-		if f.Right != nil {
-			p.collectSearchTerms(f.Right, terms)
-		}
-	}
 }

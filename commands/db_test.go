@@ -17,7 +17,7 @@ func TestDatabaseInitialization(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create database: %v", err)
 	}
-	defer database.Close()
+	defer func() { _ = database.Close() }()
 
 	count, err := database.ToolCount(context.Background())
 	if err != nil {
@@ -51,6 +51,7 @@ func TestWithDBHelper(t *testing.T) {
 	err := testWithDBHelper(cfg, func(ctx context.Context, database *db.SQLiteDB) error {
 		called = true
 		dbPtr = database
+
 		return nil
 	})
 
@@ -72,7 +73,7 @@ func testWithDBHelper(cfg *config.Config, fn func(context.Context, *db.SQLiteDB)
 	if err != nil {
 		return err
 	}
-	defer database.Close()
+	defer func() { _ = database.Close() }()
 
 	return fn(context.Background(), database)
 }

@@ -1,8 +1,9 @@
 package styles
 
 import (
-	"github.com/charmbracelet/lipgloss"
 	"troveler/pkg/ui"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 // Theme colors and styles for the TUI

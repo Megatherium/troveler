@@ -10,6 +10,9 @@ const (
 	osIDCentos = "centos"
 	osIDAlpine = "alpine"
 	osIDGentoo = "gentoo"
+	osIDRHEL   = "rhel"
+	osIDDebian = "debian"
+	osIDArch   = "arch"
 )
 
 type OSInfo struct {
@@ -71,8 +74,8 @@ func DetectOS() (*OSInfo, error) {
 			info.ID = osIDFedora
 		} else if strings.Contains(lower, osIDCentos) {
 			info.ID = osIDCentos
-		} else if strings.Contains(lower, "rhel") || strings.Contains(lower, "red hat") {
-			info.ID = "rhel"
+		} else if strings.Contains(lower, osIDRHEL) || strings.Contains(lower, "red hat") {
+			info.ID = osIDRHEL
 			info.Name = "Red Hat Enterprise Linux"
 		}
 
@@ -82,7 +85,7 @@ func DetectOS() (*OSInfo, error) {
 	// Try /etc/debian_version
 	data, err = os.ReadFile("/etc/debian_version")
 	if err == nil && len(data) > 0 {
-		info.ID = "debian"
+		info.ID = osIDDebian
 		info.Name = "Debian"
 
 		return normalizeOSInfo(info), nil
@@ -100,8 +103,9 @@ func DetectOS() (*OSInfo, error) {
 	// Try /etc/arch-release (Arch Linux)
 	_, err = os.ReadFile("/etc/arch-release")
 	if err == nil {
-		info.ID = "arch"
+		info.ID = osIDArch
 		info.Name = "Arch Linux"
+
 		return normalizeOSInfo(info), nil
 	}
 
@@ -110,6 +114,7 @@ func DetectOS() (*OSInfo, error) {
 	if err == nil {
 		info.ID = osIDGentoo
 		info.Name = "Gentoo"
+
 		return normalizeOSInfo(info), nil
 	}
 
@@ -147,5 +152,6 @@ func normalizeOSInfo(info *OSInfo) *OSInfo {
 	case "windows":
 		info.ID = "windows"
 	}
+
 	return info
 }

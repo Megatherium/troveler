@@ -47,6 +47,7 @@ func ParseSearchResponse(data []byte) (*SearchResponse, error) {
 	if err := json.Unmarshal(data, &resp); err != nil {
 		return nil, fmt.Errorf("failed to parse search response: %w", err)
 	}
+
 	return &resp, nil
 }
 
@@ -202,6 +203,7 @@ func (p *DetailPage) ToInstallInstructions() []db.InstallInstruction {
 		}
 		insts = append(insts, inst)
 	}
+
 	return insts
 }
 

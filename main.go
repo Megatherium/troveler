@@ -27,6 +27,7 @@ Use 'troveler tui' to launch the interactive Terminal User Interface.`,
 			return fmt.Errorf("config load: %w", err)
 		}
 		cmd.SetContext(commands.WithConfig(cmd.Context(), cfg))
+
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -81,11 +82,11 @@ Fish:
 	Run: func(cmd *cobra.Command, args []string) {
 		switch args[0] {
 		case "bash":
-			RootCmd.GenBashCompletion(os.Stdout)
+			_ = RootCmd.GenBashCompletion(os.Stdout)
 		case "zsh":
-			RootCmd.GenZshCompletion(os.Stdout)
+			_ = RootCmd.GenZshCompletion(os.Stdout)
 		case "fish":
-			RootCmd.GenFishCompletion(os.Stdout, true)
+			_ = RootCmd.GenFishCompletion(os.Stdout, true)
 		}
 	},
 }

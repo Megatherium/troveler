@@ -60,8 +60,8 @@ func TestSearchResultModel(t *testing.T) {
 		},
 	}
 
-	if result.Tool.ID != "test-id" {
-		t.Errorf("SearchResult.Tool.ID = %v, want %v", result.Tool.ID, "test-id")
+	if result.ID != "test-id" {
+		t.Errorf("SearchResult.Tool.ID = %v, want %v", result.ID, "test-id")
 	}
 	if len(result.Installations) != 1 {
 		t.Errorf("SearchResult.Installations length = %v, want %v", len(result.Installations), 1)

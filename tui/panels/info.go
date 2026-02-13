@@ -22,6 +22,7 @@ type InfoPanel struct {
 // NewInfoPanel creates a new info panel
 func NewInfoPanel() *InfoPanel {
 	vp := viewport.New(40, 20)
+
 	return &InfoPanel{
 		viewport: vp,
 		focused:  false,
@@ -45,6 +46,7 @@ func (p *InfoPanel) Clear() {
 func (p *InfoPanel) updateContent() {
 	if p.tool == nil {
 		p.viewport.SetContent(styles.MutedStyle.Render("Select a tool to view details"))
+
 		return
 	}
 
@@ -90,6 +92,7 @@ func (p *InfoPanel) Update(msg tea.Msg) tea.Cmd {
 
 	var cmd tea.Cmd
 	p.viewport, cmd = p.viewport.Update(msg)
+
 	return cmd
 }
 

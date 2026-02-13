@@ -36,6 +36,7 @@ var tagAddCmd = &cobra.Command{
 				return fmt.Errorf("failed to add tag: %w", err)
 			}
 			fmt.Printf("Added tag '%s' to '%s'\n", tag, slug)
+
 			return nil
 		})
 	},
@@ -55,6 +56,7 @@ var tagRemoveCmd = &cobra.Command{
 				return fmt.Errorf("failed to remove tag: %w", err)
 			}
 			fmt.Printf("Removed tag '%s' from '%s'\n", tag, slug)
+
 			return nil
 		})
 	},
@@ -72,6 +74,7 @@ var tagListCmd = &cobra.Command{
 			if len(args) == 0 {
 				return listAllTags(database, jsonOutput)
 			}
+
 			return listToolTags(database, args[0], jsonOutput)
 		})
 	},
@@ -90,6 +93,7 @@ var tagClearCmd = &cobra.Command{
 				return fmt.Errorf("failed to clear tags: %w", err)
 			}
 			fmt.Printf("Cleared all tags from '%s'\n", slug)
+
 			return nil
 		})
 	},
@@ -115,12 +119,14 @@ func listAllTags(database *db.SQLiteDB, jsonOutput bool) error {
 		} else {
 			fmt.Println("No tags found")
 		}
+
 		return nil
 	}
 
 	if jsonOutput {
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")
+
 		return encoder.Encode(tags)
 	}
 
@@ -137,6 +143,7 @@ func listAllTags(database *db.SQLiteDB, jsonOutput bool) error {
 		fmt.Printf("  %-20s %d\n", tc.Name, tc.Count)
 	}
 	fmt.Println()
+
 	return nil
 }
 
@@ -152,15 +159,18 @@ func listToolTags(database *db.SQLiteDB, slug string, jsonOutput bool) error {
 		} else {
 			fmt.Printf("No tags on '%s'\n", slug)
 		}
+
 		return nil
 	}
 
 	if jsonOutput {
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")
+
 		return encoder.Encode(tags)
 	}
 
 	fmt.Printf("Tags on '%s': %s\n", slug, strings.Join(tags, ", "))
+
 	return nil
 }

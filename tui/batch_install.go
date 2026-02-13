@@ -59,6 +59,7 @@ func (c *BatchInstallConfig) ConfigStepCount() int {
 // NextStep advances to the next config step
 func (c *BatchInstallConfig) NextStep() bool {
 	c.ConfigStep++
+
 	return c.ConfigStep < c.ConfigStepCount()
 }
 
@@ -66,8 +67,10 @@ func (c *BatchInstallConfig) NextStep() bool {
 func (c *BatchInstallConfig) PrevStep() bool {
 	if c.ConfigStep > 0 {
 		c.ConfigStep--
+
 		return true
 	}
+
 	return false
 }
 

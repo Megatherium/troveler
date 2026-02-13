@@ -50,6 +50,7 @@ func (f *Fetcher) FetchSearchPage(ctx context.Context, page int) ([]byte, error)
 
 func (f *Fetcher) FetchDetailPage(ctx context.Context, slug string) ([]byte, error) {
 	url := fmt.Sprintf("%s/%s/", baseURL, slug)
+
 	return f.Fetch(ctx, url)
 }
 
@@ -57,6 +58,7 @@ func (f *Fetcher) Fetch(ctx context.Context, url string) ([]byte, error) {
 	f.mu.RLock()
 	if data, ok := f.cache[url]; ok {
 		f.mu.RUnlock()
+
 		return data, nil
 	}
 	f.mu.RUnlock()
@@ -89,9 +91,10 @@ func (f *Fetcher) Fetch(ctx context.Context, url string) ([]byte, error) {
 					continue
 				}
 			}
+
 			return nil, fmt.Errorf("fetch failed after %d attempts: %w", maxRetries, fetchErr)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			if attempt < maxRetries {
@@ -103,6 +106,7 @@ func (f *Fetcher) Fetch(ctx context.Context, url string) ([]byte, error) {
 					continue
 				}
 			}
+
 			return nil, fmt.Errorf("status %d", resp.StatusCode)
 		}
 
@@ -117,6 +121,7 @@ func (f *Fetcher) Fetch(ctx context.Context, url string) ([]byte, error) {
 					continue
 				}
 			}
+
 			return nil, fmt.Errorf("read failed: %w", err)
 		}
 

@@ -11,7 +11,7 @@ func TestLoadTUIDefaults(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "config.toml")
 
 	// Empty config file
-	os.WriteFile(configPath, []byte(""), 0644)
+	_ = os.WriteFile(configPath, []byte(""), 0644)
 
 	cfg, err := Load(configPath)
 	if err != nil {
@@ -31,7 +31,7 @@ func TestLoadTUICustom(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.toml")
 
-	os.WriteFile(configPath, []byte(`
+	_ = os.WriteFile(configPath, []byte(`
 [tui]
 theme = "custom"
 tagline_max_width = 60
@@ -60,7 +60,7 @@ func TestDefaultToTUI(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.toml")
 
-	os.WriteFile(configPath, []byte(`
+	_ = os.WriteFile(configPath, []byte(`
 default_to_tui = true
 `), 0644)
 

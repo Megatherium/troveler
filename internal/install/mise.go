@@ -31,12 +31,14 @@ func TransformToMise(command string) string {
 
 	if strings.HasPrefix(command, "npm install ") && !strings.Contains(command, "-g") {
 		pkg := strings.TrimPrefix(command, "npm install ")
+
 		return "mise use --global npm:" + pkg
 	}
 
 	pipRegex := regexp.MustCompile(`^(pip install|pip3 install|pipx install)\s+(.+)$`)
 	if matches := pipRegex.FindStringSubmatch(command); len(matches) > 2 {
 		pkg := matches[2]
+
 		return "mise use --global pipx:" + pkg
 	}
 
@@ -45,6 +47,7 @@ func TransformToMise(command string) string {
 		if len(fields) > 0 {
 			repo := fields[len(fields)-1]
 			repo = strings.TrimPrefix(repo, "github.com/")
+
 			return "mise use --global github:" + repo
 		}
 	}

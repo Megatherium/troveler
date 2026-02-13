@@ -109,6 +109,7 @@ func renderMidBorder(colWidths []int) string {
 		}
 	}
 	b.WriteString(rightMid + "\n")
+
 	return b.String()
 }
 
@@ -126,6 +127,7 @@ func renderBotBorder(colWidths []int) string {
 		}
 	}
 	b.WriteString(rightBot)
+
 	return b.String()
 }
 

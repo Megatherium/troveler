@@ -173,6 +173,7 @@ func (u *UpdateUI) renderChaoticStream() string {
 		}
 		lines = append(lines, line.String())
 	}
+
 	return strings.Join(lines, "\n")
 }
 
@@ -180,6 +181,7 @@ func abs(x int) int {
 	if x < 0 {
 		return -x
 	}
+
 	return x
 }
 
@@ -293,13 +295,13 @@ func handleDatabaseWrites(ctx context.Context, database *db.SQLiteDB, detailChan
 		go func() {
 			defer writeWg.Done()
 			for inst := range writeChan {
-				database.UpsertInstallInstruction(ctx, &inst)
+				_ = database.UpsertInstallInstruction(ctx, &inst)
 			}
 		}()
 	}
 
 	for detail := range detailChan {
-		database.UpsertTool(ctx, detail.ToTool())
+		_ = database.UpsertTool(ctx, detail.ToTool())
 
 		for _, inst := range detail.ToInstallInstructions() {
 			select {
@@ -367,6 +369,7 @@ func runUpdate(
 		} else {
 			fmt.Println("No tools found.")
 		}
+
 		return nil
 	}
 

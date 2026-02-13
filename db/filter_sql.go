@@ -42,6 +42,7 @@ func BuildWhereClause(filter *Filter, searchTerm string) (string, []interface{})
 	}
 
 	whereClause := strings.Join(clauses, " AND ")
+
 	return whereClause, args
 }
 
@@ -56,16 +57,19 @@ func buildFilterSQL(filter *Filter) (string, []interface{}) {
 		leftClause, leftArgs := buildFilterSQL(filter.Left)
 		rightClause, rightArgs := buildFilterSQL(filter.Right)
 		args := append(leftArgs, rightArgs...)
+
 		return fmt.Sprintf("(%s AND %s)", leftClause, rightClause), args
 
 	case FilterOr:
 		leftClause, leftArgs := buildFilterSQL(filter.Left)
 		rightClause, rightArgs := buildFilterSQL(filter.Right)
 		args := append(leftArgs, rightArgs...)
+
 		return fmt.Sprintf("(%s OR %s)", leftClause, rightClause), args
 
 	case FilterNot:
 		innerClause, innerArgs := buildFilterSQL(filter.Left)
+
 		return fmt.Sprintf("NOT (%s)", innerClause), innerArgs
 
 	case FilterField:
@@ -85,6 +89,9 @@ func buildFieldFilter(field, value string) (string, []interface{}) {
 		return "tagline LIKE ?", []interface{}{"%" + value + "%"}
 	case "language":
 		return "language LIKE ?", []interface{}{"%" + value + "%"}
+	case "tag":
+		return "EXISTS (SELECT 1 FROM tool_tags WHERE tool_id = tools.id AND tag_name = ?)",
+			[]interface{}{strings.ToLower(value)}
 	case filterFieldInstalled:
 		// Special case: handled in Go after query, but needs to return a clause
 		// for AND/OR combinations to work properly
@@ -158,5 +165,6 @@ func getInstalledFilterInfo(filter *Filter, negated bool) (string, bool) {
 	if value, n := getInstalledFilterInfo(filter.Left, negated); value != "" {
 		return value, n
 	}
+
 	return getInstalledFilterInfo(filter.Right, negated)
 }

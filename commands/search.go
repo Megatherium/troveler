@@ -105,6 +105,7 @@ func runSearch(
 		} else {
 			fmt.Printf("No tools found matching '%s'\n", opts.Query)
 		}
+
 		return nil
 	}
 
@@ -119,6 +120,7 @@ func runSearch(
 func outputJSON(results []db.SearchResult) error {
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
+
 	return encoder.Encode(results)
 }
 

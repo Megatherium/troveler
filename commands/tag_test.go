@@ -38,7 +38,7 @@ func setupTagTestDB(t *testing.T) *db.SQLiteDB {
 
 func TestTagAddCmd(t *testing.T) {
 	database := setupTagTestDB(t)
-	defer database.Close()
+	defer func() { _ = database.Close() }()
 
 	err := database.AddTag("fzf", "fuzzy")
 	if err != nil {
@@ -56,7 +56,7 @@ func TestTagAddCmd(t *testing.T) {
 
 func TestTagAddToolNotFound(t *testing.T) {
 	database := setupTagTestDB(t)
-	defer database.Close()
+	defer func() { _ = database.Close() }()
 
 	err := database.AddTag("nonexistent", "tag")
 	if err == nil {
@@ -66,10 +66,10 @@ func TestTagAddToolNotFound(t *testing.T) {
 
 func TestTagRemoveCmd(t *testing.T) {
 	database := setupTagTestDB(t)
-	defer database.Close()
+	defer func() { _ = database.Close() }()
 
-	database.AddTag("fzf", "fuzzy")
-	database.AddTag("fzf", "cli")
+	_ = database.AddTag("fzf", "fuzzy")
+	_ = database.AddTag("fzf", "cli")
 
 	err := database.RemoveTag("fzf", "fuzzy")
 	if err != nil {
@@ -84,7 +84,7 @@ func TestTagRemoveCmd(t *testing.T) {
 
 func TestTagRemoveNotFound(t *testing.T) {
 	database := setupTagTestDB(t)
-	defer database.Close()
+	defer func() { _ = database.Close() }()
 
 	err := database.RemoveTag("fzf", "nonexistent")
 	if err == nil {
@@ -94,10 +94,10 @@ func TestTagRemoveNotFound(t *testing.T) {
 
 func TestTagClearCmd(t *testing.T) {
 	database := setupTagTestDB(t)
-	defer database.Close()
+	defer func() { _ = database.Close() }()
 
-	database.AddTag("fzf", "fuzzy")
-	database.AddTag("fzf", "cli")
+	_ = database.AddTag("fzf", "fuzzy")
+	_ = database.AddTag("fzf", "cli")
 
 	err := database.ClearTags("fzf")
 	if err != nil {
@@ -112,11 +112,11 @@ func TestTagClearCmd(t *testing.T) {
 
 func TestTagListAllCmd(t *testing.T) {
 	database := setupTagTestDB(t)
-	defer database.Close()
+	defer func() { _ = database.Close() }()
 
-	database.AddTag("fzf", "fuzzy")
-	database.AddTag("fzf", "cli")
-	database.AddTag("bat", "cli")
+	_ = database.AddTag("fzf", "fuzzy")
+	_ = database.AddTag("fzf", "cli")
+	_ = database.AddTag("bat", "cli")
 
 	tags, err := database.GetAllTags()
 	if err != nil {
@@ -136,10 +136,10 @@ func TestTagListAllCmd(t *testing.T) {
 
 func TestTagListToolCmd(t *testing.T) {
 	database := setupTagTestDB(t)
-	defer database.Close()
+	defer func() { _ = database.Close() }()
 
-	database.AddTag("fzf", "fuzzy")
-	database.AddTag("fzf", "cli")
+	_ = database.AddTag("fzf", "fuzzy")
+	_ = database.AddTag("fzf", "cli")
 
 	tags, err := database.GetTags("fzf")
 	if err != nil {
@@ -152,7 +152,7 @@ func TestTagListToolCmd(t *testing.T) {
 
 func TestTagListEmpty(t *testing.T) {
 	database := setupTagTestDB(t)
-	defer database.Close()
+	defer func() { _ = database.Close() }()
 
 	tags, err := database.GetTags("fzf")
 	if err != nil {
@@ -165,9 +165,9 @@ func TestTagListEmpty(t *testing.T) {
 
 func TestTagDuplicateIsIdempotent(t *testing.T) {
 	database := setupTagTestDB(t)
-	defer database.Close()
+	defer func() { _ = database.Close() }()
 
-	database.AddTag("fzf", "fuzzy")
+	_ = database.AddTag("fzf", "fuzzy")
 	err := database.AddTag("fzf", "fuzzy")
 	if err != nil {
 		t.Errorf("Adding duplicate tag should be idempotent: %v", err)
@@ -181,10 +181,10 @@ func TestTagDuplicateIsIdempotent(t *testing.T) {
 
 func TestTagJSONOutput(t *testing.T) {
 	database := setupTagTestDB(t)
-	defer database.Close()
+	defer func() { _ = database.Close() }()
 
-	database.AddTag("fzf", "cli")
-	database.AddTag("bat", "cli")
+	_ = database.AddTag("fzf", "cli")
+	_ = database.AddTag("bat", "cli")
 
 	var buf bytes.Buffer
 	encoder := newEncoder(&buf)
@@ -215,5 +215,6 @@ type testEncoder struct {
 
 func (e *testEncoder) Encode(v any) error {
 	e.w.WriteString("[\n  {\n    \"name\": \"cli\",\n    \"count\": 2\n  }\n]\n")
+
 	return nil
 }

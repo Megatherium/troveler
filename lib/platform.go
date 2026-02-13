@@ -50,6 +50,7 @@ func NormalizePlatform(platform string) string {
 	if normalized, ok := PlatformAliases[strings.ToLower(platform)]; ok {
 		return normalized
 	}
+
 	return platform
 }
 

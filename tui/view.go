@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
 	"troveler/tui/styles"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 // View renders the TUI
@@ -214,6 +215,7 @@ func (m *Model) renderStatusBar() string {
 	// Show error if present
 	if m.err != nil {
 		errMsg := styles.ErrorStyle.Render(fmt.Sprintf(" Error: %v ", m.err))
+
 		return lipgloss.JoinHorizontal(lipgloss.Left, errMsg, " | ", help)
 	}
 
@@ -236,6 +238,7 @@ func (m *Model) renderStatusBar() string {
 		for i := 1; i < len(statusParts); i++ {
 			status = lipgloss.JoinHorizontal(lipgloss.Left, status, " | ", statusParts[i])
 		}
+
 		return lipgloss.JoinHorizontal(lipgloss.Left, status, " | ", help)
 	}
 
@@ -295,6 +298,7 @@ func (m *Model) renderInfoModal() string {
 			Padding(1, 2).
 			Width(min(60, m.width-4)).
 			Render(content)
+
 		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, modalBox)
 	}
 
@@ -523,6 +527,7 @@ func max(a, b int) int {
 	if a > b {
 		return a
 	}
+
 	return b
 }
 
@@ -530,5 +535,6 @@ func min(a, b int) int {
 	if a < b {
 		return a
 	}
+
 	return b
 }

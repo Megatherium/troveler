@@ -12,7 +12,6 @@ import (
 
 const (
 	platformGOPip = "go (pip)"
-	platformLang  = "LANG"
 )
 
 func TestOverrideFlagPriority(t *testing.T) {
@@ -201,7 +200,7 @@ func TestOverrideLANGLanguageMatching(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Logf("Testing: %s", tc.reason)
 
-			if tc.fallbackPlatform == "LANG" {
+			if tc.fallbackPlatform == platformLang {
 				if tc.toolLanguage == "go" && tc.installPlatform == platformGOPip {
 					t.Logf("✓ Language match: %s matches %s", tc.toolLanguage, tc.installPlatform)
 				}
@@ -293,7 +292,7 @@ mise_mode = true`
 			if err != nil {
 				t.Fatalf("Failed to create database: %v", err)
 			}
-			defer database.Close()
+			defer func() { _ = database.Close() }()
 
 			ctx := context.Background()
 			tool := &db.Tool{
@@ -349,6 +348,7 @@ mise_mode = true`
 			// Verify the match
 			if len(matched) == 0 {
 				t.Errorf("%s: Expected to find at least one match, got none", tt.description)
+
 				return
 			}
 
@@ -374,5 +374,6 @@ func extractPlatforms(installs []db.InstallInstruction) []string {
 	for i, inst := range installs {
 		platforms[i] = inst.Platform
 	}
+
 	return platforms
 }
