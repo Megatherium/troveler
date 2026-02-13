@@ -97,6 +97,7 @@ func init() {
 	RootCmd.AddCommand(commands.SearchCmd)
 	RootCmd.AddCommand(commands.InfoCmd)
 	RootCmd.AddCommand(commands.InstallCmd)
+	RootCmd.AddCommand(commands.TagCmd)
 	RootCmd.AddCommand(completionCmd)
 }
 
