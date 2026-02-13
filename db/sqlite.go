@@ -20,8 +20,16 @@ func New(dbPath string) (*SQLiteDB, error) {
 		return nil, fmt.Errorf("failed to open db: %w", err)
 	}
 
+	// SQLite only enforces foreign keys on the connection that enables them.
+	// Limit to one connection so the PRAGMA applies to all operations.
+	db.SetMaxOpenConns(1)
+
 	if err := db.PingContext(context.Background()); err != nil {
 		return nil, fmt.Errorf("failed to ping db: %w", err)
+	}
+
+	if _, err := db.ExecContext(context.Background(), "PRAGMA foreign_keys = ON"); err != nil {
+		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
 	}
 
 	sqlite := &SQLiteDB{db: db}

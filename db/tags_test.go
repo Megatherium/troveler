@@ -266,6 +266,34 @@ func TestGetToolsByTagNotFound(t *testing.T) {
 	}
 }
 
+func TestForeignKeyCascade(t *testing.T) {
+	database := setupTestDB(t)
+	defer database.Close()
+
+	seedTool(t, database, "fzf", "fzf")
+	if err := database.AddTag("fzf", "fuzzy"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
+
+	// Deleting the tool should cascade-delete tool_tags rows.
+	_, err := database.db.ExecContext(context.Background(),
+		"DELETE FROM tools WHERE slug = ?", "fzf")
+	if err != nil {
+		t.Fatalf("DELETE tool failed: %v", err)
+	}
+
+	// tool_tags should be empty — cascade fired.
+	var count int
+	err = database.db.QueryRowContext(context.Background(),
+		"SELECT COUNT(*) FROM tool_tags").Scan(&count)
+	if err != nil {
+		t.Fatalf("COUNT tool_tags failed: %v", err)
+	}
+	if count != 0 {
+		t.Errorf("Expected 0 tool_tags after cascade delete, got %d", count)
+	}
+}
+
 func TestTagModel(t *testing.T) {
 	tag := Tag{
 		ID:   "tag-fuzzy",
