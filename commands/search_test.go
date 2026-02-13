@@ -1,10 +1,14 @@
 package commands
 
 import (
+	"bytes"
+	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 
 	"troveler/config"
+	"troveler/db"
 )
 
 func TestTaglineTruncation(t *testing.T) {
@@ -107,5 +111,96 @@ func TestConfigCustomTaglineWidth(t *testing.T) {
 
 	if cfg.Search.TaglineWidth != 30 {
 		t.Errorf("Expected custom 30, got %d", cfg.Search.TaglineWidth)
+	}
+}
+
+func TestOutputJSON(t *testing.T) {
+	results := []db.SearchResult{
+		{
+			Tool: db.Tool{
+				ID:        "tool-1",
+				Slug:      "test-tool",
+				Name:      "Test Tool",
+				Tagline:   "A test tool",
+				Language:  "Go",
+				Installed: true,
+			},
+		},
+		{
+			Tool: db.Tool{
+				ID:        "tool-2",
+				Slug:      "another-tool",
+				Name:      "Another Tool",
+				Tagline:   "Another test",
+				Language:  "Python",
+				Installed: false,
+			},
+		},
+	}
+
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := outputJSON(results)
+
+	w.Close()
+	os.Stdout = old
+
+	if err != nil {
+		t.Fatalf("outputJSON failed: %v", err)
+	}
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	output := buf.String()
+
+	var decoded []db.SearchResult
+	if err := json.Unmarshal([]byte(output), &decoded); err != nil {
+		t.Fatalf("Failed to decode JSON output: %v\nOutput: %s", err, output)
+	}
+
+	if len(decoded) != len(results) {
+		t.Errorf("Expected %d results, got %d", len(results), len(decoded))
+	}
+
+	for i, expected := range results {
+		if decoded[i].Name != expected.Name {
+			t.Errorf("Result %d: expected Name %q, got %q", i, expected.Name, decoded[i].Name)
+		}
+		if decoded[i].Slug != expected.Slug {
+			t.Errorf("Result %d: expected Slug %q, got %q", i, expected.Slug, decoded[i].Slug)
+		}
+		if decoded[i].Language != expected.Language {
+			t.Errorf("Result %d: expected Language %q, got %q", i, expected.Language, decoded[i].Language)
+		}
+		if decoded[i].Installed != expected.Installed {
+			t.Errorf("Result %d: expected Installed %v, got %v", i, expected.Installed, decoded[i].Installed)
+		}
+	}
+}
+
+func TestOutputJSONEmpty(t *testing.T) {
+	results := []db.SearchResult{}
+
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := outputJSON(results)
+
+	w.Close()
+	os.Stdout = old
+
+	if err != nil {
+		t.Fatalf("outputJSON failed: %v", err)
+	}
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	output := strings.TrimSpace(buf.String())
+
+	if output != "[]" {
+		t.Errorf("Expected empty array [], got %q", output)
 	}
 }

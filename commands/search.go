@@ -2,7 +2,9 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -29,6 +31,7 @@ var SearchCmd = &cobra.Command{
 		sortField, _ := cmd.Flags().GetString("sort")
 		desc, _ := cmd.Flags().GetBool("desc")
 		width, _ := cmd.Flags().GetInt("width")
+		format, _ := cmd.Flags().GetString("format")
 
 		sortOrder := "ASC"
 		if desc {
@@ -53,7 +56,7 @@ var SearchCmd = &cobra.Command{
 				SortOrder: sortOrder,
 			}
 
-			return runSearch(ctx, database, opts, taglineWidth)
+			return runSearch(ctx, database, opts, taglineWidth, format)
 		})
 	},
 }
@@ -63,6 +66,7 @@ func init() {
 	SearchCmd.Flags().StringP("sort", "s", "name", "Sort field (name, tagline, language)")
 	SearchCmd.Flags().BoolP("desc", "d", false, "Sort in descending order")
 	SearchCmd.Flags().IntP("width", "w", 0, "Tagline column width in characters (0 for config default)")
+	SearchCmd.Flags().StringP("format", "f", "pretty", "Output format (pretty, json)")
 }
 
 type searchColumn struct {
@@ -77,7 +81,7 @@ var searchColumns = []searchColumn{
 	{"Installed", "installed"},
 }
 
-func runSearch(ctx context.Context, database *db.SQLiteDB, opts db.SearchOptions, taglineWidth int) error {
+func runSearch(ctx context.Context, database *db.SQLiteDB, opts db.SearchOptions, taglineWidth int, format string) error {
 	searchService := search.NewService(database)
 
 	result, err := searchService.Search(ctx, search.Options{
@@ -93,10 +97,29 @@ func runSearch(ctx context.Context, database *db.SQLiteDB, opts db.SearchOptions
 	results := result.Tools
 
 	if len(results) == 0 {
-		fmt.Printf("No tools found matching '%s'\n", opts.Query)
+		if format == "json" {
+			fmt.Println("[]")
+		} else {
+			fmt.Printf("No tools found matching '%s'\n", opts.Query)
+		}
 		return nil
 	}
 
+	switch format {
+	case "json":
+		return outputJSON(results)
+	default:
+		return outputPretty(results, opts, taglineWidth)
+	}
+}
+
+func outputJSON(results []db.SearchResult) error {
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(results)
+}
+
+func outputPretty(results []db.SearchResult, opts db.SearchOptions, taglineWidth int) error {
 	fmt.Println()
 	title := fmt.Sprintf("Found %d results for '%s' (sorted by %s %s)", len(results), opts.Query, opts.SortField, opts.SortOrder)
 	fmt.Println(lipgloss.NewStyle().
