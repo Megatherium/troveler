@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -53,10 +54,22 @@ func (s *SQLiteDB) createTables() error {
 			command TEXT,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)`,
+		`CREATE TABLE IF NOT EXISTS tags (
+			id TEXT PRIMARY KEY,
+			name TEXT UNIQUE NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS tool_tags (
+			tool_id TEXT REFERENCES tools(id) ON DELETE CASCADE,
+			tag_id TEXT REFERENCES tags(id) ON DELETE CASCADE,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (tool_id, tag_id)
+		)`,
 		`CREATE INDEX IF NOT EXISTS idx_tools_name ON tools(name)`,
 		`CREATE INDEX IF NOT EXISTS idx_tools_language ON tools(language)`,
 		`CREATE INDEX IF NOT EXISTS idx_tools_slug ON tools(slug)`,
 		`CREATE INDEX IF NOT EXISTS idx_install_tool_id ON install_instructions(tool_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_tool_tags_tag_id ON tool_tags(tag_id)`,
 	}
 
 	for _, q := range queries {
@@ -255,6 +268,160 @@ func (s *SQLiteDB) ToolCount(ctx context.Context) (int, error) {
 	var count int
 	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM tools").Scan(&count)
 	return count, err
+}
+
+func (s *SQLiteDB) GetTags(toolID string) ([]string, error) {
+	query := `
+		SELECT t.name
+		FROM tags t
+		JOIN tool_tags tt ON t.id = tt.tag_id
+		WHERE tt.tool_id = ?
+		ORDER BY t.name
+	`
+	rows, err := s.db.QueryContext(context.Background(), query, toolID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tags []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		tags = append(tags, name)
+	}
+	return tags, rows.Err()
+}
+
+func (s *SQLiteDB) GetAllTags() ([]TagCount, error) {
+	query := `
+		SELECT t.name, COUNT(tt.tool_id) as count
+		FROM tags t
+		LEFT JOIN tool_tags tt ON t.id = tt.tag_id
+		GROUP BY t.id, t.name
+		ORDER BY t.name
+	`
+	rows, err := s.db.QueryContext(context.Background(), query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tags []TagCount
+	for rows.Next() {
+		var tc TagCount
+		if err := rows.Scan(&tc.Name, &tc.Count); err != nil {
+			return nil, err
+		}
+		tags = append(tags, tc)
+	}
+	return tags, rows.Err()
+}
+
+func (s *SQLiteDB) AddTag(slug, tagName string) error {
+	tools, err := s.GetToolBySlug(slug)
+	if err != nil {
+		return err
+	}
+	if len(tools) == 0 {
+		return fmt.Errorf("tool not found: %s", slug)
+	}
+	toolID := tools[0].ID
+
+	var tagID string
+	err = s.db.QueryRowContext(context.Background(),
+		"SELECT id FROM tags WHERE name = ?", tagName).Scan(&tagID)
+	if errors.Is(err, sql.ErrNoRows) {
+		tagID = fmt.Sprintf("tag-%s", tagName)
+		_, err = s.db.ExecContext(context.Background(),
+			"INSERT INTO tags (id, name) VALUES (?, ?)", tagID, tagName)
+		if err != nil {
+			return fmt.Errorf("failed to create tag: %w", err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("failed to lookup tag: %w", err)
+	}
+
+	_, err = s.db.ExecContext(context.Background(),
+		"INSERT OR IGNORE INTO tool_tags (tool_id, tag_id) VALUES (?, ?)", toolID, tagID)
+	return err
+}
+
+func (s *SQLiteDB) RemoveTag(slug, tagName string) error {
+	tools, err := s.GetToolBySlug(slug)
+	if err != nil {
+		return err
+	}
+	if len(tools) == 0 {
+		return fmt.Errorf("tool not found: %s", slug)
+	}
+	toolID := tools[0].ID
+
+	result, err := s.db.ExecContext(context.Background(),
+		`DELETE FROM tool_tags WHERE tool_id = ? AND tag_id = (
+			SELECT id FROM tags WHERE name = ?
+		)`, toolID, tagName)
+	if err != nil {
+		return err
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return fmt.Errorf("tag not found on tool: %s", tagName)
+	}
+	return nil
+}
+
+func (s *SQLiteDB) ClearTags(slug string) error {
+	tools, err := s.GetToolBySlug(slug)
+	if err != nil {
+		return err
+	}
+	if len(tools) == 0 {
+		return fmt.Errorf("tool not found: %s", slug)
+	}
+	toolID := tools[0].ID
+
+	_, err = s.db.ExecContext(context.Background(),
+		"DELETE FROM tool_tags WHERE tool_id = ?", toolID)
+	return err
+}
+
+func (s *SQLiteDB) GetToolsByTag(tagName string) ([]Tool, error) {
+	query := `
+		SELECT t.id, t.slug, t.name, t.tagline, t.description, t.language, t.license,
+			t.date_published, t.code_repository, t.created_at, t.updated_at
+		FROM tools t
+		JOIN tool_tags tt ON t.id = tt.tool_id
+		JOIN tags tag ON tt.tag_id = tag.id
+		WHERE tag.name = ?
+		ORDER BY t.name
+	`
+	rows, err := s.db.QueryContext(context.Background(), query, tagName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tools []Tool
+	for rows.Next() {
+		var t Tool
+		err := rows.Scan(
+			&t.ID, &t.Slug, &t.Name, &t.Tagline, &t.Description,
+			&t.Language, &t.License, &t.DatePublished, &t.CodeRepository,
+			&t.CreatedAt, &t.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		tools = append(tools, t)
+	}
+	return tools, rows.Err()
 }
 
 func (s *SQLiteDB) Close() error {

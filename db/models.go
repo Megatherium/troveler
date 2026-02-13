@@ -56,3 +56,14 @@ type Filter struct {
 	Left  *Filter
 	Right *Filter
 }
+
+type Tag struct {
+	ID        string    `json:"id" db:"id"`
+	Name      string    `json:"name" db:"name"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
+}
+
+type TagCount struct {
+	Name  string `json:"name"`
+	Count int    `json:"count"`
+}
