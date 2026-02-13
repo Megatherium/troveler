@@ -13,11 +13,11 @@ var (
 	InactiveBorder = BorderStyle.BorderForeground(lipgloss.Color("#444444"))
 
 	// Titles
-	TitleStyle        = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#00FFFF"))
-	SubtitleStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAAA")).Italic(true)
-	HighlightStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#00FF00"))
-	ErrorStyle        = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FF0000"))
-	MutedStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+	TitleStyle     = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#00FFFF"))
+	SubtitleStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAAA")).Italic(true)
+	HighlightStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#00FF00"))
+	ErrorStyle     = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FF0000"))
+	MutedStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
 
 	// Interactive elements
 	SelectedStyle       = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#00FFFF")).Background(lipgloss.Color("#003333"))
@@ -27,8 +27,8 @@ var (
 	MarkedSelectedStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFFF00")).Background(lipgloss.Color("#555500"))
 
 	// Status
-	StatusBarStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAAA"))
-	HelpStyle         = lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+	StatusBarStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAAA"))
+	HelpStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
 
 	// Gradient colors (reuse from existing gradient)
 	GradientColors = ui.GradientColors

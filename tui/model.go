@@ -61,8 +61,8 @@ type Model struct {
 	executeOutput string
 
 	// Batch install state
-	batchConfig     *BatchInstallConfig
-	batchProgress   *BatchInstallProgress
+	batchConfig   *BatchInstallConfig
+	batchProgress *BatchInstallProgress
 
 	// Update state
 	updating       bool

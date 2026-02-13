@@ -15,15 +15,15 @@ import (
 
 // InstallPanel displays install options
 type InstallPanel struct {
-	commands      []install.CommandInfo
-	cursor        int
-	focused       bool
-	cliOverride   string
+	commands       []install.CommandInfo
+	cursor         int
+	focused        bool
+	cliOverride    string
 	configOverride string
-	fallback      string
-	toolLanguage  string
-	usedFallback  bool
-	miseMode      bool
+	fallback       string
+	toolLanguage   string
+	usedFallback   bool
+	miseMode       bool
 }
 
 // InstallExecuteMsg is sent when user wants to execute install
@@ -64,12 +64,12 @@ func (p *InstallPanel) SetTool(tool *db.Tool, installs []db.InstallInstruction) 
 	// CLI parameters have higher priority than config settings
 	cliOverride := p.cliOverride
 	configOverride := p.configOverride
-	
+
 	// Resolve virtual platforms (mise:* → source platform)
 	if cliOverride != "" {
 		cliOverride = p.resolveVirtualPlatform(cliOverride)
 	}
-	
+
 	if p.miseMode && p.cliOverride == "" {
 		cliOverride = "LANG"
 	}
@@ -91,7 +91,7 @@ func (p *InstallPanel) SetTool(tool *db.Tool, installs []db.InstallInstruction) 
 
 	// Format for display and transform if mise mode is enabled
 	p.commands = install.FormatCommands(filtered, defaultCmd)
-	
+
 	// Add virtual commands to the display
 	for _, v := range virtuals {
 		cmd := install.CommandInfo{

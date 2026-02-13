@@ -102,3 +102,19 @@ func TestSearchPanelView(t *testing.T) {
 		t.Error("Expected view to render content")
 	}
 }
+
+func TestSearchPanelNarrowTerminal(t *testing.T) {
+	panel := NewSearchPanel()
+
+	// Test with very narrow width (less than input width + 4)
+	view := panel.View(5, 5)
+
+	if view == "" {
+		t.Error("Expected view to render even with very narrow width")
+	}
+
+	// Verify input width is clamped to minimum
+	if panel.textInput.Width < 10 {
+		t.Errorf("Expected input width to be at least 10, got %d", panel.textInput.Width)
+	}
+}

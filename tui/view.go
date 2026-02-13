@@ -14,6 +14,18 @@ func (m *Model) View() string {
 		return "Initializing..."
 	}
 
+	// Minimum terminal width for proper rendering
+	minWidth := 80
+	if m.width < minWidth {
+		return fmt.Sprintf("Terminal too narrow (%d columns).\nPlease resize to at least %d columns.\n", m.width, minWidth)
+	}
+
+	// Minimum terminal height for proper rendering
+	minHeight := 20
+	if m.height < minHeight {
+		return fmt.Sprintf("Terminal too short (%d rows).\nPlease resize to at least %d rows.\n", m.height, minHeight)
+	}
+
 	// Show modals if active
 	if m.showHelp {
 		return m.renderHelpModal()
@@ -60,13 +72,13 @@ func (m *Model) renderMainLayout() string {
 	if installLineCount < 8 {
 		installLineCount = 8 // minimum height
 	}
-	
+
 	maxInstallHeight := (availableHeight * 2) / 3 // max 67% of height
 	installHeight := installLineCount
 	if installHeight > maxInstallHeight {
 		installHeight = maxInstallHeight
 	}
-	
+
 	// Info panel gets remaining space
 	infoHeight := availableHeight - installHeight
 
@@ -121,8 +133,8 @@ func (m *Model) renderPanel(id PanelID, title string, width, height int, placeho
 
 	// Wrap in outer border with title
 	return borderStyle.
-		Width(width-1).
-		Height(height-1).
+		Width(width - 1).
+		Height(height - 1).
 		Render(lipgloss.JoinVertical(lipgloss.Left, titleStr, panel))
 }
 
@@ -149,8 +161,8 @@ func (m *Model) renderSearchPanel(width, height int) string {
 
 	// Wrap in border
 	return borderStyle.
-		Width(width-1).
-		Height(height-1).
+		Width(width - 1).
+		Height(height - 1).
 		Render(lipgloss.JoinVertical(lipgloss.Left, title, content))
 }
 
@@ -325,16 +337,16 @@ func (m *Model) renderInfoModal() string {
 	var content string
 	content += styles.TitleStyle.Render(m.selectedTool.Name)
 	content += "\n\n"
-	
+
 	if m.selectedTool.Tagline != "" {
 		content += styles.SubtitleStyle.Render(m.selectedTool.Tagline) + "\n\n"
 	}
-	
+
 	if m.selectedTool.Description != "" {
 		content += styles.HighlightStyle.Render("Description:") + "\n"
 		content += m.selectedTool.Description + "\n\n"
 	}
-	
+
 	content += styles.HighlightStyle.Render("Details:") + "\n"
 	if m.selectedTool.Language != "" {
 		content += styles.MutedStyle.Render("  Language: ") + m.selectedTool.Language + "\n"
@@ -345,11 +357,11 @@ func (m *Model) renderInfoModal() string {
 	if m.selectedTool.DatePublished != "" {
 		content += styles.MutedStyle.Render("  Published: ") + m.selectedTool.DatePublished + "\n"
 	}
-	
+
 	if len(m.installs) > 0 {
 		content += fmt.Sprintf("\n💾 %d install options available\n", len(m.installs))
 	}
-	
+
 	content += "\n" + styles.HelpStyle.Render("Press Esc to close")
 
 	modalBox := styles.BorderStyle.

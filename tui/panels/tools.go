@@ -214,12 +214,23 @@ func (p *ToolsPanel) View(width, height int) string {
 		return styles.MutedStyle.Render("No tools found")
 	}
 
+	// Minimum width needed to render table safely
+	minWidth := 60
+	if width < minWidth {
+		return fmt.Sprintf("Terminal too narrow (%d columns).\nMinimum %d columns required.", width, minWidth)
+	}
+
 	var b strings.Builder
 
 	installedWidth := 9
 	nameWidth := 25
 	taglineWidth := width - nameWidth - installedWidth - 15 - 10
 	langWidth := 10
+
+	// Ensure taglineWidth doesn't become negative or too small
+	if taglineWidth < 10 {
+		taglineWidth = 10
+	}
 
 	// Render header
 	headers := []string{
@@ -256,6 +267,11 @@ func (p *ToolsPanel) View(width, height int) string {
 
 // renderHeader renders a column header with sort indicator
 func (p *ToolsPanel) renderHeader(title string, col int, width int) string {
+	// Ensure width is positive
+	if width <= 0 {
+		width = 1
+	}
+
 	// Add sort indicator
 	indicator := " "
 	if p.sortCol == col {

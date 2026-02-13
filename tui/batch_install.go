@@ -6,25 +6,25 @@ import (
 
 // BatchInstallConfig holds configuration for batch tool installation
 type BatchInstallConfig struct {
-	ReuseConfig      bool   // Use same config for all tools
-	UseSudo          bool   // Use sudo for all installs
-	SudoOnlySystem   bool   // Use sudo only for system package managers
-	SkipIfBlind      bool   // Skip tools without proper install method
-	UseMise          bool   // Use mise for all installs
-	SudoPassword     string // Cached sudo password (in memory only)
-	ConfigStep       int    // Current step in config wizard (0-4)
+	ReuseConfig    bool   // Use same config for all tools
+	UseSudo        bool   // Use sudo for all installs
+	SudoOnlySystem bool   // Use sudo only for system package managers
+	SkipIfBlind    bool   // Skip tools without proper install method
+	UseMise        bool   // Use mise for all installs
+	SudoPassword   string // Cached sudo password (in memory only)
+	ConfigStep     int    // Current step in config wizard (0-4)
 }
 
 // BatchInstallProgress tracks batch install progress
 type BatchInstallProgress struct {
-	Tools           []db.SearchResult
-	CurrentIndex    int
-	Completed       []string // Tool IDs that completed successfully
-	Failed          []string // Tool IDs that failed
-	Skipped         []string // Tool IDs that were skipped
-	CurrentOutput   string
-	CurrentError    error
-	IsComplete      bool
+	Tools         []db.SearchResult
+	CurrentIndex  int
+	Completed     []string // Tool IDs that completed successfully
+	Failed        []string // Tool IDs that failed
+	Skipped       []string // Tool IDs that were skipped
+	CurrentOutput string
+	CurrentError  error
+	IsComplete    bool
 }
 
 // NewBatchInstallConfig creates a new batch install configuration

@@ -201,3 +201,35 @@ func TestToolsPanelView(t *testing.T) {
 func contains(s, substr string) bool {
 	return len(s) > 0 && len(substr) > 0 && (s == substr || len(s) >= len(substr) && (s[:len(substr)] == substr || contains(s[1:], substr)))
 }
+
+func TestToolsPanelNarrowTerminal(t *testing.T) {
+	panel := NewToolsPanel()
+
+	tools := []db.SearchResult{
+		{Tool: db.Tool{Name: "tool1", Tagline: "A test tool", Language: "go"}},
+	}
+	panel.SetTools(tools)
+
+	// Test with very narrow width (less than minimum)
+	view := panel.View(40, 20)
+
+	if view == "" {
+		t.Error("Expected view to render even with narrow width")
+	}
+
+	// Should show error message about narrow terminal
+	if !contains(view, "too narrow") {
+		t.Error("Expected view to contain error message about narrow terminal")
+	}
+
+	// Test with adequate width
+	view = panel.View(80, 20)
+
+	if view == "" {
+		t.Error("Expected view to render with adequate width")
+	}
+
+	if !contains(view, "tool1") {
+		t.Error("Expected view to contain tool name with adequate width")
+	}
+}
