@@ -1,0 +1,192 @@
+# golangci-lint configuration for troveler
+# A comprehensive, well-tuned configuration for a Go CLI/TUI application
+version: "2"
+
+# Timeout duration
+timeout: 5m
+
+# Run in fast mode (useful for CI/CD)
+run:
+  tests: true
+  timeout: 5m
+  go: "1.25.6"
+  skip-dirs:
+    - \\.git
+    - \\.beads
+    - \\.perles
+    - vendor
+    - bin
+    - dist
+    - build
+    - tmp
+    - integration/results
+  skip-files:
+    - \\.golangci\\.yml$
+
+# Maximum issues per file
+max-issues-per-linter: 50
+max-same-issues: 0
+
+# Output configuration
+output:
+  formats:
+    text:
+      path: stdout
+      print-linter-name: true
+      print-issued-lines: true
+      colors: true
+  uniq-by-line: true
+  sort-results: true
+
+# Linters configuration
+linters:
+  enable:
+    # Core linters
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - ineffassign
+    - unconvert
+
+    # Advanced checks
+    - gosec
+    - goconst
+    - gocyclo
+    - misspell
+    - unparam
+
+    # Code quality
+    - revive
+    - errname
+    - errorlint
+    - goheader
+    - lll
+    - makezero
+    - nilerr
+    - noctx
+    - nlreturn
+    - nolintlint
+    - predeclared
+    - rowserrcheck
+    - sqlclosecheck
+    - whitespace
+
+  disable:
+    - depguard
+    - prealloc
+
+  disable-all: false
+
+# Formatters configuration
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
+# Linter settings
+linters-settings:
+
+  gofmt:
+    simplify: true
+    rewrite-tests: true
+
+  govet:
+    enable-all: true
+    disable:
+      - shadow
+      - fieldalignment
+    settings:
+      printf: true
+
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+    exclude-dirs:
+      - vendor
+
+  staticcheck:
+    checks: ["all", "-ST1000", "-ST1003", "-SA1019"]
+
+  unused:
+    check-exported: true
+    go-modules: true
+
+  goconst:
+    min-len: 2
+    min-occurrences: 3
+    ignore-tests: true
+
+  gocyclo:
+    min-complexity: 15
+
+  misspell:
+    locale: US
+    ignore-words:
+      - Ths
+      - need
+
+  lll:
+    line-length: 120
+    tab-width: 4
+
+  nlreturn:
+    block-size: 2
+
+  nolintlint:
+    require-explaining: true
+    require-specific: true
+
+  goheader:
+    template: |
+      Copyright (c) [year] troveler contributors
+      Use of this source code is governed by a MIT-style license that can be
+      found in the LICENSE file in the root of the source tree or at
+      https://opensource.org/licenses/MIT.
+    values:
+      YEAR: current year
+
+# Issue exclusions
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+        - gocyclo
+        - funlen
+        - gocognit
+        - gosec
+        - lll
+        - gochecknoglobals
+        - gochecknoinits
+        - nakedret
+        - revive
+
+    - linters:
+        - staticcheck
+      text: "ST1005"
+    - linters:
+        - staticcheck
+      text: "ST1006"
+
+    - path: _test\.go
+      linters:
+        - revive
+
+    - path: .*build_and_test\.sh$
+      linters:
+        - misspell
+        - govet
+        - staticcheck
+
+    - path: .*_test\.go$
+      linters:
+        - gosec
+        - rowserrcheck
+        - sqlclosecheck
+
+    - path: _test\.go
+      linters:
+        - goheader
+
+  exclude-use-default: false
