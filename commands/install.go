@@ -48,7 +48,11 @@ For multiple tools:
 
 			if len(args) == 1 {
 				// Single tool - use existing logic
-				return runInstall(database, args[0], all, run, sudo, override, cfg.Install.PlatformOverride, cfg.Install.FallbackPlatform, cfg.Install.AlwaysRun, cfg.Install.UseSudo, miseEnabled)
+				return runInstall(
+					database, args[0], all, run, sudo, override,
+					cfg.Install.PlatformOverride, cfg.Install.FallbackPlatform,
+					cfg.Install.AlwaysRun, cfg.Install.UseSudo, miseEnabled,
+				)
 			}
 
 			// Multiple tools - batch install
@@ -59,10 +63,12 @@ For multiple tools:
 
 func init() {
 	InstallCmd.Flags().BoolVarP(&all, "all", "a", false, "Show all install commands")
-	InstallCmd.Flags().StringVarP(&override, "override", "o", "", "Override platform detection (e.g., macos, linux:arch, LANG)")
+	InstallCmd.Flags().StringVarP(&override, "override", "o", "",
+		"Override platform detection (e.g., macos, linux:arch, LANG)")
 	InstallCmd.Flags().BoolVarP(&run, "run", "r", false, "Run the install command after confirmation")
 	InstallCmd.Flags().BoolVarP(&sudo, "sudo", "s", false, "Prepend sudo to the install command")
-	InstallCmd.Flags().BoolVar(&mise, "mise", false, "Output mise use commands for language-based installations (forces LANG override)")
+	InstallCmd.Flags().BoolVar(&mise, "mise", false,
+		"Output mise use commands for language-based installations (forces LANG override)")
 	InstallCmd.Flags().StringVar(&reuseConfig, "reuse-config", "ask", "Reuse config for all tools: true, ask, false")
 	InstallCmd.Flags().BoolVar(&sudoOnlySystem, "sudo-only-system", false, "Use sudo only for system package managers")
 	InstallCmd.Flags().BoolVar(&skipIfBlind, "skip-if-blind", false, "Skip tools without compatible install method")
@@ -87,7 +93,11 @@ func ResolveVirtualPlatform(platform string) string {
 	return platform
 }
 
-func runInstall(database *db.SQLiteDB, slug string, showAll bool, run bool, sudo bool, cliOverride string, configOverride string, fallbackPlatform string, alwaysRun bool, useSudo string, miseEnabled bool) error {
+func runInstall(
+	database *db.SQLiteDB, slug string, showAll bool, run bool, sudo bool,
+	cliOverride string, configOverride string, fallbackPlatform string,
+	alwaysRun bool, useSudo string, miseEnabled bool,
+) error {
 	tools, err := database.GetToolBySlug(slug)
 	if err != nil {
 		return fmt.Errorf("tool not found: %s", slug)
@@ -122,10 +132,10 @@ func runInstall(database *db.SQLiteDB, slug string, showAll bool, run bool, sudo
 
 	// Check for CLI or config override first
 	override := selectOverride(cliOverride, configOverride)
-	
+
 	// Resolve virtual platforms (mise:* → source platform)
 	override = ResolveVirtualPlatform(override)
-	
+
 	if override != "" {
 		// Override is set, use it
 		if override == "LANG" {
@@ -201,7 +211,10 @@ func runInstall(database *db.SQLiteDB, slug string, showAll bool, run bool, sudo
 	}
 
 	fmt.Println()
-	fmt.Println(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#00FF00")).Render("Install command for " + platform + ":"))
+	fmt.Println(lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#00FF00")).
+		Render("Install command for " + platform + ":"))
 	fmt.Println()
 
 	for _, inst := range matched {
@@ -265,8 +278,8 @@ func executeInstall(command string, sudo bool, useSudo string, alwaysRun bool) e
 	}
 
 	fmt.Printf("\nExecuting: %s\n\n", command)
-	
-	cmd := exec.Command("sh", "-c", command)
+
+	cmd := exec.Command("sh", "-c", command) //nolint:noctx
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
@@ -274,7 +287,10 @@ func executeInstall(command string, sudo bool, useSudo string, alwaysRun bool) e
 
 func showAllInstalls(name string, installs []db.InstallInstruction) error {
 	fmt.Println()
-	fmt.Println(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#00FFFF")).Render(name + " - All Install Commands:"))
+	fmt.Println(lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#00FFFF")).
+		Render(name + " - All Install Commands:"))
 	fmt.Println(strings.Repeat("─", len(name)+len(" - All Install Commands:")))
 	fmt.Println()
 
@@ -283,7 +299,7 @@ func showAllInstalls(name string, installs []db.InstallInstruction) error {
 
 	// Combine raw installs with virtual installs
 	headers := []string{"Platform", "Command"}
-	
+
 	// Calculate total rows needed
 	totalRows := len(installs) + len(virtuals)
 	rows := make([][]string, 0, totalRows)
@@ -328,7 +344,10 @@ type BatchConfig struct {
 }
 
 // runBatchInstall handles installing multiple tools
-func runBatchInstall(database *db.SQLiteDB, slugs []string, run, sudo, sudoOnlySystem, skipIfBlind, miseEnabled bool, reuseConfig string, cfg *config.Config) error {
+func runBatchInstall(
+	database *db.SQLiteDB, slugs []string, run, sudo, sudoOnlySystem, skipIfBlind, miseEnabled bool,
+	reuseConfig string, cfg *config.Config,
+) error {
 	fmt.Printf("\n🔧 Batch Install: %d tools\n\n", len(slugs))
 
 	// Determine if we should ask for config

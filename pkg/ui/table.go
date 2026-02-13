@@ -6,6 +6,10 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+const (
+	tableBorderChar = "│"
+)
+
 type TableConfig struct {
 	Headers    []string
 	Rows       [][]string
@@ -69,6 +73,7 @@ func calculateColumnWidths(headers []string, rows [][]string) []int {
 			}
 		}
 	}
+
 	return colWidths
 }
 
@@ -86,6 +91,7 @@ func renderTopBorder(colWidths []int) string {
 		}
 	}
 	b.WriteString(rightEnd + "\n")
+
 	return b.String()
 }
 
@@ -124,7 +130,7 @@ func renderBotBorder(colWidths []int) string {
 }
 
 func renderHeader(b *strings.Builder, headers []string, colWidths []int, styleFunc func(string, int) string) {
-	borderChar := "│"
+	borderChar := tableBorderChar
 
 	if styleFunc == nil {
 		defaultStyle := DefaultHeaderStyle()
@@ -145,7 +151,7 @@ func renderHeader(b *strings.Builder, headers []string, colWidths []int, styleFu
 }
 
 func renderRows(b *strings.Builder, rows [][]string, colWidths []int, styleFunc func(string, int, int) string) {
-	borderChar := "│"
+	borderChar := tableBorderChar
 
 	if styleFunc == nil {
 		styleFunc = func(s string, rowIdx, colIdx int) string {
@@ -187,7 +193,7 @@ func RenderKeyValueTable(rows [][]string) string {
 	}
 
 	var b strings.Builder
-	borderChar := "│"
+	borderChar := tableBorderChar
 	topBorder := "┌"
 	botBorder := "└"
 	joinChar := "┬"

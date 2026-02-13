@@ -44,6 +44,7 @@ func NewFetcher() *Fetcher {
 
 func (f *Fetcher) FetchSearchPage(ctx context.Context, page int) ([]byte, error) {
 	url := fmt.Sprintf("%s/search?q=*&page=%d&per_page=%d", baseURL, page, resultsPerPage)
+
 	return f.Fetch(ctx, url)
 }
 
@@ -73,7 +74,8 @@ func (f *Fetcher) Fetch(ctx context.Context, url string) ([]byte, error) {
 			return nil, fmt.Errorf("failed to create request: %w", err)
 		}
 
-		req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+		req.Header.Set("User-Agent",
+			"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
 		resp, err := f.client.Do(req)
 		if err != nil {
@@ -92,7 +94,6 @@ func (f *Fetcher) Fetch(ctx context.Context, url string) ([]byte, error) {
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			fetchErr = fmt.Errorf("status %d", resp.StatusCode)
 			if attempt < maxRetries {
 				delay := time.Duration(attempt*attempt) * 100 * time.Millisecond
 				select {
@@ -102,12 +103,11 @@ func (f *Fetcher) Fetch(ctx context.Context, url string) ([]byte, error) {
 					continue
 				}
 			}
-			return nil, fmt.Errorf("HTTP %d for %s", resp.StatusCode, url)
+			return nil, fmt.Errorf("status %d", resp.StatusCode)
 		}
 
 		body, err = io.ReadAll(resp.Body)
 		if err != nil {
-			fetchErr = err
 			if attempt < maxRetries {
 				delay := time.Duration(attempt*attempt) * 100 * time.Millisecond
 				select {
@@ -156,6 +156,7 @@ func (f *Fetcher) FetchSearchPagesConcurrently(ctx context.Context, totalPages i
 				data, err := f.FetchSearchPage(ctx, page)
 				if err != nil {
 					errChan <- fmt.Errorf("page %d: %w", page, err)
+
 					continue
 				}
 
@@ -206,6 +207,7 @@ func (f *Fetcher) FetchDetailsConcurrently(ctx context.Context, slugs []string) 
 				data, err := f.FetchDetailPage(ctx, slug)
 				if err != nil {
 					errChan <- fmt.Errorf("slug %s: %w", slug, err)
+
 					continue
 				}
 

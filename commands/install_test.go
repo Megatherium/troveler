@@ -109,13 +109,13 @@ func TestFindMatchingInstallsWithVirtualPlatforms(t *testing.T) {
 			matched := FindMatchingInstalls(override, installs)
 
 			if len(matched) != tt.expectCount {
-				t.Errorf("Expected %d matches for override %s, got %d", 
+				t.Errorf("Expected %d matches for override %s, got %d",
 					tt.expectCount, tt.override, len(matched))
 			}
 
 			if tt.expectCount > 0 {
 				if matched[0].Platform != tt.platform {
-					t.Errorf("Expected platform %q, got %q", 
+					t.Errorf("Expected platform %q, got %q",
 						tt.platform, matched[0].Platform)
 				}
 			}

@@ -99,6 +99,7 @@ func TestGetKeyValuePairs(t *testing.T) {
 	for _, pair := range pairs {
 		if pair[0] == "Slug" && pair[1] == "test" {
 			found = true
+
 			break
 		}
 	}

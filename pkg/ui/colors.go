@@ -1,3 +1,4 @@
+// Package ui provides UI utilities for rendering.
 package ui
 
 var GradientColors = []string{
@@ -22,5 +23,6 @@ func GetGradientColor(pos int, total int) string {
 		p = 1
 	}
 	idx := int(p * float64(len(GradientColors)-1))
+
 	return GradientColors[idx]
 }

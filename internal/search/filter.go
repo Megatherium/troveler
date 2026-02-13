@@ -1,3 +1,4 @@
+// Package search provides search functionality with filter parsing.
 package search
 
 import (
@@ -67,6 +68,7 @@ func (p *Parser) tokenize(query string) {
 		// Skip spaces but add as separators
 		if unicode.IsSpace(r) {
 			i++
+
 			continue
 		}
 
@@ -74,11 +76,13 @@ func (p *Parser) tokenize(query string) {
 		if r == '"' || r == '\'' {
 			quotes = !quotes
 			i++
+
 			continue
 		}
 
 		if quotes {
 			i++
+
 			continue
 		}
 
@@ -185,11 +189,13 @@ func (p *Parser) parseNot() (*db.Filter, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		return &db.Filter{
 			Type: db.FilterNot,
 			Left: operand,
 		}, nil
 	}
+
 	return p.parseTerm()
 }
 
@@ -209,6 +215,7 @@ func (p *Parser) parseTerm() (*db.Filter, error) {
 			return nil, fmt.Errorf("missing closing parenthesis")
 		}
 		p.pos++
+
 		return expr, nil
 	}
 
@@ -218,7 +225,6 @@ func (p *Parser) parseTerm() (*db.Filter, error) {
 		p.tokens[p.pos+1].Type == tokenOperator &&
 		p.tokens[p.pos+1].Value == "=" &&
 		p.tokens[p.pos+2].Type == tokenValue {
-
 		field := p.tokens[p.pos].Value
 		value := p.tokens[p.pos+2].Value
 		p.pos += 3
@@ -240,21 +246,18 @@ func (p *Parser) extractSearchTerm(ast *db.Filter) string {
 	return strings.Join(terms, " ")
 }
 
-func (p *Parser) collectSearchTerms(f *db.Filter, terms *[]string) {
+func (p *Parser) collectSearchTerms(f *db.Filter, terms *[]string) { //nolint:unparam
 	if f == nil {
 		return
 	}
 
-	if f.Type == db.FilterField {
-		// Skip field filters
-		return
-	}
-
-	// For AND/OR, collect values from children
-	if f.Left != nil {
-		p.collectSearchTerms(f.Left, terms)
-	}
-	if f.Right != nil {
-		p.collectSearchTerms(f.Right, terms)
+	// For AND/OR/NOT, recursively collect from children
+	if f.Type == db.FilterAnd || f.Type == db.FilterOr || f.Type == db.FilterNot {
+		if f.Left != nil {
+			p.collectSearchTerms(f.Left, terms)
+		}
+		if f.Right != nil {
+			p.collectSearchTerms(f.Right, terms)
+		}
 	}
 }

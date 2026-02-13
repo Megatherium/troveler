@@ -87,6 +87,7 @@ func ParseDetailPage(data []byte) (*DetailPage, error) {
 	for _, item := range jsonLD.Graph {
 		if item["@type"] == "SoftwareApplication" {
 			softwareApp = item
+
 			break
 		}
 	}

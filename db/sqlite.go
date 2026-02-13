@@ -19,7 +19,7 @@ func New(dbPath string) (*SQLiteDB, error) {
 		return nil, fmt.Errorf("failed to open db: %w", err)
 	}
 
-	if err := db.Ping(); err != nil {
+	if err := db.PingContext(context.Background()); err != nil {
 		return nil, fmt.Errorf("failed to ping db: %w", err)
 	}
 
@@ -60,7 +60,7 @@ func (s *SQLiteDB) createTables() error {
 	}
 
 	for _, q := range queries {
-		if _, err := s.db.Exec(q); err != nil {
+		if _, err := s.db.ExecContext(context.Background(), q); err != nil {
 			return err
 		}
 	}
@@ -70,7 +70,8 @@ func (s *SQLiteDB) createTables() error {
 
 func (s *SQLiteDB) UpsertTool(ctx context.Context, tool *Tool) error {
 	query := `
-		INSERT INTO tools (id, slug, name, tagline, description, language, license, date_published, code_repository, updated_at)
+		INSERT INTO tools (id, slug, name, tagline, description, language, license,
+			date_published, code_repository, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			slug = excluded.slug,
@@ -176,7 +177,8 @@ func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResu
 }
 
 func (s *SQLiteDB) GetAllTools(ctx context.Context) ([]Tool, error) {
-	query := `SELECT id, slug, name, tagline, description, language, license, date_published, code_repository, created_at, updated_at FROM tools`
+	query := `SELECT id, slug, name, tagline, description, language, license,
+		date_published, code_repository, created_at, updated_at FROM tools`
 	rows, err := s.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
@@ -201,7 +203,8 @@ func (s *SQLiteDB) GetAllTools(ctx context.Context) ([]Tool, error) {
 }
 
 func (s *SQLiteDB) GetToolBySlug(slug string) ([]Tool, error) {
-	query := `SELECT id, slug, name, tagline, description, language, license, date_published, code_repository, created_at, updated_at FROM tools WHERE slug = ?`
+	query := `SELECT id, slug, name, tagline, description, language, license,
+		date_published, code_repository, created_at, updated_at FROM tools WHERE slug = ?`
 	rows, err := s.db.QueryContext(context.Background(), query, slug)
 	if err != nil {
 		return nil, err

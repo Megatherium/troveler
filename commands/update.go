@@ -159,6 +159,7 @@ func (u *UpdateUI) renderChaoticStream() string {
 
 					line.WriteString(style.Render(string(char)))
 					found = true
+
 					break
 				}
 			}
@@ -232,7 +233,9 @@ func fetchAndParseSlugs(ctx context.Context, fetcher *crawler.Fetcher, limit int
 	return allSlugs, int(initialResp.Found), nil
 }
 
-func processDetailsConcurrently(ctx context.Context, fetcher *crawler.Fetcher, slugs []string, ui *UpdateUI) (<-chan crawler.DetailPage, <-chan error) {
+func processDetailsConcurrently(
+	ctx context.Context, fetcher *crawler.Fetcher, slugs []string, ui *UpdateUI,
+) (<-chan crawler.DetailPage, <-chan error) {
 	detailChan := make(chan crawler.DetailPage, 100)
 	errChan := make(chan error, 1)
 
@@ -340,10 +343,16 @@ func runUpdateUI(ctx context.Context, ui *UpdateUI, detailDone <-chan struct{}, 
 	}
 }
 
-func runUpdate(ctx context.Context, database *db.SQLiteDB, fetcher *crawler.Fetcher, limit int, logOutput bool, currentCount int) error {
+func runUpdate(
+	ctx context.Context, database *db.SQLiteDB, fetcher *crawler.Fetcher,
+	limit int, logOutput bool, currentCount int,
+) error {
 	if !logOutput {
 		fmt.Println()
-		fmt.Println(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#00FFFF")).Render("Fetching tools from terminaltrove.com..."))
+		fmt.Println(lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("#00FFFF")).
+			Render("Fetching tools from terminaltrove.com..."))
 		fmt.Println()
 	}
 

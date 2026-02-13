@@ -297,7 +297,9 @@ func (p *ToolsPanel) renderHeader(title string, col int, width int) string {
 }
 
 // renderRow renders a single tool row
-func (p *ToolsPanel) renderRow(idx int, tool db.SearchResult, nameWidth, taglineWidth, langWidth, installedWidth int) string {
+func (p *ToolsPanel) renderRow(
+	idx int, tool db.SearchResult, nameWidth, taglineWidth, langWidth, installedWidth int,
+) string {
 	// Truncate fields to fit
 	name := tool.Name
 	if len(name) > nameWidth {
@@ -412,6 +414,7 @@ func (p *ToolsPanel) UpdateToolInstalledStatus(toolID string, isInstalled bool) 
 	for i := range p.tools {
 		if p.tools[i].ID == toolID {
 			p.tools[i].Installed = isInstalled
+
 			break
 		}
 	}

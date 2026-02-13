@@ -395,7 +395,7 @@ type installCompleteMsg struct {
 func (m *Model) executeInstallCommand(command string) tea.Cmd {
 	return func() tea.Msg {
 		// Execute command using shell
-		cmd := exec.Command("sh", "-c", command)
+		cmd := exec.Command("sh", "-c", command) //nolint:noctx
 		output, err := cmd.CombinedOutput()
 
 		return installCompleteMsg{

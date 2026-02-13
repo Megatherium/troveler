@@ -5,6 +5,11 @@ import (
 	"strings"
 )
 
+const (
+	filterFieldInstalled = "installed"
+	filterValueTrue      = "true"
+)
+
 // BuildWhereClause converts a Filter AST to SQL WHERE clauses
 func BuildWhereClause(filter *Filter, searchTerm string) (string, []interface{}) {
 	var clauses []string
@@ -80,7 +85,7 @@ func buildFieldFilter(field, value string) (string, []interface{}) {
 		return "tagline LIKE ?", []interface{}{"%" + value + "%"}
 	case "language":
 		return "language LIKE ?", []interface{}{"%" + value + "%"}
-	case "installed":
+	case filterFieldInstalled:
 		// Special case: handled in Go after query, but needs to return a clause
 		// for AND/OR combinations to work properly
 		return "1=1", nil
@@ -104,7 +109,7 @@ func filterByInstalled(results []SearchResult, filter *Filter) []SearchResult {
 
 	var filtered []SearchResult
 	for _, r := range results {
-		wantInstalled := (value == "true" || value == "1")
+		wantInstalled := (value == filterValueTrue || value == "1")
 		if negated {
 			wantInstalled = !wantInstalled
 		}
@@ -122,7 +127,7 @@ func hasInstalledFilter(filter *Filter) bool {
 		return false
 	}
 
-	if filter.Type == FilterField && filter.Field == "installed" {
+	if filter.Type == FilterField && filter.Field == filterFieldInstalled {
 		return true
 	}
 
@@ -146,7 +151,7 @@ func getInstalledFilterInfo(filter *Filter, negated bool) (string, bool) {
 		return getInstalledFilterInfo(filter.Left, !negated)
 	}
 
-	if filter.Type == FilterField && filter.Field == "installed" {
+	if filter.Type == FilterField && filter.Field == filterFieldInstalled {
 		return filter.Value, negated
 	}
 

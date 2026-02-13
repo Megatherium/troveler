@@ -10,97 +10,102 @@ import (
 	"troveler/lib"
 )
 
+const (
+	platformGOPip = "go (pip)"
+	platformLang  = "LANG"
+)
+
 func TestOverrideFlagPriority(t *testing.T) {
 	// Test that --override flag has highest priority
 
 	testCases := []struct {
-		name              string
-		platformArg       string
-		platformOverride  string
+		name             string
+		platformArg      string
+		platformOverride string
 		fallbackPlatform string
 		detectedOS       string
-		toolLanguage      string
-		expectedPlatform  string
-		reason            string
+		toolLanguage     string
+		expectedPlatform string
+		reason           string
 	}{
 		{
 			name:             "override_flag_highest_priority",
-			platformArg:       "brew",
+			platformArg:      "brew",
 			platformOverride: "macos",
 			fallbackPlatform: "LANG",
 			detectedOS:       "linux:arch",
-			toolLanguage:      "go",
-			expectedPlatform:  "brew",
+			toolLanguage:     "go",
+			expectedPlatform: "brew",
 			reason:           "Command-line --override flag should have highest priority",
 		},
 		{
 			name:             "platformOverride_beats_OS_and_fallback",
-			platformArg:       "",
+			platformArg:      "",
 			platformOverride: "macos",
 			fallbackPlatform: "LANG",
 			detectedOS:       "linux:arch",
-			toolLanguage:      "go",
-			expectedPlatform:  "macos",
+			toolLanguage:     "go",
+			expectedPlatform: "macos",
 			reason:           "platform_override config has higher priority than OS detection and fallback",
 		},
 		{
 			name:             "fallback_LANG_uses_language_when_os_no_match",
-			platformArg:       "",
+			platformArg:      "",
 			platformOverride: "",
 			fallbackPlatform: "LANG",
 			detectedOS:       "",
-			toolLanguage:      "go",
-			expectedPlatform:  "go",
+			toolLanguage:     "go",
+			expectedPlatform: "go",
 			reason:           "fallback_platform=LANG should use tool language when OS detection fails",
 		},
 		{
 			name:             "OS_detection_beats_fallback",
-			platformArg:       "",
+			platformArg:      "",
 			platformOverride: "",
 			fallbackPlatform: "macos",
 			detectedOS:       "linux:arch",
-			toolLanguage:      "go",
-			expectedPlatform:  "linux:arch",
+			toolLanguage:     "go",
+			expectedPlatform: "linux:arch",
 			reason:           "OS detection should take precedence over fallback_platform",
 		},
 		{
 			name:             "OS_detection_with_empty",
-			platformArg:       "",
+			platformArg:      "",
 			platformOverride: "",
 			fallbackPlatform: "",
 			detectedOS:       "macos",
-			toolLanguage:      "go",
-			expectedPlatform:  "macos",
+			toolLanguage:     "go",
+			expectedPlatform: "macos",
 			reason:           "OS detection should be used when no override or fallback set",
 		},
 		{
 			name:             "CLI_arg_overrides_everything",
-			platformArg:       "macos",
+			platformArg:      "macos",
 			platformOverride: "windows",
 			fallbackPlatform: "LANG",
 			detectedOS:       "linux:arch",
-			toolLanguage:      "go",
-			expectedPlatform:  "macos",
+			toolLanguage:     "go",
+			expectedPlatform: "macos",
 			reason:           "CLI --override argument has highest priority over all other settings",
 		},
 		{
-			name: "no_config_uses_OS",
-			platformArg:       "",
+			name:             "no_config_uses_OS",
+			platformArg:      "",
 			platformOverride: "",
 			fallbackPlatform: "",
 			detectedOS:       "macos",
-			toolLanguage:      "go",
+			toolLanguage:     "go",
 			expectedPlatform: "macos",
 			reason:           "When no override or fallback is set, should use OS detection",
 		},
 		{
 			name:             "fallback_used_when_OS_detected_but_set",
-			platformArg:       "",
+			platformArg:      "",
 			platformOverride: "",
 			fallbackPlatform: "brew",
 			detectedOS:       "macos",
-			toolLanguage:      "go",
-			expectedPlatform:  "macos",
+			toolLanguage:     "go",
+			expectedPlatform: "macos",
 			reason:           "OS detection takes priority over fallback when OS is detected",
 		},
 	}
@@ -122,9 +127,9 @@ func TestOverrideFlagPriority(t *testing.T) {
 				// Fallback is last resort
 				selectedPlatform = tc.fallbackPlatform
 			}
-			
+
 			// Handle LANG special case (converted to language in actual implementation)
-			if selectedPlatform == "LANG" {
+			if selectedPlatform == platformLang {
 				selectedPlatform = tc.toolLanguage
 			}
 
@@ -151,44 +156,44 @@ func TestOverrideLANGLanguageMatching(t *testing.T) {
 	// Test that LANG fallback uses language matching correctly
 
 	testCases := []struct {
-		name          string
+		name             string
 		fallbackPlatform string
-		toolLanguage string
-		installPlatform string
-		shouldMatch   bool
-		reason        string
+		toolLanguage     string
+		installPlatform  string
+		shouldMatch      bool
+		reason           string
 	}{
 		{
-			name:        "LANG_matches_go_platforms",
+			name:             "LANG_matches_go_platforms",
 			fallbackPlatform: "LANG",
-			toolLanguage: "go",
-			installPlatform: "go (pip)",
-			shouldMatch:   true,
-			reason:       "LANG fallback with Go tool should match go (pip) platforms",
+			toolLanguage:     "go",
+			installPlatform:  platformGOPip,
+			shouldMatch:      true,
+			reason:           "LANG fallback with Go tool should match go (pip) platforms",
 		},
 		{
-			name:        "LANG_doesnt_match_different_language",
+			name:             "LANG_doesnt_match_different_language",
 			fallbackPlatform: "LANG",
-			toolLanguage: "go",
-			installPlatform: "rust",
-			shouldMatch:   false,
-			reason:       "LANG fallback with Go tool should NOT match rust platforms",
+			toolLanguage:     "go",
+			installPlatform:  "rust",
+			shouldMatch:      false,
+			reason:           "LANG fallback with Go tool should NOT match rust platforms",
 		},
 		{
-			name:        "LANG_matches_python_platforms",
+			name:             "LANG_matches_python_platforms",
 			fallbackPlatform: "LANG",
-			toolLanguage: "python",
-			installPlatform: "python (pip)",
-			shouldMatch:   true,
-			reason:       "LANG fallback with Python tool should match python (pip) platforms",
+			toolLanguage:     "python",
+			installPlatform:  "python (pip)",
+			shouldMatch:      true,
+			reason:           "LANG fallback with Python tool should match python (pip) platforms",
 		},
 		{
-			name:        "non_LANG_uses_OS_detection",
+			name:             "non_LANG_uses_OS_detection",
 			fallbackPlatform: "macos",
-			toolLanguage: "go",
-			installPlatform: "brew",
-			shouldMatch:   true,
-			reason:       "Non-LANG fallback platform should use platform matching",
+			toolLanguage:     "go",
+			installPlatform:  "brew",
+			shouldMatch:      true,
+			reason:           "Non-LANG fallback platform should use platform matching",
 		},
 	}
 
@@ -197,14 +202,14 @@ func TestOverrideLANGLanguageMatching(t *testing.T) {
 			t.Logf("Testing: %s", tc.reason)
 
 			if tc.fallbackPlatform == "LANG" {
-				if tc.toolLanguage == "go" && tc.installPlatform == "go (pip)" {
+				if tc.toolLanguage == "go" && tc.installPlatform == platformGOPip {
 					t.Logf("✓ Language match: %s matches %s", tc.toolLanguage, tc.installPlatform)
 				}
-				if tc.toolLanguage != "go" && tc.installPlatform == "go (pip)" {
+				if tc.toolLanguage != "go" && tc.installPlatform == platformGOPip {
 					t.Log("✗ No language mismatch as expected")
 				}
 			} else {
-				if tc.toolLanguage != "go" && tc.installPlatform != "go (pip)" {
+				if tc.toolLanguage != "go" && tc.installPlatform != platformGOPip {
 					t.Log("✗ Language mismatch as expected")
 				}
 				if tc.installPlatform == "brew" {
@@ -244,39 +249,39 @@ mise_mode = true`
 	}
 
 	tests := []struct {
-		name           string
-		miseFlag       bool
-		cliOverride    string
-		expectedMatch  string
-		description    string
+		name          string
+		miseFlag      bool
+		cliOverride   string
+		expectedMatch string
+		description   string
 	}{
 		{
 			name:          "mise_config_only_no_cli_override",
 			miseFlag:      false,
-			cliOverride:    "",
+			cliOverride:   "",
 			expectedMatch: "go",
-			description:    "With mise_mode=true in config and no CLI override, should use LANG",
+			description:   "With mise_mode=true in config and no CLI override, should use LANG",
 		},
 		{
 			name:          "mise_config_with_cli_override_platform",
 			miseFlag:      false,
-			cliOverride:    "cargo",
+			cliOverride:   "cargo",
 			expectedMatch: "rust (cargo)",
-			description:    "With mise_mode=true and CLI override 'cargo', CLI override should win",
+			description:   "With mise_mode=true and CLI override 'cargo', CLI override should win",
 		},
 		{
 			name:          "mise_config_with_cli_override_github",
 			miseFlag:      false,
-			cliOverride:    "github",
+			cliOverride:   "github",
 			expectedMatch: "github",
-			description:    "With mise_mode=true and CLI override 'github', CLI override should win",
+			description:   "With mise_mode=true and CLI override 'github', CLI override should win",
 		},
 		{
 			name:          "mise_flag_with_cli_override_github",
 			miseFlag:      true,
-			cliOverride:    "github",
+			cliOverride:   "github",
 			expectedMatch: "github",
-			description:    "--mise flag with CLI override 'github' should respect CLI override",
+			description:   "--mise flag with CLI override 'github' should respect CLI override",
 		},
 	}
 
@@ -352,11 +357,12 @@ mise_mode = true`
 			for _, m := range matched {
 				if m.Platform == tt.expectedMatch {
 					found = true
+
 					break
 				}
 			}
 			if !found {
-				t.Errorf("%s: Expected to find platform %q in matches, got %v", 
+				t.Errorf("%s: Expected to find platform %q in matches, got %v",
 					tt.description, tt.expectedMatch, extractPlatforms(matched))
 			}
 		})

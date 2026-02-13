@@ -2,7 +2,7 @@ package install
 
 import (
 	"strings"
-	
+
 	"troveler/db"
 	"troveler/lib"
 )
@@ -49,7 +49,9 @@ func (ps *PlatformSelector) SelectPlatform(detectedOS string) string {
 
 // FilterCommands filters install commands based on platform selection
 // Returns (matched commands, whether fallback was used)
-func FilterCommands(installs []db.InstallInstruction, platform string, toolLanguage string) ([]db.InstallInstruction, bool) {
+func FilterCommands(
+	installs []db.InstallInstruction, platform string, toolLanguage string,
+) ([]db.InstallInstruction, bool) {
 	var matched []db.InstallInstruction
 
 	if platform == "LANG" {
@@ -81,11 +83,13 @@ func FilterCommands(installs []db.InstallInstruction, platform string, toolLangu
 // SelectDefaultCommand returns the best default command
 // If fallback was used, tries to pick a sensible default based on detected OS
 // Otherwise returns the first matched command
-func SelectDefaultCommand(commands []db.InstallInstruction, usedFallback bool, detectedOS string) *db.InstallInstruction {
+func SelectDefaultCommand(
+	commands []db.InstallInstruction, usedFallback bool, detectedOS string,
+) *db.InstallInstruction {
 	if len(commands) == 0 {
 		return nil
 	}
-	
+
 	// If we used fallback (showing all commands), try to pick a sensible default
 	if usedFallback {
 		// First, try exact or prefix match with detected OS
@@ -108,16 +112,17 @@ func SelectDefaultCommand(commands []db.InstallInstruction, usedFallback bool, d
 				}
 			}
 		}
-		
+
 		// No exact match, fall back to OS family defaults
-		isLinux := strings.Contains(detectedOS, "linux") || 
-		           detectedOS == "ubuntu" || detectedOS == "debian" || detectedOS == "fedora" || 
-		           detectedOS == "arch" || detectedOS == "manjaro" || detectedOS == "rhel" || detectedOS == "centos"
+		isLinux := strings.Contains(detectedOS, "linux") ||
+			detectedOS == "ubuntu" || detectedOS == "debian" || detectedOS == "fedora" ||
+			detectedOS == "arch" || detectedOS == "manjaro" || detectedOS == "rhel" || detectedOS == "centos"
 		isMac := strings.Contains(detectedOS, "macos") || strings.Contains(detectedOS, "darwin")
-		isBSD := strings.Contains(detectedOS, "bsd") || detectedOS == "freebsd" || detectedOS == "openbsd" || detectedOS == "netbsd"
-		
+		isBSD := strings.Contains(detectedOS, "bsd") ||
+			detectedOS == "freebsd" || detectedOS == "openbsd" || detectedOS == "netbsd"
+
 		var preferredPlatforms []string
-		
+
 		if isLinux {
 			// Linux user: prioritize generic Linux package managers
 			// Order: brew (works everywhere) > apt (most common) > pacman > dnf/yum
@@ -137,7 +142,7 @@ func SelectDefaultCommand(commands []db.InstallInstruction, usedFallback bool, d
 			// Unknown/Windows: try generic package managers
 			preferredPlatforms = []string{"brew", "winget", "chocolatey", "scoop"}
 		}
-		
+
 		// Try to find preferred platform
 		for _, preferred := range preferredPlatforms {
 			for _, cmd := range commands {
@@ -146,11 +151,11 @@ func SelectDefaultCommand(commands []db.InstallInstruction, usedFallback bool, d
 				}
 			}
 		}
-		
+
 		// If no preferred found, don't mark any as default
 		return nil
 	}
-	
+
 	// Normal case: first match is default
 	return &commands[0]
 }

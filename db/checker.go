@@ -7,7 +7,7 @@ import (
 )
 
 // IsInstalled checks if a tool is installed by examining its install instructions
-// and checking if the executable name is available on PATH
+// and checking if executable name is available on PATH
 func IsInstalled(tool *Tool, installs []InstallInstruction) bool {
 	if tool == nil || len(installs) == 0 {
 		return false
@@ -24,7 +24,7 @@ func IsInstalled(tool *Tool, installs []InstallInstruction) bool {
 	return false
 }
 
-// parseToolName extracts the executable/package name from an install command
+// parseToolName extracts executable/package name from an install command
 func parseToolName(command string) string {
 	command = strings.TrimSpace(command)
 
@@ -75,7 +75,8 @@ func parseToolName(command string) string {
 					name = parts[len(parts)-1]
 				}
 			}
-			return strings.TrimSpace(name)
+
+			return name
 		}
 	}
 
@@ -96,7 +97,7 @@ func parseToolName(command string) string {
 	// For direct executable names
 	fields := strings.Fields(command)
 	if len(fields) > 0 {
-		// Return the last field, usually the package/executable name
+		// Return last field, usually package/executable name
 		name := fields[len(fields)-1]
 		// Strip version specifiers like package@1.2.3
 		if idx := strings.Index(name, "@"); idx > 0 {

@@ -12,17 +12,20 @@ func TransformToMise(command string) string {
 	if after, ok := strings.CutPrefix(command, "go install "); ok {
 		pkg := after
 		pkg = strings.TrimPrefix(pkg, "https://")
+
 		return "mise use --global go:" + pkg
 	}
 
 	if after, ok := strings.CutPrefix(command, "cargo install "); ok {
 		crate := after
+
 		return "mise use --global cargo:" + crate
 	}
 
 	npmRegex := regexp.MustCompile(`^(npm install -g|yarn global add|pnpm add -g)\s+(.+)$`)
 	if matches := npmRegex.FindStringSubmatch(command); len(matches) > 2 {
 		pkg := matches[2]
+
 		return "mise use --global npm:" + pkg
 	}
 

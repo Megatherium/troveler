@@ -5,6 +5,13 @@ import (
 	"strings"
 )
 
+const (
+	osIDFedora = "fedora"
+	osIDCentos = "centos"
+	osIDAlpine = "alpine"
+	osIDGentoo = "gentoo"
+)
+
 type OSInfo struct {
 	ID        string
 	Name      string
@@ -60,16 +67,15 @@ func DetectOS() (*OSInfo, error) {
 	if err == nil {
 		content := string(data)
 		lower := strings.ToLower(content)
-		if strings.Contains(lower, "fedora") {
-			info.ID = "fedora"
-			info.Name = "Fedora"
-		} else if strings.Contains(lower, "centos") {
-			info.ID = "centos"
-			info.Name = "CentOS"
+		if strings.Contains(lower, osIDFedora) {
+			info.ID = osIDFedora
+		} else if strings.Contains(lower, osIDCentos) {
+			info.ID = osIDCentos
 		} else if strings.Contains(lower, "rhel") || strings.Contains(lower, "red hat") {
 			info.ID = "rhel"
 			info.Name = "Red Hat Enterprise Linux"
 		}
+
 		return normalizeOSInfo(info), nil
 	}
 
@@ -78,14 +84,16 @@ func DetectOS() (*OSInfo, error) {
 	if err == nil && len(data) > 0 {
 		info.ID = "debian"
 		info.Name = "Debian"
+
 		return normalizeOSInfo(info), nil
 	}
 
 	// Try /etc/alpine-release
 	_, err = os.ReadFile("/etc/alpine-release")
 	if err == nil {
-		info.ID = "alpine"
+		info.ID = osIDAlpine
 		info.Name = "Alpine Linux"
+
 		return normalizeOSInfo(info), nil
 	}
 
@@ -98,9 +106,9 @@ func DetectOS() (*OSInfo, error) {
 	}
 
 	// Try /etc/gentoo-release
-	data, err = os.ReadFile("/etc/gentoo-release")
+	_, err = os.ReadFile("/etc/gentoo-release")
 	if err == nil {
-		info.ID = "gentoo"
+		info.ID = osIDGentoo
 		info.Name = "Gentoo"
 		return normalizeOSInfo(info), nil
 	}
@@ -112,22 +120,22 @@ func normalizeOSInfo(info *OSInfo) *OSInfo {
 	switch info.ID {
 	case "ubuntu", "linuxmint", "pop":
 		info.ID = "ubuntu"
-	case "centos", "rhel", "rocky", "alma":
+	case osIDCentos, "rhel", "rocky", "alma":
 		info.ID = "rhel"
-	case "fedora":
-		info.ID = "fedora"
+	case osIDFedora:
+		info.ID = osIDFedora
+	case osIDAlpine:
+		info.ID = osIDAlpine
+	case osIDGentoo:
+		info.ID = osIDGentoo
 	case "debian":
 		info.ID = "debian"
 	case "arch", "manjaro", "endeavouros":
 		info.ID = "arch"
-	case "alpine":
-		info.ID = "alpine"
 	case "opensuse-tumbleweed", "opensuse-leap":
 		info.ID = "opensuse"
 	case "nixos":
 		info.ID = "nixos"
-	case "gentoo":
-		info.ID = "gentoo"
 	case "freebsd":
 		info.ID = "freebsd"
 	case "openbsd":

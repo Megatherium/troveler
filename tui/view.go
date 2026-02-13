@@ -102,42 +102,6 @@ func (m *Model) renderMainLayout() string {
 	return lipgloss.JoinVertical(lipgloss.Left, topSpace, layout, statusBar)
 }
 
-// renderPanel renders a single panel with border
-func (m *Model) renderPanel(id PanelID, title string, width, height int, placeholder string) string {
-	// Determine if this panel is active
-	borderStyle := styles.InactiveBorder
-	titleStyle := styles.MutedStyle
-
-	if id == m.activePanel {
-		borderStyle = styles.ActiveBorder
-		titleStyle = styles.TitleStyle
-	}
-
-	// Create title with highlighting
-	titleStr := titleStyle.Render(fmt.Sprintf(" %s ", title))
-
-	// Content (placeholder for now)
-	content := placeholder
-
-	// Calculate content area (account for borders and title)
-	contentHeight := max(1, height-4) // 2 for top/bottom border, 1 for title, 1 for padding
-	contentWidth := max(1, width-4)   // 2 for left/right border, 2 for padding
-
-	// Create bordered box
-	boxStyle := borderStyle.
-		Width(contentWidth).
-		Height(contentHeight).
-		Padding(0, 1)
-
-	panel := boxStyle.Render(content)
-
-	// Wrap in outer border with title
-	return borderStyle.
-		Width(width - 1).
-		Height(height - 1).
-		Render(lipgloss.JoinVertical(lipgloss.Left, titleStr, panel))
-}
-
 // renderSearchPanel renders the search panel with live input
 func (m *Model) renderSearchPanel(width, height int) string {
 	borderStyle := styles.InactiveBorder
@@ -244,7 +208,8 @@ func (m *Model) renderInstallPanel(width, height int) string {
 // renderStatusBar renders the bottom status bar
 func (m *Model) renderStatusBar() string {
 	// Show keybindings - include 'm' for marking
-	help := styles.HelpStyle.Render("Tab: panels | m: mark | Alt+I: install | Alt+M: mise | Alt+R: repo | Alt+U: update | Alt+Q: quit | ?: help")
+	help := styles.HelpStyle.Render(
+		"Tab: panels | m: mark | Alt+I: install | Alt+M: mise | Alt+R: repo | Alt+U: update | Alt+Q: quit | ?: help")
 
 	// Show error if present
 	if m.err != nil {

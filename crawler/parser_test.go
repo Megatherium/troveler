@@ -7,10 +7,10 @@ import (
 
 func TestParseSearchResponse(t *testing.T) {
 	tests := []struct {
-		name     string
-		input    string
-		wantLen  int
-		wantErr  bool
+		name    string
+		input   string
+		wantLen int
+		wantErr bool
 	}{
 		{
 			name: "valid response with tools",
@@ -25,14 +25,14 @@ func TestParseSearchResponse(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "empty response",
-			input: `{"found": 0, "hits": []}`,
+			name:    "empty response",
+			input:   `{"found": 0, "hits": []}`,
 			wantLen: 0,
 			wantErr: false,
 		},
 		{
-			name: "invalid json",
-			input: `not valid json`,
+			name:    "invalid json",
+			input:   `not valid json`,
 			wantLen: 0,
 			wantErr: true,
 		},
@@ -52,7 +52,7 @@ func TestParseSearchResponse(t *testing.T) {
 	}
 }
 
-func TestParseDetailPage(t *testing.T) {
+func TestParseDetailPage(t *testing.T) { //nolint:lll
 	tests := []struct {
 		name    string
 		input   string
@@ -73,8 +73,8 @@ func TestParseDetailPage(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "missing json-ld",
-			input: `<!DOCTYPE html><html><body></body></html>`,
+			name:    "missing json-ld",
+			input:   `<!DOCTYPE html><html><body></body></html>`,
 			wantErr: true,
 		},
 		{

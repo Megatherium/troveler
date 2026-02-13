@@ -20,11 +20,19 @@ var (
 	MutedStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
 
 	// Interactive elements
-	SelectedStyle       = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#00FFFF")).Background(lipgloss.Color("#003333"))
-	UnselectedStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
-	CursorStyle         = lipgloss.NewStyle().Foreground(lipgloss.Color("#00FFFF"))
-	MarkedStyle         = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Background(lipgloss.Color("#333300"))
-	MarkedSelectedStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFFF00")).Background(lipgloss.Color("#555500"))
+	SelectedStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("#00FFFF")).
+			Background(lipgloss.Color("#003333"))
+	UnselectedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
+	CursorStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#00FFFF"))
+	MarkedStyle     = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFFF00")).
+			Background(lipgloss.Color("#333300"))
+	MarkedSelectedStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(lipgloss.Color("#FFFF00")).
+				Background(lipgloss.Color("#555500"))
 
 	// Status
 	StatusBarStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAAA"))

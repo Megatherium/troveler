@@ -1,3 +1,4 @@
+// Package install provides install command handling and platform detection.
 package install
 
 import (
@@ -65,7 +66,7 @@ func GenerateVirtualInstallInstructions(installs []db.InstallInstruction) []Virt
 		}
 
 		transformed := TransformToMise(inst.Command)
-		
+
 		// Only generate virtual if transformation actually changed the command
 		if transformed == inst.Command {
 			continue
@@ -104,7 +105,7 @@ func extractBackendType(miseCommand string) BackendType {
 	}
 
 	rest := strings.TrimPrefix(miseCommand, "mise use --global ")
-	
+
 	// Extract backend:package pattern
 	parts := strings.SplitN(rest, ":", 2)
 	if len(parts) < 2 {
@@ -112,7 +113,7 @@ func extractBackendType(miseCommand string) BackendType {
 	}
 
 	backend := parts[0]
-	
+
 	switch BackendType(backend) {
 	case BackendGo, BackendCargo, BackendNPM, BackendPipx, BackendGithub:
 		return BackendType(backend)

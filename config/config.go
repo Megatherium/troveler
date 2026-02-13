@@ -82,6 +82,7 @@ func defaultConfigPath() string {
 	if err != nil {
 		return "config.toml"
 	}
+
 	return filepath.Join(home, ".config", "troveler", "config.toml")
 }
 
@@ -91,5 +92,6 @@ func defaultDSN() string {
 		return "file:troveler.db?cache=shared&mode=rwc"
 	}
 	dbPath := filepath.Join(home, ".local", "share", "troveler", "troveler.db")
+
 	return "file:" + dbPath + "?cache=shared&mode=rwc"
 }

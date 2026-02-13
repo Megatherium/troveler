@@ -262,7 +262,7 @@ func TestGenerateVirtualInstallInstructions(t *testing.T) {
 			expectedPlatforms: []string{"mise:go"},
 		},
 		{
-			name: "empty_input",
+			name:  "empty_input",
 			input: []db.InstallInstruction{},
 		},
 	}
@@ -284,6 +284,7 @@ func TestGenerateVirtualInstallInstructions(t *testing.T) {
 				for i, expected := range tt.expectedPlatforms {
 					if i >= len(actualPlatforms) {
 						t.Errorf("Missing expected platform %s at index %d", expected, i)
+
 						continue
 					}
 					if actualPlatforms[i] != expected {

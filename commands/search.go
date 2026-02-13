@@ -16,10 +16,10 @@ import (
 )
 
 var SearchCmd = &cobra.Command{
-	Use:     "search [query]",
-	Short:   "Search the local database for tools",
-	Long:    "Search for tools by name, tagline, or description in the local database.",
-	Args:    cobra.MinimumNArgs(1),
+	Use:   "search [query]",
+	Short: "Search the local database for tools",
+	Long:  "Search for tools by name, tagline, or description in the local database.",
+	Args:  cobra.MinimumNArgs(1),
 	Example: "troveler search go-cli --limit 10 --sort language --desc --width 40\n\n" +
 		"troveler search tagline=cli\n" +
 		"troveler search installed=true\n" +
@@ -81,7 +81,10 @@ var searchColumns = []searchColumn{
 	{"Installed", "installed"},
 }
 
-func runSearch(ctx context.Context, database *db.SQLiteDB, opts db.SearchOptions, taglineWidth int, format string) error {
+func runSearch(
+	ctx context.Context, database *db.SQLiteDB, opts db.SearchOptions,
+	taglineWidth int, format string,
+) error {
 	searchService := search.NewService(database)
 
 	result, err := searchService.Search(ctx, search.Options{
@@ -121,7 +124,8 @@ func outputJSON(results []db.SearchResult) error {
 
 func outputPretty(results []db.SearchResult, opts db.SearchOptions, taglineWidth int) error {
 	fmt.Println()
-	title := fmt.Sprintf("Found %d results for '%s' (sorted by %s %s)", len(results), opts.Query, opts.SortField, opts.SortOrder)
+	title := fmt.Sprintf("Found %d results for '%s' (sorted by %s %s)",
+		len(results), opts.Query, opts.SortField, opts.SortOrder)
 	fmt.Println(lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("#00FFFF")).

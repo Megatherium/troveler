@@ -4,6 +4,18 @@ import (
 	"strings"
 )
 
+const (
+	platformOSArch    = "arch"
+	platformOSRHEL    = "rhel"
+	platformOSUbuntu  = "ubuntu"
+	platformOSDebian  = "debian"
+	platformOSFedora  = "fedora"
+	platformOSCentos  = "centos"
+	platformOSAlpine  = "alpine"
+	platformOSGentoo  = "gentoo"
+	platformOSManjaro = "manjaro"
+)
+
 var PlatformAliases = map[string]string{
 	"pip":   "python (pip)",
 	"pipx":  "python (pipx)",
@@ -18,20 +30,20 @@ var PlatformAliases = map[string]string{
 // LanguageToPackageManager maps programming languages to their package managers
 // For compiled languages (C, C++, Shell), we return empty to use OS detection
 var LanguageToPackageManager = map[string][]string{
-	"python":     {"python", "pip", "pipx", "uv"},
-	"rust":       {"rust", "cargo"},
-	"javascript": {"javascript", "npm", "yarn", "pnpm", "bun", "deno", "node"},
-	"typescript": {"typescript", "npm", "yarn", "pnpm", "bun", "deno", "node"},
-	"go":         {"go"},
-	"ruby":       {"ruby", "gem"},
-	"perl":       {"perl", "cpan"},
-	"haskell":    {"haskell", "cabal", "stack"},
-	"csharp":     {"csharp", "dotnet", "nuget"},
-	"nim":        {"nim", "nimble"},
-	"ocaml":      {"ocaml", "opam"},
-	"zig":        {"zig"},
+	"python":      {"python", "pip", "pipx", "uv"},
+	"rust":        {"rust", "cargo"},
+	"javascript":  {"javascript", "npm", "yarn", "pnpm", "bun", "deno", "node"},
+	"typescript":  {"typescript", "npm", "yarn", "pnpm", "bun", "deno", "node"},
+	"go":          {"go"},
+	"ruby":        {"ruby", "gem"},
+	"perl":        {"perl", "cpan"},
+	"haskell":     {"haskell", "cabal", "stack"},
+	"csharp":      {"csharp", "dotnet", "nuget"},
+	"nim":         {"nim", "nimble"},
+	"ocaml":       {"ocaml", "opam"},
+	"zig":         {"zig"},
 	"common-lisp": {"common-lisp", "quicklisp"},
-	"haxe":       {"haxe", "haxelib"},
+	"haxe":        {"haxe", "haxelib"},
 }
 
 func NormalizePlatform(platform string) string {
@@ -76,16 +88,14 @@ func MatchPlatform(detectedID string, installPlatform string) bool {
 		}
 	}
 
-	if detectedID == "rhel" {
-		return platformOS == "rhel" || platformOS == "fedora" || platformOS == "centos"
+	if detectedID == platformOSRHEL {
+		return platformOS == platformOSRHEL || platformOS == platformOSFedora || platformOS == platformOSCentos
 	}
-
-	if detectedID == "arch" {
-		return platformOS == "arch" || platformOS == "manjaro"
+	if detectedID == platformOSArch {
+		return platformOS == platformOSArch || platformOS == platformOSManjaro
 	}
-
-	if detectedID == "ubuntu" {
-		return platformOS == "ubuntu" || platformOS == "debian"
+	if detectedID == platformOSUbuntu {
+		return platformOS == platformOSUbuntu || platformOS == platformOSDebian
 	}
 
 	return false
@@ -94,17 +104,17 @@ func MatchPlatform(detectedID string, installPlatform string) bool {
 func MatchLanguage(language string, installPlatform string) bool {
 	language = strings.ToLower(language)
 	installPlatform = strings.ToLower(installPlatform)
-	
+
 	// Exact match (e.g., "rust" == "rust", "python" == "python")
 	if installPlatform == language {
 		return true
 	}
-	
+
 	// Prefix match (e.g., "python (pip)", "rust (cargo)")
 	if strings.HasPrefix(installPlatform, language+" ") || strings.HasPrefix(installPlatform, language+"(") {
 		return true
 	}
-	
+
 	// Check language-to-package-manager mappings
 	if managers, ok := LanguageToPackageManager[language]; ok {
 		for _, manager := range managers {
@@ -117,6 +127,6 @@ func MatchLanguage(language string, installPlatform string) bool {
 			}
 		}
 	}
-	
+
 	return false
 }

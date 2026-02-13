@@ -6,6 +6,10 @@ import (
 	"troveler/db"
 )
 
+const (
+	filterFieldLanguage = "language"
+)
+
 func TestParseFiltersNoFilters(t *testing.T) {
 	ast, searchTerm, err := ParseFilters("bat")
 
@@ -54,7 +58,7 @@ func TestParseFiltersAnd(t *testing.T) {
 	if ast.Left.Type != db.FilterField || ast.Left.Field != "name" || ast.Left.Value != "bat" {
 		t.Errorf("unexpected left filter: %+v", ast.Left)
 	}
-	if ast.Right.Type != db.FilterField || ast.Right.Field != "language" || ast.Right.Value != "rust" {
+	if ast.Right.Type != db.FilterField || ast.Right.Field != filterFieldLanguage || ast.Right.Value != "rust" {
 		t.Errorf("unexpected right filter: %+v", ast.Right)
 	}
 }
@@ -94,7 +98,7 @@ func TestParseFiltersWithParentheses(t *testing.T) {
 	}
 
 	// Right should be language filter
-	if ast.Right.Type != db.FilterField || ast.Right.Field != "language" || ast.Right.Value != "go" {
+	if ast.Right.Type != db.FilterField || ast.Right.Field != filterFieldLanguage || ast.Right.Value != "go" {
 		t.Errorf("unexpected right filter: %+v", ast.Right)
 	}
 }
@@ -207,7 +211,7 @@ func TestParseFiltersNotWithAnd(t *testing.T) {
 	if ast.Left.Type != db.FilterNot {
 		t.Errorf("expected FilterNot on left, got %v", ast.Left.Type)
 	}
-	if ast.Right.Type != db.FilterField || ast.Right.Field != "language" {
+	if ast.Right.Type != db.FilterField || ast.Right.Field != filterFieldLanguage {
 		t.Errorf("expected language field on right, got %+v", ast.Right)
 	}
 }

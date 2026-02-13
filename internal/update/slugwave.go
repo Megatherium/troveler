@@ -104,6 +104,7 @@ func (sw *SlugWave) RenderStream() string {
 
 					line.WriteString(style.Render(string(char)))
 					found = true
+
 					break
 				}
 			}
@@ -117,6 +118,7 @@ func (sw *SlugWave) RenderStream() string {
 		}
 		lines = append(lines, line.String())
 	}
+
 	return strings.Join(lines, "\n")
 }
 

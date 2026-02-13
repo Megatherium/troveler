@@ -25,18 +25,18 @@ func NewService(database *db.SQLiteDB) *Service {
 
 // ProgressUpdate represents an update progress event
 type ProgressUpdate struct {
-	Type       string // "start", "slug", "progress", "complete", "error"
-	Slug       string // Tool slug being processed
-	Processed  int    // Number of tools processed
-	Total      int    // Total number of tools
-	Message    string // Status message
-	Error      error  // Error if any
+	Type      string // "start", "slug", "progress", "complete", "error"
+	Slug      string // Tool slug being processed
+	Processed int    // Number of tools processed
+	Total     int    // Total number of tools
+	Message   string // Status message
+	Error     error  // Error if any
 }
 
 // UpdateOptions configures the update
 type UpdateOptions struct {
-	Limit    int                      // Limit number of tools (0 = all)
-	Progress chan<- ProgressUpdate    // Channel for progress updates
+	Limit    int                   // Limit number of tools (0 = all)
+	Progress chan<- ProgressUpdate // Channel for progress updates
 }
 
 // FetchAndUpdate fetches all tools and updates the database
@@ -56,6 +56,7 @@ func (s *Service) FetchAndUpdate(ctx context.Context, opts UpdateOptions) error 
 		if opts.Progress != nil {
 			opts.Progress <- ProgressUpdate{Type: "error", Error: err}
 		}
+
 		return err
 	}
 
@@ -63,6 +64,7 @@ func (s *Service) FetchAndUpdate(ctx context.Context, opts UpdateOptions) error 
 		if opts.Progress != nil {
 			opts.Progress <- ProgressUpdate{Type: "complete", Message: "No tools found"}
 		}
+
 		return nil
 	}
 
@@ -189,7 +191,9 @@ func (s *Service) fetchSlugs(ctx context.Context, limit int) ([]string, int, err
 }
 
 // fetchDetailsConcurrently fetches tool details concurrently
-func (s *Service) fetchDetailsConcurrently(ctx context.Context, slugs []string, progress chan<- ProgressUpdate) (<-chan crawler.DetailPage, <-chan error) {
+func (s *Service) fetchDetailsConcurrently(
+	ctx context.Context, slugs []string, progress chan<- ProgressUpdate,
+) (<-chan crawler.DetailPage, <-chan error) {
 	detailChan := make(chan crawler.DetailPage, 100)
 	errChan := make(chan error, 1)
 
