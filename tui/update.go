@@ -32,179 +32,47 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case panels.SearchTriggeredMsg:
-		// Search was triggered (debounced or Enter)
-		m.searching = true
-
-		return m, m.performSearch(msg.Query)
+		return m.handleSearchTriggered(msg)
 
 	case searchResultMsg:
-		// Search results received
-		m.tools = msg.tools
-		m.toolsPanel.SetTools(msg.tools)
-		m.searching = false
-
-		// Update installed status for all tools
-		m.toolsPanel.UpdateAllInstalledStatus(m.db.GetInstallInstructions)
-
-		// Auto-select first tool to populate info/install panels
-		if len(msg.tools) > 0 {
-			firstTool := &msg.tools[0].Tool
-			m.selectedTool = firstTool
-			m.infoPanel.SetTool(firstTool, []db.InstallInstruction{})
-
-			// Load install instructions for first tool
-			installs, err := m.db.GetInstallInstructions(firstTool.ID)
-			if err == nil {
-				m.installs = installs
-				m.infoPanel.SetTool(firstTool, installs)
-				m.installPanel.SetTool(firstTool, installs)
-			}
-		}
-
-		return m, nil
+		return m.handleSearchResult(msg)
 
 	case searchErrorMsg:
-		// Search error
-		m.err = msg.err
-		m.searching = false
-
-		return m, nil
+		return m.handleSearchError(msg)
 
 	case panels.ToolMarkedMsg:
 		// Tool mark status changed - just update display
 		return m, nil
 
 	case panels.ToolCursorChangedMsg:
-		// Cursor moved to a different tool - update info/install panels
-		m.selectedTool = &msg.Tool.Tool
-
-		// Update info panel
-		m.infoPanel.SetTool(m.selectedTool, []db.InstallInstruction{})
-
-		// Load install instructions
-		installs, err := m.db.GetInstallInstructions(m.selectedTool.ID)
-		if err == nil {
-			m.installs = installs
-			m.infoPanel.SetTool(m.selectedTool, installs)
-			m.installPanel.SetTool(m.selectedTool, installs)
-		}
-
-		return m, nil
+		return m.handleToolCursorChanged(msg)
 
 	case panels.ToolSelectedMsg:
-		// Tool was selected (Enter pressed in tools panel)
-		// Info/install panels already populated by cursor change, just jump to install panel
-		m.toolsPanel.Blur()
-		m.activePanel = PanelInstall
-		m.installPanel.Focus()
-
-		return m, nil
+		return m.handleToolSelected()
 
 	case panels.InstallExecuteMsg:
-		// User wants to execute install command
-		m.showInstallModal = true
-		m.executing = true
-		m.executeOutput = ""
-
-		return m, m.executeInstallCommand(msg.Command)
+		return m.handleInstallExecute(msg)
 
 	case panels.InstallExecuteMiseMsg:
-		// User wants to execute install command via mise
-		m.showInstallModal = true
-		m.executing = true
-		m.executeOutput = ""
-
-		return m, m.executeInstallCommand(msg.Command)
+		return m.handleInstallExecuteMise(msg)
 
 	case installCompleteMsg:
-		// Install finished
-		m.executing = false
-		m.executeOutput = msg.output
-		if msg.err != nil {
-			m.err = msg.err
-		}
-
-		return m, nil
+		return m.handleInstallComplete(msg)
 
 	case batchInstallStartMsg:
-		// Start processing first tool
 		return m, m.processBatchTool(0)
 
 	case batchInstallProgressMsg:
-		// Update progress for completed tool
-		if m.batchProgress != nil {
-			if msg.skipped {
-				m.batchProgress.Skipped = append(m.batchProgress.Skipped, msg.toolID)
-			} else if msg.err != nil {
-				m.batchProgress.Failed = append(m.batchProgress.Failed, msg.toolID)
-			} else {
-				m.batchProgress.Completed = append(m.batchProgress.Completed, msg.toolID)
-			}
-			m.batchProgress.CurrentOutput = msg.output
-			m.batchProgress.CurrentError = msg.err
-			m.batchProgress.CurrentIndex++
-
-			// Process next tool or complete
-			if m.batchProgress.CurrentIndex < len(m.batchProgress.Tools) {
-				return m, m.processBatchTool(m.batchProgress.CurrentIndex)
-			}
-			// All done
-			m.batchProgress.IsComplete = true
-			m.executing = false
-			m.toolsPanel.ClearMarks()
-		}
-
-		return m, nil
+		return m.handleBatchInstallProgress(msg)
 
 	case batchInstallCompleteMsg:
-		m.executing = false
-		if m.batchProgress != nil {
-			m.batchProgress.IsComplete = true
-		}
-
-		return m, nil
+		return m.handleBatchInstallComplete()
 
 	case updateProgressMsg:
-		// Update progress received
-		upd := update.ProgressUpdate(msg)
-
-		// Initialize slug wave when we know total count
-		if upd.Type == "progress" && upd.Total > 0 && m.updateSlugWave == nil {
-			m.updateSlugWave = update.NewSlugWave(upd.Total)
-		}
-
-		if upd.Type == "slug" && m.updateSlugWave != nil {
-			m.updateSlugWave.AddSlug(upd.Slug)
-			m.updateSlugWave.IncProcessed()
-		}
-
-		if upd.Type == "complete" {
-			m.updating = false
-
-			return m, nil
-		}
-
-		if upd.Type == "error" {
-			m.updating = false
-			m.err = upd.Error
-
-			return m, nil
-		}
-
-		// Continue listening for more updates
-		return m, m.listenForUpdates()
+		return m.handleUpdateProgress(msg)
 
 	case slugTickMsg:
-		// Slug wave animation frame - keep ticking while updating
-		if m.updating {
-			if m.updateSlugWave != nil {
-				m.updateSlugWave.AdvanceFrame()
-			}
-
-			return m, m.tickSlugWave()
-		}
-
-		return m, nil
+		return m.handleSlugTick()
 
 	case tea.MouseMsg:
 		// Mouse support disabled per spec
@@ -228,20 +96,182 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// Message handlers extracted to reduce cyclomatic complexity
+
+func (m *Model) handleSearchTriggered(msg panels.SearchTriggeredMsg) (tea.Model, tea.Cmd) {
+	m.searching = true
+
+	return m, m.performSearch(msg.Query)
+}
+
+func (m *Model) handleSearchResult(msg searchResultMsg) (tea.Model, tea.Cmd) {
+	m.tools = msg.tools
+	m.toolsPanel.SetTools(msg.tools)
+	m.searching = false
+
+	// Update installed status for all tools
+	m.toolsPanel.UpdateAllInstalledStatus(m.db.GetInstallInstructions)
+
+	// Auto-select first tool to populate info/install panels
+	if len(msg.tools) > 0 {
+		firstTool := &msg.tools[0].Tool
+		m.selectedTool = firstTool
+		m.infoPanel.SetTool(firstTool, []db.InstallInstruction{})
+
+		// Load install instructions for first tool
+		installs, err := m.db.GetInstallInstructions(firstTool.ID)
+		if err == nil {
+			m.installs = installs
+			m.infoPanel.SetTool(firstTool, installs)
+			m.installPanel.SetTool(firstTool, installs)
+		}
+	}
+
+	return m, nil
+}
+
+func (m *Model) handleSearchError(msg searchErrorMsg) (tea.Model, tea.Cmd) {
+	m.err = msg.err
+	m.searching = false
+
+	return m, nil
+}
+
+func (m *Model) handleToolCursorChanged(msg panels.ToolCursorChangedMsg) (tea.Model, tea.Cmd) {
+	m.selectedTool = &msg.Tool.Tool
+
+	// Update info panel
+	m.infoPanel.SetTool(m.selectedTool, []db.InstallInstruction{})
+
+	// Load install instructions
+	installs, err := m.db.GetInstallInstructions(m.selectedTool.ID)
+	if err == nil {
+		m.installs = installs
+		m.infoPanel.SetTool(m.selectedTool, installs)
+		m.installPanel.SetTool(m.selectedTool, installs)
+	}
+
+	return m, nil
+}
+
+func (m *Model) handleToolSelected() (tea.Model, tea.Cmd) {
+	// Info/install panels already populated by cursor change, just jump to install panel
+	m.toolsPanel.Blur()
+	m.activePanel = PanelInstall
+	m.installPanel.Focus()
+
+	return m, nil
+}
+
+func (m *Model) handleInstallExecute(msg panels.InstallExecuteMsg) (tea.Model, tea.Cmd) {
+	m.showInstallModal = true
+	m.executing = true
+	m.executeOutput = ""
+
+	return m, m.executeInstallCommand(msg.Command)
+}
+
+func (m *Model) handleInstallExecuteMise(msg panels.InstallExecuteMiseMsg) (tea.Model, tea.Cmd) {
+	m.showInstallModal = true
+	m.executing = true
+	m.executeOutput = ""
+
+	return m, m.executeInstallCommand(msg.Command)
+}
+
+func (m *Model) handleInstallComplete(msg installCompleteMsg) (tea.Model, tea.Cmd) {
+	m.executing = false
+	m.executeOutput = msg.output
+	if msg.err != nil {
+		m.err = msg.err
+	}
+
+	return m, nil
+}
+
+func (m *Model) handleBatchInstallProgress(msg batchInstallProgressMsg) (tea.Model, tea.Cmd) {
+	if m.batchProgress == nil {
+		return m, nil
+	}
+
+	if msg.skipped {
+		m.batchProgress.Skipped = append(m.batchProgress.Skipped, msg.toolID)
+	} else if msg.err != nil {
+		m.batchProgress.Failed = append(m.batchProgress.Failed, msg.toolID)
+	} else {
+		m.batchProgress.Completed = append(m.batchProgress.Completed, msg.toolID)
+	}
+	m.batchProgress.CurrentOutput = msg.output
+	m.batchProgress.CurrentError = msg.err
+	m.batchProgress.CurrentIndex++
+
+	// Process next tool or complete
+	if m.batchProgress.CurrentIndex < len(m.batchProgress.Tools) {
+		return m, m.processBatchTool(m.batchProgress.CurrentIndex)
+	}
+	// All done
+	m.batchProgress.IsComplete = true
+	m.executing = false
+	m.toolsPanel.ClearMarks()
+
+	return m, nil
+}
+
+func (m *Model) handleBatchInstallComplete() (tea.Model, tea.Cmd) {
+	m.executing = false
+	if m.batchProgress != nil {
+		m.batchProgress.IsComplete = true
+	}
+
+	return m, nil
+}
+
+func (m *Model) handleUpdateProgress(msg updateProgressMsg) (tea.Model, tea.Cmd) {
+	upd := update.ProgressUpdate(msg)
+
+	// Initialize slug wave when we know total count
+	if upd.Type == "progress" && upd.Total > 0 && m.updateSlugWave == nil {
+		m.updateSlugWave = update.NewSlugWave(upd.Total)
+	}
+
+	if upd.Type == "slug" && m.updateSlugWave != nil {
+		m.updateSlugWave.AddSlug(upd.Slug)
+		m.updateSlugWave.IncProcessed()
+	}
+
+	if upd.Type == "complete" {
+		m.updating = false
+
+		return m, nil
+	}
+
+	if upd.Type == "error" {
+		m.updating = false
+		m.err = upd.Error
+
+		return m, nil
+	}
+
+	// Continue listening for more updates
+	return m, m.listenForUpdates()
+}
+
+func (m *Model) handleSlugTick() (tea.Model, tea.Cmd) {
+	// Slug wave animation frame - keep ticking while updating
+	if m.updating && m.updateSlugWave != nil {
+		m.updateSlugWave.AdvanceFrame()
+
+		return m, m.tickSlugWave()
+	}
+
+	return m, nil
+}
+
 // handleKeyPress processes keyboard input
 func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Check critical global keys first (help, quit, etc.)
-	switch {
-	case key.Matches(msg, m.keys.Quit):
-		return m, tea.Quit
-	case key.Matches(msg, m.keys.Help):
-		m.showHelp = !m.showHelp
-
-		return m, nil
-	case key.Matches(msg, m.keys.Tab):
-		m.NextPanel()
-
-		return m, nil
+	if result, cmd, handled := m.handleGlobalKeys(msg); handled {
+		return result, cmd
 	}
 
 	// Handle batch config modal input
@@ -270,134 +300,14 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
-	// Other global keybindings
-	switch {
-	case key.Matches(msg, m.keys.Escape):
-		// Close modals if open
-		if m.showHelp {
-			m.showHelp = false
+	// Handle Escape key - close modals
+	if key.Matches(msg, m.keys.Escape) {
+		return m.handleEscapeKey()
+	}
 
-			return m, nil
-		}
-		if m.showInfoModal {
-			m.showInfoModal = false
-
-			return m, nil
-		}
-		if m.showUpdateModal {
-			m.showUpdateModal = false
-			m.updating = false
-			// Cancel update context to stop goroutines
-			if m.updateCancel != nil {
-				m.updateCancel()
-				m.updateCancel = nil
-			}
-			// Don't close channel - let service close it
-			m.updateProgress = nil
-
-			return m, nil
-		}
-		if m.showInstallModal {
-			// Only close if not currently executing
-			if !m.executing {
-				m.showInstallModal = false
-				m.executeOutput = ""
-				m.err = nil
-				m.batchProgress = nil
-				m.batchConfig = nil
-			}
-
-			return m, nil
-		}
-		if m.showBatchConfigModal {
-			m.showBatchConfigModal = false
-			m.batchConfig = nil
-
-			return m, nil
-		}
-		if m.executeOutput != "" {
-			m.executeOutput = ""
-			m.err = nil
-
-			return m, nil
-		}
-		// Also forward ESC to active panel
-		if m.activePanel == PanelSearch {
-			cmd, updatedPanel := m.searchPanel.Update(msg)
-			m.searchPanel = updatedPanel
-
-			return m, cmd
-		}
-
-		return m, nil
-
-	case key.Matches(msg, m.keys.Update):
-		m.showUpdateModal = true
-		m.updating = true
-		m.updateService = update.NewService(m.db)
-		m.updateProgress = make(chan update.ProgressUpdate, 100)
-
-		return m, tea.Batch(
-			m.startUpdate(),
-			m.tickSlugWave(),
-		)
-
-	case key.Matches(msg, m.keys.InfoModal):
-		// Only show modal if NOT typing in search
-		if m.selectedTool != nil && m.activePanel != PanelSearch {
-			m.showInfoModal = true
-		}
-
-		return m, nil
-
-	case msg.Alt && msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 'i':
-		// Execute install from any panel (Alt+i)
-		// If tools are marked, show batch config modal
-		if m.toolsPanel.GetMarkedCount() > 0 {
-			m.batchConfig = NewBatchInstallConfig()
-			m.showBatchConfigModal = true
-
-			return m, nil
-		}
-		// Otherwise, single tool install
-		if m.installPanel.HasCommands() {
-			cmd := m.installPanel.GetSelectedCommand()
-			if cmd != "" {
-				return m, func() tea.Msg {
-					return panels.InstallExecuteMsg{Command: cmd}
-				}
-			}
-		}
-
-		return m, nil
-
-	case msg.Alt && msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 'm':
-		// Execute install via mise from any panel (Alt+m) - forces mise transformation
-		// If tools are marked, show batch config modal with mise enabled
-		if m.toolsPanel.GetMarkedCount() > 0 {
-			m.batchConfig = NewBatchInstallConfig()
-			m.batchConfig.UseMise = true
-			m.showBatchConfigModal = true
-
-			return m, nil
-		}
-		// Otherwise, single tool install
-		if m.installPanel.HasCommands() {
-			cmd := m.installPanel.GetSelectedCommand()
-			if cmd != "" {
-				transformedCmd := install.TransformToMise(cmd)
-
-				return m, func() tea.Msg {
-					return panels.InstallExecuteMiseMsg{Command: transformedCmd}
-				}
-			}
-		}
-
-		return m, nil
-
-	case msg.Alt && msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 'r':
-		// Open repository URL in browser (Alt+r)
-		return m, m.openRepositoryURL()
+	// Handle action keys (update, info modal, install shortcuts)
+	if result, cmd, handled := m.handleActionKeys(msg); handled {
+		return result, cmd
 	}
 
 	// Forward to search panel for non-rune keys (Enter, Backspace, etc.)
@@ -421,6 +331,184 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+// handleGlobalKeys processes global keys (quit, help, tab). Returns (model, cmd, handled).
+func (m *Model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
+	switch {
+	case key.Matches(msg, m.keys.Quit):
+		return m, tea.Quit, true
+	case key.Matches(msg, m.keys.Help):
+		m.showHelp = !m.showHelp
+
+		return m, nil, true
+	case key.Matches(msg, m.keys.Tab):
+		m.NextPanel()
+
+		return m, nil, true
+	}
+
+	return m, nil, false
+}
+
+// handleEscapeKey handles the escape key to close modals.
+func (m *Model) handleEscapeKey() (tea.Model, tea.Cmd) {
+	// Close modals in order of priority
+	if m.showHelp {
+		m.showHelp = false
+
+		return m, nil
+	}
+	if m.showInfoModal {
+		m.showInfoModal = false
+
+		return m, nil
+	}
+	if m.showUpdateModal {
+		return m.closeUpdateModal()
+	}
+	if m.showInstallModal {
+		return m.closeInstallModal()
+	}
+	if m.showBatchConfigModal {
+		m.showBatchConfigModal = false
+		m.batchConfig = nil
+
+		return m, nil
+	}
+	if m.executeOutput != "" {
+		m.executeOutput = ""
+		m.err = nil
+
+		return m, nil
+	}
+
+	// Forward ESC to search panel if it's active
+	if m.activePanel == PanelSearch {
+		cmd, updatedPanel := m.searchPanel.Update(m.keys.Escape)
+		m.searchPanel = updatedPanel
+
+		return m, cmd
+	}
+
+	return m, nil
+}
+
+// closeUpdateModal closes the update modal and cancels any ongoing update.
+func (m *Model) closeUpdateModal() (tea.Model, tea.Cmd) {
+	m.showUpdateModal = false
+	m.updating = false
+	// Cancel update context to stop goroutines
+	if m.updateCancel != nil {
+		m.updateCancel()
+		m.updateCancel = nil
+	}
+	// Don't close channel - let service close it
+	m.updateProgress = nil
+
+	return m, nil
+}
+
+// closeInstallModal closes the install modal if not currently executing.
+func (m *Model) closeInstallModal() (tea.Model, tea.Cmd) {
+	// Only close if not currently executing
+	if !m.executing {
+		m.showInstallModal = false
+		m.executeOutput = ""
+		m.err = nil
+		m.batchProgress = nil
+		m.batchConfig = nil
+	}
+
+	return m, nil
+}
+
+// handleActionKeys processes action keys (update, info, install shortcuts). Returns (model, cmd, handled).
+func (m *Model) handleActionKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
+	switch {
+	case key.Matches(msg, m.keys.Update):
+		return m.handleUpdateKey()
+	case key.Matches(msg, m.keys.InfoModal):
+		return m.handleInfoModalKey()
+	case msg.Alt && msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 'i':
+		return m.handleAltIKey()
+	case msg.Alt && msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 'm':
+		return m.handleAltMKey()
+	case msg.Alt && msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 'r':
+		return m, m.openRepositoryURL(), true
+	}
+
+	return m, nil, false
+}
+
+// handleUpdateKey handles the update key press.
+func (m *Model) handleUpdateKey() (tea.Model, tea.Cmd, bool) {
+	m.showUpdateModal = true
+	m.updating = true
+	m.updateService = update.NewService(m.db)
+	m.updateProgress = make(chan update.ProgressUpdate, 100)
+
+	return m, tea.Batch(
+		m.startUpdate(),
+		m.tickSlugWave(),
+	), true
+}
+
+// handleInfoModalKey handles the info modal key press.
+func (m *Model) handleInfoModalKey() (tea.Model, tea.Cmd, bool) {
+	// Only show modal if NOT typing in search
+	if m.selectedTool != nil && m.activePanel != PanelSearch {
+		m.showInfoModal = true
+	}
+
+	return m, nil, true
+}
+
+// handleAltIKey handles Alt+i key press for install.
+func (m *Model) handleAltIKey() (tea.Model, tea.Cmd, bool) {
+	// If tools are marked, show batch config modal
+	if m.toolsPanel.GetMarkedCount() > 0 {
+		m.batchConfig = NewBatchInstallConfig()
+		m.showBatchConfigModal = true
+
+		return m, nil, true
+	}
+	// Otherwise, single tool install
+	if m.installPanel.HasCommands() {
+		cmd := m.installPanel.GetSelectedCommand()
+		if cmd != "" {
+			return m, func() tea.Msg {
+				return panels.InstallExecuteMsg{Command: cmd}
+			}, true
+		}
+	}
+
+	return m, nil, true
+}
+
+// handleAltMKey handles Alt+m key press for mise install.
+func (m *Model) handleAltMKey() (tea.Model, tea.Cmd, bool) {
+	// If tools are marked, show batch config modal with mise enabled
+	if m.toolsPanel.GetMarkedCount() > 0 {
+		m.batchConfig = NewBatchInstallConfig()
+		m.batchConfig.UseMise = true
+		m.showBatchConfigModal = true
+
+		return m, nil, true
+	}
+	// Otherwise, single tool install
+	if m.installPanel.HasCommands() {
+		cmd := m.installPanel.GetSelectedCommand()
+		if cmd != "" {
+			transformedCmd := install.TransformToMise(cmd)
+
+			return m, func() tea.Msg {
+				return panels.InstallExecuteMiseMsg{Command: transformedCmd}
+			}, true
+		}
+	}
+
+	return m, nil, true
 }
 
 // installCompleteMsg is sent when install completes
