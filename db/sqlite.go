@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -333,7 +334,26 @@ func (s *SQLiteDB) GetAllTags() ([]TagCount, error) {
 	return tags, rows.Err()
 }
 
+func normalizeTagName(tagName string) (string, error) {
+	normalized := strings.ToLower(strings.TrimSpace(tagName))
+	if normalized == "" {
+		return "", fmt.Errorf("tag name cannot be empty")
+	}
+	return normalized, nil
+}
+
+func (s *SQLiteDB) pruneOrphanedTags() error {
+	_, err := s.db.ExecContext(context.Background(),
+		"DELETE FROM tags WHERE name NOT IN (SELECT DISTINCT tag_name FROM tool_tags)")
+	return err
+}
+
 func (s *SQLiteDB) AddTag(slug, tagName string) error {
+	normalized, err := normalizeTagName(tagName)
+	if err != nil {
+		return err
+	}
+
 	tools, err := s.GetToolBySlug(slug)
 	if err != nil {
 		return err
@@ -344,17 +364,22 @@ func (s *SQLiteDB) AddTag(slug, tagName string) error {
 	toolID := tools[0].ID
 
 	_, err = s.db.ExecContext(context.Background(),
-		"INSERT OR IGNORE INTO tags (name) VALUES (?)", tagName)
+		"INSERT OR IGNORE INTO tags (name) VALUES (?)", normalized)
 	if err != nil {
 		return fmt.Errorf("failed to create tag: %w", err)
 	}
 
 	_, err = s.db.ExecContext(context.Background(),
-		"INSERT OR IGNORE INTO tool_tags (tool_id, tag_name) VALUES (?, ?)", toolID, tagName)
+		"INSERT OR IGNORE INTO tool_tags (tool_id, tag_name) VALUES (?, ?)", toolID, normalized)
 	return err
 }
 
 func (s *SQLiteDB) RemoveTag(slug, tagName string) error {
+	normalized, err := normalizeTagName(tagName)
+	if err != nil {
+		return err
+	}
+
 	tools, err := s.GetToolBySlug(slug)
 	if err != nil {
 		return err
@@ -365,7 +390,7 @@ func (s *SQLiteDB) RemoveTag(slug, tagName string) error {
 	toolID := tools[0].ID
 
 	result, err := s.db.ExecContext(context.Background(),
-		"DELETE FROM tool_tags WHERE tool_id = ? AND tag_name = ?", toolID, tagName)
+		"DELETE FROM tool_tags WHERE tool_id = ? AND tag_name = ?", toolID, normalized)
 	if err != nil {
 		return err
 	}
@@ -375,9 +400,10 @@ func (s *SQLiteDB) RemoveTag(slug, tagName string) error {
 		return err
 	}
 	if affected == 0 {
-		return fmt.Errorf("tag not found on tool: %s", tagName)
+		return fmt.Errorf("tag not found on tool: %s", normalized)
 	}
-	return nil
+
+	return s.pruneOrphanedTags()
 }
 
 func (s *SQLiteDB) ClearTags(slug string) error {
@@ -392,10 +418,19 @@ func (s *SQLiteDB) ClearTags(slug string) error {
 
 	_, err = s.db.ExecContext(context.Background(),
 		"DELETE FROM tool_tags WHERE tool_id = ?", toolID)
-	return err
+	if err != nil {
+		return err
+	}
+
+	return s.pruneOrphanedTags()
 }
 
 func (s *SQLiteDB) GetToolsByTag(tagName string) ([]Tool, error) {
+	normalized, err := normalizeTagName(tagName)
+	if err != nil {
+		return nil, err
+	}
+
 	query := `
 		SELECT t.id, t.slug, t.name, t.tagline, t.description, t.language, t.license,
 			t.date_published, t.code_repository, t.created_at, t.updated_at
@@ -404,7 +439,7 @@ func (s *SQLiteDB) GetToolsByTag(tagName string) ([]Tool, error) {
 		WHERE tt.tag_name = ?
 		ORDER BY t.name
 	`
-	rows, err := s.db.QueryContext(context.Background(), query, tagName)
+	rows, err := s.db.QueryContext(context.Background(), query, normalized)
 	if err != nil {
 		return nil, err
 	}
