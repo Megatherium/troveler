@@ -461,6 +461,67 @@ func (s *SQLiteDB) GetToolsByTag(tagName string) ([]Tool, error) {
 	return tools, rows.Err()
 }
 
+// GetAllTagsBySlug returns all user tags keyed by tool slug.
+// This is used to preserve tags during database updates.
+func (s *SQLiteDB) GetAllTagsBySlug() (map[string][]string, error) {
+	query := `
+		SELECT t.slug, tt.tag_name
+		FROM tool_tags tt
+		JOIN tools t ON tt.tool_id = t.id
+		ORDER BY t.slug, tt.tag_name
+	`
+	rows, err := s.db.QueryContext(context.Background(), query)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	result := make(map[string][]string)
+	for rows.Next() {
+		var slug, tagName string
+		if err := rows.Scan(&slug, &tagName); err != nil {
+			return nil, err
+		}
+		if slug == "" {
+			continue
+		}
+		result[slug] = append(result[slug], tagName)
+	}
+
+	return result, rows.Err()
+}
+
+// ReapplyTags restores user tags to tools after a database update.
+// It takes a map of slug -> tag names that was captured before the update.
+func (s *SQLiteDB) ReapplyTags(slugToTags map[string][]string) error {
+	for slug, tagNames := range slugToTags {
+		tools, err := s.GetToolBySlug(slug)
+		if err != nil {
+			return fmt.Errorf("lookup tool by slug %q: %w", slug, err)
+		}
+		if len(tools) == 0 {
+			continue
+		}
+		toolID := tools[0].ID
+
+		for _, tagName := range tagNames {
+			_, err = s.db.ExecContext(context.Background(),
+				"INSERT OR IGNORE INTO tags (name) VALUES (?)", tagName)
+			if err != nil {
+				return fmt.Errorf("create tag %q: %w", tagName, err)
+			}
+
+			_, err = s.db.ExecContext(context.Background(),
+				"INSERT OR IGNORE INTO tool_tags (tool_id, tag_name) VALUES (?, ?)", toolID, tagName)
+			if err != nil {
+				return fmt.Errorf("link tag %q to tool %q: %w", tagName, slug, err)
+			}
+		}
+	}
+
+	return nil
+}
+
 func (s *SQLiteDB) Close() error {
 	return s.db.Close()
 }

@@ -376,6 +376,14 @@ func runUpdate(
 		fmt.Printf("Found %d tools\n", len(slugs))
 	}
 
+	preservedTags, err := database.GetAllTagsBySlug()
+	if err != nil {
+		return fmt.Errorf("snapshot tags before update: %w", err)
+	}
+	if logOutput && len(preservedTags) > 0 {
+		fmt.Printf("Preserving %d tagged tools\n", len(preservedTags))
+	}
+
 	if logOutput {
 		fmt.Printf("Fetching details for %d tools...\n", len(slugs))
 	}
@@ -402,6 +410,15 @@ func runUpdate(
 	case <-detailDone:
 		if !logOutput {
 			fmt.Println()
+		}
+
+		if len(preservedTags) > 0 {
+			if err := database.ReapplyTags(preservedTags); err != nil {
+				return fmt.Errorf("restore tags after update: %w", err)
+			}
+			if logOutput {
+				fmt.Printf("Restored tags for %d tools\n", len(preservedTags))
+			}
 		}
 
 		finalCount, _ := database.ToolCount(context.Background())
