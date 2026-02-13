@@ -96,7 +96,9 @@ For more details, see README.md and docs/QUICKSTART.md.
 **MANDATORY WORKFLOW:**
 
 1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
+2. **Run quality gates** (if code changed):
+   - `go test ./...` - Run all tests
+   - `golangci-lint run` - Run linter
 3. **BUT WAIT:** Now is the time to engage the CODE REVIEW & REFINEMENT PROTOCOL to see if you can close up shop or have extra steps
 4. **Update issue status** - Close finished work, update in-progress items
 5. **PUSH TO REMOTE** - This is MANDATORY:
