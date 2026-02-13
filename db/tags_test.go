@@ -14,7 +14,14 @@ func setupTestDB(t *testing.T) *SQLiteDB {
 	return database
 }
 
-func seedTool(t *testing.T, database *SQLiteDB, slug, name string) *Tool {
+func checkClose(t *testing.T, db *SQLiteDB) {
+	t.Helper()
+	if err := db.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+}
+
+func seedTool(t *testing.T, database *SQLiteDB, slug, name string) {
 	t.Helper()
 	tool := &Tool{
 		ID:   "tool-" + slug,
@@ -25,12 +32,11 @@ func seedTool(t *testing.T, database *SQLiteDB, slug, name string) *Tool {
 	if err != nil {
 		t.Fatalf("Failed to seed tool: %v", err)
 	}
-	return tool
 }
 
 func TestAddTag(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	seedTool(t, database, "fzf", "fzf")
 
@@ -50,11 +56,13 @@ func TestAddTag(t *testing.T) {
 
 func TestAddTagDuplicate(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	seedTool(t, database, "fzf", "fzf")
 
-	database.AddTag("fzf", "fuzzy")
+	if err := database.AddTag("fzf", "fuzzy"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
 	err := database.AddTag("fzf", "fuzzy")
 	if err != nil {
 		t.Errorf("AddTag duplicate should be idempotent, got: %v", err)
@@ -68,7 +76,7 @@ func TestAddTagDuplicate(t *testing.T) {
 
 func TestAddTagToolNotFound(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	err := database.AddTag("nonexistent", "fuzzy")
 	if err == nil {
@@ -78,12 +86,16 @@ func TestAddTagToolNotFound(t *testing.T) {
 
 func TestAddMultipleTags(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	seedTool(t, database, "fzf", "fzf")
 
-	database.AddTag("fzf", "fuzzy")
-	database.AddTag("fzf", "cli")
+	if err := database.AddTag("fzf", "fuzzy"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
+	if err := database.AddTag("fzf", "cli"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
 
 	tags, _ := database.GetTags("fzf")
 	if len(tags) != 2 {
@@ -99,7 +111,7 @@ func TestAddMultipleTags(t *testing.T) {
 
 func TestGetTagsEmpty(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	seedTool(t, database, "fzf", "fzf")
 
@@ -114,11 +126,15 @@ func TestGetTagsEmpty(t *testing.T) {
 
 func TestRemoveTag(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	seedTool(t, database, "fzf", "fzf")
-	database.AddTag("fzf", "fuzzy")
-	database.AddTag("fzf", "cli")
+	if err := database.AddTag("fzf", "fuzzy"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
+	if err := database.AddTag("fzf", "cli"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
 
 	err := database.RemoveTag("fzf", "fuzzy")
 	if err != nil {
@@ -133,10 +149,12 @@ func TestRemoveTag(t *testing.T) {
 
 func TestRemoveTagNotFound(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	seedTool(t, database, "fzf", "fzf")
-	database.AddTag("fzf", "fuzzy")
+	if err := database.AddTag("fzf", "fuzzy"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
 
 	err := database.RemoveTag("fzf", "nonexistent")
 	if err == nil {
@@ -146,7 +164,7 @@ func TestRemoveTagNotFound(t *testing.T) {
 
 func TestRemoveTagToolNotFound(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	err := database.RemoveTag("nonexistent", "fuzzy")
 	if err == nil {
@@ -156,11 +174,15 @@ func TestRemoveTagToolNotFound(t *testing.T) {
 
 func TestClearTags(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	seedTool(t, database, "fzf", "fzf")
-	database.AddTag("fzf", "fuzzy")
-	database.AddTag("fzf", "cli")
+	if err := database.AddTag("fzf", "fuzzy"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
+	if err := database.AddTag("fzf", "cli"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
 
 	err := database.ClearTags("fzf")
 	if err != nil {
@@ -175,7 +197,7 @@ func TestClearTags(t *testing.T) {
 
 func TestClearTagsToolNotFound(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	err := database.ClearTags("nonexistent")
 	if err == nil {
@@ -185,14 +207,20 @@ func TestClearTagsToolNotFound(t *testing.T) {
 
 func TestGetAllTags(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	seedTool(t, database, "fzf", "fzf")
 	seedTool(t, database, "bat", "bat")
 
-	database.AddTag("fzf", "fuzzy")
-	database.AddTag("fzf", "cli")
-	database.AddTag("bat", "cli")
+	if err := database.AddTag("fzf", "fuzzy"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
+	if err := database.AddTag("fzf", "cli"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
+	if err := database.AddTag("bat", "cli"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
 
 	tags, err := database.GetAllTags()
 	if err != nil {
@@ -212,7 +240,7 @@ func TestGetAllTags(t *testing.T) {
 
 func TestGetAllTagsEmpty(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	tags, err := database.GetAllTags()
 	if err != nil {
@@ -225,15 +253,21 @@ func TestGetAllTagsEmpty(t *testing.T) {
 
 func TestGetToolsByTag(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	seedTool(t, database, "fzf", "fzf")
 	seedTool(t, database, "bat", "bat")
 	seedTool(t, database, "ripgrep", "ripgrep")
 
-	database.AddTag("fzf", "cli")
-	database.AddTag("bat", "cli")
-	database.AddTag("ripgrep", "search")
+	if err := database.AddTag("fzf", "cli"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
+	if err := database.AddTag("bat", "cli"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
+	if err := database.AddTag("ripgrep", "search"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
 
 	tools, err := database.GetToolsByTag("cli")
 	if err != nil {
@@ -255,7 +289,7 @@ func TestGetToolsByTag(t *testing.T) {
 
 func TestGetToolsByTagNotFound(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	tools, err := database.GetToolsByTag("nonexistent")
 	if err != nil {
@@ -268,7 +302,7 @@ func TestGetToolsByTagNotFound(t *testing.T) {
 
 func TestForeignKeyCascade(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	seedTool(t, database, "fzf", "fzf")
 	if err := database.AddTag("fzf", "fuzzy"); err != nil {
@@ -351,7 +385,7 @@ func TestNormalizeTagName(t *testing.T) {
 
 func TestAddTagEmptyName(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	seedTool(t, database, "fzf", "fzf")
 
@@ -368,12 +402,16 @@ func TestAddTagEmptyName(t *testing.T) {
 
 func TestAddTagNormalizesInput(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	seedTool(t, database, "fzf", "fzf")
 
-	database.AddTag("fzf", "  CLI  ")
-	database.AddTag("fzf", "cli")
+	if err := database.AddTag("fzf", "  CLI  "); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
+	if err := database.AddTag("fzf", "cli"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
 
 	tags, _ := database.GetTags("fzf")
 	if len(tags) != 1 {
@@ -386,10 +424,12 @@ func TestAddTagNormalizesInput(t *testing.T) {
 
 func TestRemoveTagNormalizesInput(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	seedTool(t, database, "fzf", "fzf")
-	database.AddTag("fzf", "cli")
+	if err := database.AddTag("fzf", "cli"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
 
 	err := database.RemoveTag("fzf", "  CLI  ")
 	if err != nil {
@@ -404,7 +444,7 @@ func TestRemoveTagNormalizesInput(t *testing.T) {
 
 func TestRemoveTagEmptyName(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	seedTool(t, database, "fzf", "fzf")
 
@@ -416,10 +456,12 @@ func TestRemoveTagEmptyName(t *testing.T) {
 
 func TestGetToolsByTagNormalizesInput(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	seedTool(t, database, "fzf", "fzf")
-	database.AddTag("fzf", "cli")
+	if err := database.AddTag("fzf", "cli"); err != nil {
+		t.Fatalf("AddTag failed: %v", err)
+	}
 
 	tools, err := database.GetToolsByTag("  CLI  ")
 	if err != nil {
@@ -432,7 +474,7 @@ func TestGetToolsByTagNormalizesInput(t *testing.T) {
 
 func TestGetToolsByTagEmptyName(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	_, err := database.GetToolsByTag("")
 	if err == nil {
@@ -442,7 +484,7 @@ func TestGetToolsByTagEmptyName(t *testing.T) {
 
 func TestPruneOrphanedTagsAfterRemove(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	seedTool(t, database, "fzf", "fzf")
 	if err := database.AddTag("fzf", "orphan"); err != nil {
@@ -466,7 +508,7 @@ func TestPruneOrphanedTagsAfterRemove(t *testing.T) {
 
 func TestPruneOrphanedTagsAfterClear(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	seedTool(t, database, "fzf", "fzf")
 	if err := database.AddTag("fzf", "orphan"); err != nil {
@@ -490,7 +532,7 @@ func TestPruneOrphanedTagsAfterClear(t *testing.T) {
 
 func TestPruneOrphanedTagsPreservesUsedTags(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	seedTool(t, database, "fzf", "fzf")
 	seedTool(t, database, "bat", "bat")
@@ -518,7 +560,7 @@ func TestPruneOrphanedTagsPreservesUsedTags(t *testing.T) {
 
 func TestGetAllTagsBySlug(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	seedTool(t, database, "fzf", "fzf")
 	seedTool(t, database, "bat", "bat")
@@ -556,7 +598,7 @@ func TestGetAllTagsBySlug(t *testing.T) {
 
 func TestGetAllTagsBySlugEmpty(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	seedTool(t, database, "fzf", "fzf")
 
@@ -572,7 +614,7 @@ func TestGetAllTagsBySlugEmpty(t *testing.T) {
 
 func TestReapplyTags(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	seedTool(t, database, "fzf", "fzf")
 	seedTool(t, database, "bat", "bat")
@@ -606,7 +648,7 @@ func TestReapplyTags(t *testing.T) {
 
 func TestReapplyTagsNewTool(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	seedTool(t, database, "fzf", "fzf")
 
@@ -630,7 +672,7 @@ func TestReapplyTagsNewTool(t *testing.T) {
 
 func TestReapplyTagsMissingTool(t *testing.T) {
 	database := setupTestDB(t)
-	defer database.Close()
+	defer checkClose(t, database)
 
 	seedTool(t, database, "fzf", "fzf")
 
