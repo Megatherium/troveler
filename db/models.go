@@ -44,6 +44,7 @@ type FilterType int
 const (
 	FilterAnd FilterType = iota
 	FilterOr
+	FilterNot
 	FilterField
 )
 

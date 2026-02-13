@@ -148,6 +148,11 @@ Search supports powerful field-based filtering with the following syntax:
   - `name=git&language=go` - Tools named "git" AND written in Go
   - `name=bat|name=batcat` - Tools named "bat" OR "batcat"
 
+- **NOT operator**: Negate filters with `!`
+  - `!installed=true` - Show uninstalled tools
+  - `!language=go` - Exclude Go tools
+  - `!(language=go|language=rust)` - Exclude Go and Rust tools
+
 - **Parentheses**: Group expressions for complex queries
   - `(name=git|tagline=git)&language=go` - (name=git OR tagline=git) AND language=go
 
@@ -167,8 +172,15 @@ troveler search "language=go&tagline=cli"
 # Multiple filters with OR
 troveler search "name=bat|name=batcat"
 
+# Negate a filter with NOT
+troveler search "!installed=true"
+troveler search "!language=go"
+
 # Complex query with parentheses
 troveler search "(name=git|tagline=git)&language=go"
+
+# Exclude multiple languages
+troveler search "!(language=go|language=rust)"
 
 # Filter by installed status
 troveler search installed=true

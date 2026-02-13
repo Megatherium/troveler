@@ -27,6 +27,7 @@ const (
 	tokenValue
 	tokenLParen
 	tokenRParen
+	tokenNot
 )
 
 // ParseFilters parses a query string into a db.Filter AST
@@ -87,6 +88,9 @@ func (p *Parser) tokenize(query string) {
 			i++
 		case '|':
 			tokens = append(tokens, token{Type: tokenOperator, Value: "|"})
+			i++
+		case '!':
+			tokens = append(tokens, token{Type: tokenNot, Value: "!"})
 			i++
 		case '(':
 			tokens = append(tokens, token{Type: tokenLParen})
@@ -153,14 +157,14 @@ func (p *Parser) parseOr() (*db.Filter, error) {
 }
 
 func (p *Parser) parseAnd() (*db.Filter, error) {
-	left, err := p.parseTerm()
+	left, err := p.parseNot()
 	if err != nil {
 		return nil, err
 	}
 
 	for p.pos < len(p.tokens) && p.tokens[p.pos].Value == "&" {
 		p.pos++
-		right, err := p.parseTerm()
+		right, err := p.parseNot()
 		if err != nil {
 			return nil, err
 		}
@@ -172,6 +176,21 @@ func (p *Parser) parseAnd() (*db.Filter, error) {
 	}
 
 	return left, nil
+}
+
+func (p *Parser) parseNot() (*db.Filter, error) {
+	if p.pos < len(p.tokens) && p.tokens[p.pos].Type == tokenNot {
+		p.pos++
+		operand, err := p.parseNot()
+		if err != nil {
+			return nil, err
+		}
+		return &db.Filter{
+			Type: db.FilterNot,
+			Left: operand,
+		}, nil
+	}
+	return p.parseTerm()
 }
 
 func (p *Parser) parseTerm() (*db.Filter, error) {

@@ -160,3 +160,72 @@ func TestParseFiltersInvalidSyntax(t *testing.T) {
 		t.Errorf("expected searchTerm 'name bat', got '%s'", searchTerm)
 	}
 }
+
+func TestParseFiltersNotSimple(t *testing.T) {
+	ast, _, err := ParseFilters("!installed=true")
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if ast.Type != db.FilterNot {
+		t.Errorf("expected db.FilterNot, got %v", ast.Type)
+	}
+	if ast.Left == nil || ast.Left.Type != db.FilterField {
+		t.Errorf("expected FilterField child, got %+v", ast.Left)
+	}
+	if ast.Left.Field != "installed" || ast.Left.Value != "true" {
+		t.Errorf("expected installed=true, got field=%s value=%s", ast.Left.Field, ast.Left.Value)
+	}
+}
+
+func TestParseFiltersNotWithParens(t *testing.T) {
+	ast, _, err := ParseFilters("!(language=go|language=rust)")
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if ast.Type != db.FilterNot {
+		t.Errorf("expected db.FilterNot, got %v", ast.Type)
+	}
+	if ast.Left.Type != db.FilterOr {
+		t.Errorf("expected FilterOr child, got %v", ast.Left.Type)
+	}
+}
+
+func TestParseFiltersNotWithAnd(t *testing.T) {
+	ast, _, err := ParseFilters("!installed=true&language=go")
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if ast.Type != db.FilterAnd {
+		t.Errorf("expected db.FilterAnd, got %v", ast.Type)
+	}
+	if ast.Left.Type != db.FilterNot {
+		t.Errorf("expected FilterNot on left, got %v", ast.Left.Type)
+	}
+	if ast.Right.Type != db.FilterField || ast.Right.Field != "language" {
+		t.Errorf("expected language field on right, got %+v", ast.Right)
+	}
+}
+
+func TestParseFiltersDoubleNot(t *testing.T) {
+	ast, _, err := ParseFilters("!!installed=true")
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if ast.Type != db.FilterNot {
+		t.Errorf("expected db.FilterNot, got %v", ast.Type)
+	}
+	if ast.Left.Type != db.FilterNot {
+		t.Errorf("expected inner FilterNot, got %v", ast.Left.Type)
+	}
+	if ast.Left.Left.Type != db.FilterField {
+		t.Errorf("expected FilterField at deepest level, got %v", ast.Left.Left.Type)
+	}
+}

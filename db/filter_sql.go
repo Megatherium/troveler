@@ -59,6 +59,10 @@ func buildFilterSQL(filter *Filter) (string, []interface{}) {
 		args := append(leftArgs, rightArgs...)
 		return fmt.Sprintf("(%s OR %s)", leftClause, rightClause), args
 
+	case FilterNot:
+		innerClause, innerArgs := buildFilterSQL(filter.Left)
+		return fmt.Sprintf("NOT (%s)", innerClause), innerArgs
+
 	case FilterField:
 		return buildFieldFilter(filter.Field, filter.Value)
 
@@ -92,20 +96,19 @@ func filterByInstalled(results []SearchResult, filter *Filter) []SearchResult {
 		return results
 	}
 
-	// Check if there's an installed filter in the AST
 	if !hasInstalledFilter(filter) {
 		return results
 	}
 
-	// Get the installed filter value
-	value := getInstalledFilterValue(filter)
+	value, negated := getInstalledFilterInfo(filter, false)
 
-	// Filter results based on installed status
 	var filtered []SearchResult
 	for _, r := range results {
-		if (value == "true" || value == "1") && r.Installed {
-			filtered = append(filtered, r)
-		} else if (value == "false" || value == "0") && !r.Installed {
+		wantInstalled := (value == "true" || value == "1")
+		if negated {
+			wantInstalled = !wantInstalled
+		}
+		if wantInstalled == r.Installed {
 			filtered = append(filtered, r)
 		}
 	}
@@ -134,17 +137,21 @@ func hasInstalledFilter(filter *Filter) bool {
 }
 
 // getInstalledFilterValue extracts the value from an installed filter
-func getInstalledFilterValue(filter *Filter) string {
+func getInstalledFilterInfo(filter *Filter, negated bool) (string, bool) {
 	if filter == nil {
-		return ""
+		return "", negated
+	}
+
+	if filter.Type == FilterNot {
+		return getInstalledFilterInfo(filter.Left, !negated)
 	}
 
 	if filter.Type == FilterField && filter.Field == "installed" {
-		return filter.Value
+		return filter.Value, negated
 	}
 
-	if value := getInstalledFilterValue(filter.Left); value != "" {
-		return value
+	if value, n := getInstalledFilterInfo(filter.Left, negated); value != "" {
+		return value, n
 	}
-	return getInstalledFilterValue(filter.Right)
+	return getInstalledFilterInfo(filter.Right, negated)
 }
