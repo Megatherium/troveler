@@ -1,5 +1,8 @@
+// Package platform provides OS detection, platform matching, and install instruction processing
+// functionality for the troveler tool installer.
 package platform
 
+// Platform OS identifiers used throughout the codebase
 const (
 	OSArch     = "arch"
 	OSRHEL     = "rhel"

@@ -1,3 +1,4 @@
+// Package platform provides virtual install generation and install instruction filtering.
 package platform
 
 import (
@@ -6,8 +7,10 @@ import (
 	"troveler/db"
 )
 
+// Backend represents a virtual installation backend type for mise.
 type Backend string
 
+// Supported virtual installation backends for generating mise-compatible commands.
 const (
 	BackendGo     Backend = "go"
 	BackendCargo  Backend = "cargo"
@@ -16,11 +19,14 @@ const (
 	BackendGithub Backend = "github"
 )
 
+// VirtualInstall represents a generated virtual install instruction.
 type VirtualInstall struct {
 	Platform string
 	Command  string
 }
 
+// ResolveVirtual resolves a virtual platform prefix (e.g., "mise:go") to its base form (e.g., "go").
+// Returns the input unchanged if it doesn't have the "mise:" prefix.
 func ResolveVirtual(platform string) string {
 	if strings.HasPrefix(platform, "mise:") {
 		return strings.TrimPrefix(platform, "mise:")
@@ -29,6 +35,10 @@ func ResolveVirtual(platform string) string {
 	return platform
 }
 
+// GenerateVirtualInstalls creates virtual install instructions from existing install commands.
+// Analyzes each install command and generates mise-compatible equivalents for supported backends
+// (go, cargo, npm, pipx, github). Groups multiple package managers from the same backend into
+// a single virtual install. Existing "mise:" platforms are skipped.
 func GenerateVirtualInstalls(installs []db.InstallInstruction) []VirtualInstall {
 	virtuals := make(map[Backend]VirtualInstall)
 
@@ -65,7 +75,13 @@ func GenerateVirtualInstalls(installs []db.InstallInstruction) []VirtualInstall 
 	return result
 }
 
-func FilterDBInstalls(installs []db.InstallInstruction, platform string, toolLanguage string) ([]db.InstallInstruction, bool) {
+// FilterDBInstalls filters install instructions by platform or language.
+// When platform is "LANG", matches instructions by tool language using MatchLanguage.
+// Otherwise matches by platform ID using MatchPlatform after normalization.
+// Returns the matched instructions and a boolean indicating if fallback was used.
+func FilterDBInstalls(
+	installs []db.InstallInstruction, platform string, toolLanguage string,
+) ([]db.InstallInstruction, bool) {
 	var matched []db.InstallInstruction
 
 	if platform == "LANG" {
@@ -90,7 +106,13 @@ func FilterDBInstalls(installs []db.InstallInstruction, platform string, toolLan
 	return matched, false
 }
 
-func SelectDefaultDBInstalls(installs []db.InstallInstruction, usedFallback bool, detectedOS string) *db.InstallInstruction {
+// SelectDefaultDBInstalls selects the default install instruction from a list.
+// When usedFallback is true, attempts to find an instruction matching the detected OS.
+// Uses preferred platform ordering based on OS family if no direct match.
+// Returns nil if no suitable default can be determined.
+func SelectDefaultDBInstalls(
+	installs []db.InstallInstruction, usedFallback bool, detectedOS string,
+) *db.InstallInstruction {
 	if len(installs) == 0 {
 		return nil
 	}

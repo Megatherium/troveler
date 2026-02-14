@@ -1,9 +1,12 @@
+// Package platform provides platform matching and language detection functionality.
 package platform
 
 import (
 	"strings"
 )
 
+// LanguageToPackageManager maps programming languages to their associated package managers.
+// Used for matching install instructions to tools based on their language.
 var LanguageToPackageManager = map[string][]string{
 	"python":      {"python", "pip", "pipx", "uv"},
 	"rust":        {"rust", "cargo"},
@@ -21,6 +24,12 @@ var LanguageToPackageManager = map[string][]string{
 	"haxe":        {"haxe", "haxelib"},
 }
 
+// MatchPlatform determines if an install platform matches the detected OS ID.
+// Supports various platform formats including:
+//   - Simple OS IDs (e.g., "macos", "ubuntu")
+//   - OS:method formats (e.g., "linux:apt", "macos:brew")
+//   - Multi-distro methods (e.g., "linux:ubuntu / debian")
+//   - Language-based platforms
 func MatchPlatform(detectedID string, installPlatform string) bool {
 	parts := strings.SplitN(installPlatform, ":", 2)
 	platformOS := parts[0]
@@ -69,6 +78,9 @@ func MatchPlatform(detectedID string, installPlatform string) bool {
 	return false
 }
 
+// MatchLanguage checks if an install platform matches a given programming language.
+// Returns true if the platform is the language itself or uses a package manager
+// associated with that language (e.g., "python (pip)" matches "python").
 func MatchLanguage(language string, installPlatform string) bool {
 	language = strings.ToLower(language)
 	installPlatform = strings.ToLower(installPlatform)
@@ -95,6 +107,7 @@ func MatchLanguage(language string, installPlatform string) bool {
 	return false
 }
 
+// IsLinuxFamily returns true if the given OS ID belongs to the Linux family.
 func IsLinuxFamily(osID string) bool {
 	switch osID {
 	case OSUbuntu, OSDebian, OSFedora, OSArch, OSManjaro, OSRHEL, OSCentos:
@@ -104,12 +117,14 @@ func IsLinuxFamily(osID string) bool {
 	}
 }
 
+// IsMacFamily returns true if the given OS ID belongs to the macOS family (darwin/macos).
 func IsMacFamily(osID string) bool {
 	osID = strings.ToLower(osID)
 
 	return strings.Contains(osID, OSMacOS) || strings.Contains(osID, OSDarwin)
 }
 
+// IsBSDFamily returns true if the given OS ID belongs to the BSD family.
 func IsBSDFamily(osID string) bool {
 	switch osID {
 	case OSFreeBSD, OSOpenBSD, OSNetBSD:

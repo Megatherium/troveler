@@ -1,3 +1,4 @@
+// Package platform provides OS detection and platform identification functionality.
 package platform
 
 import (
@@ -5,6 +6,7 @@ import (
 	"strings"
 )
 
+// OSInfo holds information about the detected operating system.
 type OSInfo struct {
 	ID        string
 	Name      string
@@ -12,6 +14,9 @@ type OSInfo struct {
 	VariantID string
 }
 
+// DetectOS attempts to detect the current operating system by reading
+// various OS identification files (/etc/os-release, /etc/lsb-release, etc.).
+// Returns an OSInfo struct with the detected OS details or an error if detection fails.
 func DetectOS() (*OSInfo, error) {
 	info := &OSInfo{}
 

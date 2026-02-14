@@ -1,3 +1,4 @@
+// Package platform provides install command transformation functionality.
 package platform
 
 import (
@@ -5,6 +6,15 @@ import (
 	"strings"
 )
 
+// TransformToMise converts install commands to mise format.
+// Supports transforming:
+//   - "go install <package>" → "mise use --global go:<package>"
+//   - "cargo install <crate>" → "mise use --global cargo:<crate>"
+//   - "npm/yarn/pnpm install <package>" → "mise use --global npm:<package>"
+//   - "pip/pip3/pipx install <package>" → "mise use --global pipx:<package>"
+//   - "eget <repo>" → "mise use --global github:<repo>"
+//
+// Returns the original command if no transformation applies.
 func TransformToMise(command string) string {
 	command = strings.TrimSpace(command)
 
