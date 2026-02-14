@@ -54,7 +54,7 @@ func (sw *SlugWave) AddSlug(slug string) {
 		Slug:     slug,
 		Position: streamWidth - 1 - (len(sw.slugBuffer) % 15),
 		Age:      0,
-		Row:      rand.IntN(streamHeight),
+		Row:      rand.IntN(streamHeight), //nolint:gosec // G404: weak random is fine for UI animation
 	}
 	sw.slugBuffer = append(sw.slugBuffer, entry)
 	if len(sw.slugBuffer) > 30 {

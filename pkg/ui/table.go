@@ -185,7 +185,7 @@ func RenderKeyValueTable(rows [][]string) string {
 	colWidths := []int{0, 0}
 	for _, row := range rows {
 		if len(row) >= 2 {
-			if len(row[0]) > colWidths[0] {
+			if len(row[0]) > colWidths[0] { //nolint:gosec // G602: bounds-checked len(row)>=2
 				colWidths[0] = len(row[0])
 			}
 			if len(row[1]) > colWidths[1] {

@@ -11,6 +11,7 @@ func TestLoadTUIDefaults(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "config.toml")
 
 	// Empty config file
+	//nolint:gosec // G306: test file
 	_ = os.WriteFile(configPath, []byte(""), 0644)
 
 	cfg, err := Load(configPath)
@@ -31,6 +32,7 @@ func TestLoadTUICustom(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.toml")
 
+	//nolint:gosec // G306: test file
 	_ = os.WriteFile(configPath, []byte(`
 [tui]
 theme = "custom"
@@ -60,6 +62,7 @@ func TestDefaultToTUI(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.toml")
 
+	//nolint:gosec // G306: test file
 	_ = os.WriteFile(configPath, []byte(`
 default_to_tui = true
 `), 0644)

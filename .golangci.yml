@@ -149,18 +149,20 @@ linters-settings:
 # Issue exclusions
 issues:
   exclude-rules:
-    - path: _test\.go
+    - path: _test\.go$
       linters:
         - errcheck
         - gocyclo
         - funlen
         - gocognit
-        - gosec
         - lll
         - gochecknoglobals
         - gochecknoinits
         - nakedret
         - revive
+        - rowserrcheck
+        - sqlclosecheck
+        - goheader
 
     - linters:
         - staticcheck
@@ -169,24 +171,10 @@ issues:
         - staticcheck
       text: "ST1006"
 
-    - path: _test\.go
-      linters:
-        - revive
-
     - path: .*build_and_test\.sh$
       linters:
         - misspell
         - govet
         - staticcheck
-
-    - path: .*_test\.go$
-      linters:
-        - gosec
-        - rowserrcheck
-        - sqlclosecheck
-
-    - path: _test\.go
-      linters:
-        - goheader
 
   exclude-use-default: false

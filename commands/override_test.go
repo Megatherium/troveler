@@ -237,6 +237,7 @@ func TestMiseModeOverridePriority(t *testing.T) {
 	configPath := t.TempDir() + "/config.toml"
 	configContent := `[install]
 mise_mode = true`
+	//nolint:gosec // G306: test file
 	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
 		t.Fatalf("Failed to create config file: %v", err)
 	}

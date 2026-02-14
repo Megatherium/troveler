@@ -286,7 +286,7 @@ func executeInstall(command string, sudo bool, useSudo string, alwaysRun bool) e
 
 	fmt.Printf("\nExecuting: %s\n\n", command)
 
-	cmd := exec.Command("sh", "-c", command) //nolint:noctx
+	cmd := exec.Command("sh", "-c", command) //nolint:noctx //nolint:gosec // G204: user install
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -527,7 +527,7 @@ func installSingleTool(database *db.SQLiteDB, slug string, batchCfg *BatchConfig
 		}
 	}
 
-	execCmd := exec.Command("sh", "-c", cmd)
+	execCmd := exec.Command("sh", "-c", cmd) //nolint:gosec // G204: user install
 	execCmd.Stdout = os.Stdout
 	execCmd.Stderr = os.Stderr
 

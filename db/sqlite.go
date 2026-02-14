@@ -157,6 +157,7 @@ func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResu
 		args = []interface{}{likeQuery, likeQuery, likeQuery}
 	}
 
+	//nolint:gosec // G201: sortField/sortOrder validated against whitelist above
 	sqlQuery := fmt.Sprintf(`
 		SELECT id, slug, name, tagline, description, language, license, date_published, code_repository
 		FROM tools

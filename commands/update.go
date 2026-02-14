@@ -86,7 +86,7 @@ func (u *UpdateUI) AddSlug(slug string) {
 		slug:     slug,
 		position: streamWidth - 1 - (len(u.slugBuffer) % 15),
 		age:      0,
-		row:      rand.IntN(streamHeight),
+		row:      rand.IntN(streamHeight), //nolint:gosec // G404: weak random is fine for UI animation
 	}
 	u.slugBuffer = append(u.slugBuffer, entry)
 	if len(u.slugBuffer) > 30 {

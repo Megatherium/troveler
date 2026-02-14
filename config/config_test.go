@@ -10,8 +10,9 @@ func TestLoadConfigWithDefaults(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.toml")
 
+	//nolint:gosec // G306: test file
 	_ = os.WriteFile(configPath, []byte(`[install]
- fallback_platform = "LANG"`), 0644)
+fallback_platform = "LANG"`), 0644)
 
 	cfg, err := Load(configPath)
 	if err != nil {
@@ -35,8 +36,9 @@ func TestLoadConfigWithCustomTaglineWidth(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.toml")
 
+	//nolint:gosec // G306: test file
 	_ = os.WriteFile(configPath, []byte(`[search]
- tagline_width = 30`), 0644)
+tagline_width = 30`), 0644)
 
 	cfg, err := Load(configPath)
 	if err != nil {
@@ -52,8 +54,9 @@ func TestLoadConfigWithZeroTaglineWidth(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.toml")
 
+	//nolint:gosec // G306: test file
 	_ = os.WriteFile(configPath, []byte(`[search]
- tagline_width = 0`), 0644)
+tagline_width = 0`), 0644)
 
 	cfg, err := Load(configPath)
 	if err != nil {

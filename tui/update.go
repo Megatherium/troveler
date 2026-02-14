@@ -521,7 +521,7 @@ type installCompleteMsg struct {
 func (m *Model) executeInstallCommand(command string) tea.Cmd {
 	return func() tea.Msg {
 		// Execute command using shell
-		cmd := exec.Command("sh", "-c", command) //nolint:noctx
+		cmd := exec.Command("sh", "-c", command) //nolint:noctx //nolint:gosec // G204
 		output, err := cmd.CombinedOutput()
 
 		return installCompleteMsg{
@@ -543,11 +543,11 @@ func (m *Model) openRepositoryURL() tea.Cmd {
 
 		switch runtime.GOOS {
 		case "darwin":
-			cmd = exec.Command("open", url)
+			cmd = exec.Command("open", url) //nolint:gosec // G204: opening URL in browser
 		case "windows":
-			cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+			cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url) //nolint:gosec // G204
 		default: // Linux and others
-			cmd = exec.Command("xdg-open", url)
+			cmd = exec.Command("xdg-open", url) //nolint:gosec // G204: opening URL in browser
 		}
 
 		// Start command but don't wait - runs in background
@@ -707,7 +707,7 @@ func (m *Model) processBatchTool(index int) tea.Cmd {
 		}
 
 		// Execute the command
-		execCmd := exec.Command("sh", "-c", cmd)
+		execCmd := exec.Command("sh", "-c", cmd) //nolint:gosec // G204: user install
 		output, err := execCmd.CombinedOutput()
 
 		return batchInstallProgressMsg{
