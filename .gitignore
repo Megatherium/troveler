@@ -3,3 +3,6 @@
 workshop/
 mise.toml
 .perles/
+
+# bv (beads viewer) local config and caches
+.bv/
