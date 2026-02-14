@@ -2,6 +2,7 @@ package panels
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -176,41 +177,36 @@ func (p *ToolsPanel) adjustScroll() {
 
 // sortTools sorts the tools based on current sort settings
 func (p *ToolsPanel) sortTools() {
-	// Simple bubble sort for now (good enough for UI)
-	for i := 0; i < len(p.tools)-1; i++ {
-		for j := 0; j < len(p.tools)-i-1; j++ {
-			var swap bool
-			switch p.sortCol {
-			case 0: // slug/name
-				if p.sortAscending {
-					swap = p.tools[j].Name > p.tools[j+1].Name
-				} else {
-					swap = p.tools[j].Name < p.tools[j+1].Name
-				}
-			case 1: // tagline
-				if p.sortAscending {
-					swap = p.tools[j].Tagline > p.tools[j+1].Tagline
-				} else {
-					swap = p.tools[j].Tagline < p.tools[j+1].Tagline
-				}
-			case 2: // language
-				if p.sortAscending {
-					swap = p.tools[j].Language > p.tools[j+1].Language
-				} else {
-					swap = p.tools[j].Language < p.tools[j+1].Language
-				}
-			case 3: // installed (installed first when ascending)
-				if p.sortAscending {
-					swap = !p.tools[j].Installed && p.tools[j+1].Installed
-				} else {
-					swap = p.tools[j].Installed && !p.tools[j+1].Installed
-				}
+	sort.Slice(p.tools, func(i, j int) bool {
+		switch p.sortCol {
+		case 0:
+			if p.sortAscending {
+				return p.tools[i].Name < p.tools[j].Name
 			}
-			if swap {
-				p.tools[j], p.tools[j+1] = p.tools[j+1], p.tools[j]
+
+			return p.tools[i].Name > p.tools[j].Name
+		case 1:
+			if p.sortAscending {
+				return p.tools[i].Tagline < p.tools[j].Tagline
 			}
+
+			return p.tools[i].Tagline > p.tools[j].Tagline
+		case 2:
+			if p.sortAscending {
+				return p.tools[i].Language < p.tools[j].Language
+			}
+
+			return p.tools[i].Language > p.tools[j].Language
+		case 3:
+			if p.sortAscending {
+				return p.tools[i].Installed && !p.tools[j].Installed
+			}
+
+			return !p.tools[i].Installed && p.tools[j].Installed
 		}
-	}
+
+		return false
+	})
 }
 
 // View renders the tools table
