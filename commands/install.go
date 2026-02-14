@@ -13,7 +13,7 @@ import (
 	"troveler/config"
 	"troveler/db"
 	"troveler/internal/install"
-	"troveler/lib"
+	"troveler/internal/platform"
 	"troveler/pkg/ui"
 )
 
@@ -47,7 +47,6 @@ For multiple tools:
 			miseEnabled := mise || cfg.Install.MiseMode
 
 			if len(args) == 1 {
-				// Single tool - use existing logic
 				return runInstall(
 					database, args[0], all, run, sudo, override,
 					cfg.Install.PlatformOverride, cfg.Install.FallbackPlatform,
@@ -55,7 +54,6 @@ For multiple tools:
 				)
 			}
 
-			// Multiple tools - batch install
 			return runBatchInstall(database, args, run, sudo, sudoOnlySystem, skipIfBlind, miseEnabled, reuseConfig, cfg)
 		})
 	},
@@ -78,7 +76,7 @@ func FindMatchingInstalls(osID string, installs []db.InstallInstruction) []db.In
 	var matched []db.InstallInstruction
 
 	for _, inst := range installs {
-		if lib.MatchPlatform(osID, inst.Platform) {
+		if platform.MatchPlatform(osID, inst.Platform) {
 			matched = append(matched, inst)
 		}
 	}
@@ -86,16 +84,12 @@ func FindMatchingInstalls(osID string, installs []db.InstallInstruction) []db.In
 	return matched
 }
 
-func ResolveVirtualPlatform(platform string) string {
-	if strings.HasPrefix(platform, "mise:") {
-		return strings.TrimPrefix(platform, "mise:")
-	}
-
-	return platform
+func ResolveVirtualPlatform(platformID string) string {
+	return platform.ResolveVirtual(platformID)
 }
 
 func runInstall(
-	database *db.SQLiteDB, slug string, showAll bool, run bool, sudo bool,
+	database *db.SQLiteDB, slug string, showAll bool, runFlag bool, sudoFlag bool,
 	cliOverride string, configOverride string, fallbackPlatform string,
 	alwaysRun bool, useSudo string, miseEnabled bool,
 ) error {
@@ -121,63 +115,50 @@ func runInstall(
 		return showAllInstalls(tool.Name, installs)
 	}
 
-	// Priority: mise mode (force LANG) > CLI override > config override > OS detection > fallback
-	var platform string
+	var platformID string
 	var matched []db.InstallInstruction
 
-	// If mise mode is enabled AND no CLI override was provided, force LANG override
-	// CLI parameters have higher priority than config settings
 	if miseEnabled && override == "" {
 		cliOverride = platformLang
 	}
 
-	// Check for CLI or config override first
-	override := selectOverride(cliOverride, configOverride)
+	overrideVal := selectOverride(cliOverride, configOverride)
 
-	// Resolve virtual platforms (mise:* → source platform)
-	override = ResolveVirtualPlatform(override)
+	overrideVal = platform.ResolveVirtual(overrideVal)
 
-	if override != "" {
-		// Override is set, use it
-		if override == platformLang {
-			// Use language matching
+	if overrideVal != "" {
+		if overrideVal == platformLang {
 			for _, inst := range installs {
-				if lib.MatchLanguage(tool.Language, inst.Platform) {
+				if platform.MatchLanguage(tool.Language, inst.Platform) {
 					matched = append(matched, inst)
 				}
 			}
-			platform = tool.Language
+			platformID = tool.Language
 		} else {
-			// Use platform matching
-			platform = lib.NormalizePlatform(override)
-			matched = FindMatchingInstalls(platform, installs)
+			platformID = platform.Normalize(overrideVal)
+			matched = FindMatchingInstalls(platformID, installs)
 		}
 	} else {
-		// No override, try OS detection first
-		osInfo, err := lib.DetectOS()
+		osInfo, err := platform.DetectOS()
 		if err == nil {
-			platform = osInfo.ID
-			matched = FindMatchingInstalls(platform, installs)
+			platformID = osInfo.ID
+			matched = FindMatchingInstalls(platformID, installs)
 		}
 
-		// If OS detection failed or no match, try fallback
 		if len(matched) == 0 && fallbackPlatform != "" {
 			if fallbackPlatform == platformLang {
-				// Use language matching
 				for _, inst := range installs {
-					if lib.MatchLanguage(tool.Language, inst.Platform) {
+					if platform.MatchLanguage(tool.Language, inst.Platform) {
 						matched = append(matched, inst)
 					}
 				}
-				platform = tool.Language
+				platformID = tool.Language
 			} else {
-				// Use platform matching
-				platform = lib.NormalizePlatform(fallbackPlatform)
-				matched = FindMatchingInstalls(platform, installs)
+				platformID = platform.Normalize(fallbackPlatform)
+				matched = FindMatchingInstalls(platformID, installs)
 			}
 		}
 
-		// If still no match and OS detection failed, show error
 		if len(matched) == 0 && err != nil {
 			fmt.Printf("Warning: Could not detect OS: %v\n\n", err)
 			fmt.Println("Available commands:")
@@ -186,15 +167,13 @@ func runInstall(
 		}
 	}
 
-	// No match found, try fallback then show all
 	if len(matched) == 0 {
-		fmt.Printf("No install command found for %s.\n\n", platform)
+		fmt.Printf("No install command found for %s.\n\n", platformID)
 
-		// If we haven't tried language matching yet, try it as fallback
-		if platform != tool.Language {
+		if platformID != tool.Language {
 			var langMatched []db.InstallInstruction
 			for _, inst := range installs {
-				if lib.MatchLanguage(tool.Language, inst.Platform) {
+				if platform.MatchLanguage(tool.Language, inst.Platform) {
 					langMatched = append(langMatched, inst)
 				}
 			}
@@ -218,7 +197,7 @@ func runInstall(
 	fmt.Println(lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("#00FF00")).
-		Render("Install command for " + platform + ":"))
+		Render("Install command for " + platformID + ":"))
 	fmt.Println()
 
 	for _, inst := range matched {
@@ -230,19 +209,18 @@ func runInstall(
 	}
 	fmt.Println()
 
-	if run {
+	if runFlag {
 		cmd := matched[0].Command
 		if miseEnabled {
 			cmd = install.TransformToMise(cmd)
 		}
 
-		return executeInstall(cmd, sudo, useSudo, alwaysRun)
+		return executeInstall(cmd, sudoFlag, useSudo, alwaysRun)
 	}
 
 	return nil
 }
 
-// selectOverride returns CLI override if set, otherwise config override
 func selectOverride(cliOverride, configOverride string) string {
 	if cliOverride != "" {
 		return cliOverride
@@ -251,10 +229,10 @@ func selectOverride(cliOverride, configOverride string) string {
 	return configOverride
 }
 
-func executeInstall(command string, sudo bool, useSudo string, alwaysRun bool) error {
-	shouldSudo := sudo
+func executeInstall(command string, sudoFlag bool, useSudo string, alwaysRun bool) error {
+	shouldSudo := sudoFlag
 
-	if !sudo && useSudo == "ask" {
+	if !sudoFlag && useSudo == "ask" {
 		fmt.Print("Use sudo? [y/N] ")
 		var confirm string
 		if _, err := fmt.Scanln(&confirm); err != nil {
@@ -262,7 +240,7 @@ func executeInstall(command string, sudo bool, useSudo string, alwaysRun bool) e
 		} else {
 			shouldSudo = confirm == "y" || confirm == "Y"
 		}
-	} else if !sudo && useSudo == "true" {
+	} else if !sudoFlag && useSudo == "true" {
 		shouldSudo = true
 	}
 
@@ -302,27 +280,22 @@ func showAllInstalls(name string, installs []db.InstallInstruction) error {
 	fmt.Println(strings.Repeat("─", len(name)+len(" - All Install Commands:")))
 	fmt.Println()
 
-	// Generate virtual install instructions from raw commands
 	virtuals := install.GenerateVirtualInstallInstructions(installs)
 
-	// Combine raw installs with virtual installs
 	headers := []string{"Platform", "Command"}
 
-	// Calculate total rows needed
 	totalRows := len(installs) + len(virtuals)
 	rows := make([][]string, 0, totalRows)
 
-	// Add raw install instructions first
 	for _, inst := range installs {
 		rows = append(rows, []string{inst.Platform, inst.Command})
 	}
 
-	// Add virtual install instructions
 	for _, v := range virtuals {
 		rows = append(rows, []string{v.Platform, v.Command})
 	}
 
-	config := ui.TableConfig{
+	tableConfig := ui.TableConfig{
 		Headers: headers,
 		Rows:    rows,
 		RowFunc: func(cell string, rowIdx, colIdx int) string {
@@ -338,12 +311,11 @@ func showAllInstalls(name string, installs []db.InstallInstruction) error {
 		ShowHeader: true,
 	}
 
-	fmt.Println(ui.RenderTable(config))
+	fmt.Println(ui.RenderTable(tableConfig))
 
 	return nil
 }
 
-// BatchConfig holds configuration for batch installs
 type BatchConfig struct {
 	UseSudo        bool
 	SudoOnlySystem bool
@@ -352,14 +324,12 @@ type BatchConfig struct {
 	AlwaysRun      bool
 }
 
-// runBatchInstall handles installing multiple tools
 func runBatchInstall(
-	database *db.SQLiteDB, slugs []string, run, sudo, sudoOnlySystem, skipIfBlind, miseEnabled bool,
+	database *db.SQLiteDB, slugs []string, runFlag, sudoFlag, sudoOnlySystemFlag, skipIfBlindFlag, miseEnabled bool,
 	reuseConfig string, cfg *config.Config,
 ) error {
 	fmt.Printf("\n🔧 Batch Install: %d tools\n\n", len(slugs))
 
-	// Determine if we should ask for config
 	var batchCfg *BatchConfig
 	shouldReuse := reuseConfig == "true"
 	shouldAsk := reuseConfig == "ask"
@@ -373,15 +343,14 @@ func runBatchInstall(
 
 	if shouldReuse {
 		batchCfg = &BatchConfig{
-			UseSudo:        sudo,
-			SudoOnlySystem: sudoOnlySystem,
-			SkipIfBlind:    skipIfBlind,
+			UseSudo:        sudoFlag,
+			SudoOnlySystem: sudoOnlySystemFlag,
+			SkipIfBlind:    skipIfBlindFlag,
 			UseMise:        miseEnabled,
 			AlwaysRun:      cfg.Install.AlwaysRun,
 		}
 
-		// Ask for config if flags not set
-		if !sudo && !sudoOnlySystem {
+		if !sudoFlag && !sudoOnlySystemFlag {
 			fmt.Print("Use sudo? [y/N/s=system-only] ")
 			var confirm string
 			_, _ = fmt.Scanln(&confirm)
@@ -393,7 +362,7 @@ func runBatchInstall(
 			}
 		}
 
-		if !skipIfBlind {
+		if !skipIfBlindFlag {
 			fmt.Print("Skip tools without install method? [y/N] ")
 			var confirm string
 			_, _ = fmt.Scanln(&confirm)
@@ -414,7 +383,7 @@ func runBatchInstall(
 		fmt.Printf("\n[%d/%d] %s\n", i+1, len(slugs), slug)
 		fmt.Println(strings.Repeat("─", 40))
 
-		err := installSingleTool(database, slug, batchCfg, run, cfg)
+		err := installSingleTool(database, slug, batchCfg, runFlag, cfg)
 		if err != nil {
 			if strings.Contains(err.Error(), "skipped") {
 				skipped = append(skipped, slug)
@@ -429,7 +398,6 @@ func runBatchInstall(
 		}
 	}
 
-	// Summary
 	fmt.Printf("\n%s\n", strings.Repeat("═", 40))
 	fmt.Printf("Batch Install Summary:\n")
 	if len(completed) > 0 {
@@ -445,8 +413,9 @@ func runBatchInstall(
 	return nil
 }
 
-// installSingleTool installs a single tool with the given config
-func installSingleTool(database *db.SQLiteDB, slug string, batchCfg *BatchConfig, run bool, cfg *config.Config) error {
+func installSingleTool(
+	database *db.SQLiteDB, slug string, batchCfg *BatchConfig, runFlag bool, cfg *config.Config,
+) error {
 	tools, err := database.GetToolBySlug(slug)
 	if err != nil || len(tools) == 0 {
 		return fmt.Errorf("tool not found: %s", slug)
@@ -462,21 +431,18 @@ func installSingleTool(database *db.SQLiteDB, slug string, batchCfg *BatchConfig
 		return fmt.Errorf("no install instructions available")
 	}
 
-	// Detect OS
-	osInfo, _ := lib.DetectOS()
+	osInfo, _ := platform.DetectOS()
 	detectedOS := ""
 	if osInfo != nil {
 		detectedOS = osInfo.ID
 	}
 
-	// Select platform
 	selector := install.NewPlatformSelector("", cfg.Install.PlatformOverride, cfg.Install.FallbackPlatform, tool.Language)
-	platform := selector.SelectPlatform(detectedOS)
+	platformID := selector.SelectPlatform(detectedOS)
 
-	// Find matching install
 	var matched []db.InstallInstruction
 	for _, inst := range installs {
-		if lib.MatchPlatform(platform, inst.Platform) || lib.MatchLanguage(tool.Language, inst.Platform) {
+		if platform.MatchPlatform(platformID, inst.Platform) || platform.MatchLanguage(tool.Language, inst.Platform) {
 			matched = append(matched, inst)
 		}
 	}
@@ -486,18 +452,15 @@ func installSingleTool(database *db.SQLiteDB, slug string, batchCfg *BatchConfig
 			return fmt.Errorf("skipped: no compatible install method")
 		}
 
-		return fmt.Errorf("no compatible install method for %s", platform)
+		return fmt.Errorf("no compatible install method for %s", platformID)
 	}
 
-	// Get command
 	cmd := matched[0].Command
 
-	// Transform if mise
 	if batchCfg != nil && batchCfg.UseMise {
 		cmd = install.TransformToMise(cmd)
 	}
 
-	// Add sudo if needed
 	if batchCfg != nil {
 		if batchCfg.UseSudo {
 			cmd = "sudo " + cmd
@@ -508,11 +471,10 @@ func installSingleTool(database *db.SQLiteDB, slug string, batchCfg *BatchConfig
 
 	fmt.Printf("Command: %s\n", cmd)
 
-	if !run {
+	if !runFlag {
 		return nil
 	}
 
-	// Execute
 	alwaysRun := cfg.Install.AlwaysRun
 	if batchCfg != nil {
 		alwaysRun = batchCfg.AlwaysRun
@@ -534,9 +496,8 @@ func installSingleTool(database *db.SQLiteDB, slug string, batchCfg *BatchConfig
 	return execCmd.Run()
 }
 
-// isSystemPM returns true for system package managers
-func isSystemPM(platform string) bool {
-	switch platform {
+func isSystemPM(platformID string) bool {
+	switch platformID {
 	case "apt", "dnf", "yum", "pacman", "apk", "zypper", "nix":
 		return true
 	default:

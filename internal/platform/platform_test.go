@@ -1,4 +1,4 @@
-package install
+package platform
 
 import (
 	"testing"
@@ -6,7 +6,106 @@ import (
 	"troveler/db"
 )
 
-func TestPlatformSelectorPriority(t *testing.T) {
+func TestMatchPlatform(t *testing.T) {
+	tests := []struct {
+		name            string
+		detectedID      string
+		installPlatform string
+		want            bool
+	}{
+		{
+			name:            "fedora matches linux:fedora",
+			detectedID:      "fedora",
+			installPlatform: "linux:fedora",
+			want:            true,
+		},
+		{
+			name:            "fedora does not match linux:arch",
+			detectedID:      "fedora",
+			installPlatform: "linux:arch",
+			want:            false,
+		},
+		{
+			name:            "pure go matches",
+			detectedID:      "go",
+			installPlatform: "go",
+			want:            true,
+		},
+		{
+			name:            "pure rust doesn't match go",
+			detectedID:      "rust",
+			installPlatform: "go",
+			want:            false,
+		},
+		{
+			name:            "method with distro aliases",
+			detectedID:      "ubuntu",
+			installPlatform: "linux:ubuntu / debian",
+			want:            true,
+		},
+		{
+			name:            "macos matches",
+			detectedID:      "macos",
+			installPlatform: "macos:brew",
+			want:            true,
+		},
+		{
+			name:            "freebsd matches",
+			detectedID:      "freebsd",
+			installPlatform: "bsd:freebsd",
+			want:            true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := MatchPlatform(tt.detectedID, tt.installPlatform)
+			if got != tt.want {
+				t.Errorf("MatchPlatform(%q, %q) = %v, want %v", tt.detectedID, tt.installPlatform, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNormalizeOSInfo(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  *OSInfo
+		wantID string
+	}{
+		{
+			name:   "ubuntu variants",
+			input:  &OSInfo{ID: "linuxmint"},
+			wantID: OSUbuntu,
+		},
+		{
+			name:   "rhel variants",
+			input:  &OSInfo{ID: "centos"},
+			wantID: OSRHEL,
+		},
+		{
+			name:   "arch variants",
+			input:  &OSInfo{ID: "manjaro"},
+			wantID: OSArch,
+		},
+		{
+			name:   "fedora stays fedora",
+			input:  &OSInfo{ID: "fedora"},
+			wantID: OSFedora,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := normalizeOSInfo(tt.input)
+			if got.ID != tt.wantID {
+				t.Errorf("normalizeOSInfo(%+v).ID = %v, want %v", tt.input, got.ID, tt.wantID)
+			}
+		})
+	}
+}
+
+func TestSelectorPriority(t *testing.T) {
 	tests := []struct {
 		name           string
 		cliOverride    string
@@ -51,8 +150,8 @@ func TestPlatformSelectorPriority(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ps := NewPlatformSelector(tt.cliOverride, tt.configOverride, tt.fallback, "go")
-			result := ps.SelectPlatform(tt.detectedOS)
+			s := NewSelector(tt.cliOverride, tt.configOverride, tt.fallback, "go")
+			result := s.Select(tt.detectedOS)
 
 			if result != tt.expected {
 				t.Errorf("Expected %s, got %s", tt.expected, result)
@@ -61,7 +160,7 @@ func TestPlatformSelectorPriority(t *testing.T) {
 	}
 }
 
-func TestFilterCommandsLANG(t *testing.T) {
+func TestFilterInstallsLANG(t *testing.T) {
 	installs := []db.InstallInstruction{
 		{Platform: "go", Command: "go install"},
 		{Platform: "go (cargo)", Command: "cargo install"},
@@ -69,7 +168,7 @@ func TestFilterCommandsLANG(t *testing.T) {
 		{Platform: "python (pip)", Command: "pip install"},
 	}
 
-	matched, usedFallback := FilterCommands(installs, "LANG", "go")
+	matched, usedFallback := FilterDBInstalls(installs, "LANG", "go")
 
 	if usedFallback {
 		t.Error("Expected normal match, got fallback")
@@ -79,7 +178,6 @@ func TestFilterCommandsLANG(t *testing.T) {
 		t.Errorf("Expected 2 matches for go language, got %d", len(matched))
 	}
 
-	// Should match "go" and "go (cargo)"
 	for _, m := range matched {
 		if m.Platform != "go" && m.Platform != "go (cargo)" {
 			t.Errorf("Unexpected platform match: %s", m.Platform)
@@ -87,13 +185,71 @@ func TestFilterCommandsLANG(t *testing.T) {
 	}
 }
 
-func TestSelectDefaultCommand(t *testing.T) {
+func TestResolveVirtual(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "mise_github_to_github",
+			input:    "mise:github",
+			expected: "github",
+		},
+		{
+			name:     "mise_go_to_go",
+			input:    "mise:go",
+			expected: "go",
+		},
+		{
+			name:     "mise_cargo_to_cargo",
+			input:    "mise:cargo",
+			expected: "cargo",
+		},
+		{
+			name:     "mise_npm_to_npm",
+			input:    "mise:npm",
+			expected: "npm",
+		},
+		{
+			name:     "mise_pipx_to_pipx",
+			input:    "mise:pipx",
+			expected: "pipx",
+		},
+		{
+			name:     "regular_platform_unchanged",
+			input:    "github",
+			expected: "github",
+		},
+		{
+			name:     "empty_string",
+			input:    "",
+			expected: "",
+		},
+		{
+			name:     "non_mise_prefix",
+			input:    "docker:github",
+			expected: "docker:github",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ResolveVirtual(tt.input)
+			if result != tt.expected {
+				t.Errorf("ResolveVirtual(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestSelectDefault(t *testing.T) {
 	installs := []db.InstallInstruction{
 		{ID: "1", Platform: "brew", Command: "brew install"},
 		{ID: "2", Platform: "cargo", Command: "cargo install"},
 	}
 
-	defaultCmd := SelectDefaultCommand(installs, false, "ubuntu")
+	defaultCmd := SelectDefaultDBInstalls(installs, false, "ubuntu")
 
 	if defaultCmd == nil {
 		t.Fatal("Expected default command, got nil")
@@ -104,62 +260,7 @@ func TestSelectDefaultCommand(t *testing.T) {
 	}
 }
 
-func TestFormatCommands(t *testing.T) {
-	installs := []db.InstallInstruction{
-		{ID: "1", Platform: "brew", Command: "brew install xxx"},
-		{ID: "2", Platform: "cargo", Command: "cargo install xxx"},
-	}
-
-	defaultCmd := &installs[0]
-	formatted := FormatCommands(installs, defaultCmd)
-
-	if len(formatted) != 2 {
-		t.Fatalf("Expected 2 formatted commands, got %d", len(formatted))
-	}
-
-	if !formatted[0].IsDefault {
-		t.Error("Expected first command to be marked as default")
-	}
-
-	if formatted[1].IsDefault {
-		t.Error("Expected second command to NOT be marked as default")
-	}
-}
-
-func TestMiseModeForcesLANG(t *testing.T) {
-	installs := []db.InstallInstruction{
-		{ID: "1", Platform: "go", Command: "go install github.com/user/repo"},
-		{ID: "2", Platform: "rust", Command: "cargo install crate"},
-	}
-
-	matched, usedFallback := FilterCommands(installs, "LANG", "go")
-
-	if len(matched) != 1 {
-		t.Fatalf("Expected 1 match for go language, got %d", len(matched))
-	}
-
-	if matched[0].Platform != "go" {
-		t.Errorf("Expected 'go' platform, got %s", matched[0].Platform)
-	}
-
-	if usedFallback {
-		t.Error("Expected normal match, got fallback")
-	}
-
-	formatted := FormatCommands(matched, &matched[0])
-	if len(formatted) != 1 {
-		t.Fatalf("Expected 1 formatted command, got %d", len(formatted))
-	}
-
-	// Transform with mise mode
-	transformed := TransformToMise(formatted[0].Command)
-	expected := "mise use --global go:github.com/user/repo"
-	if transformed != expected {
-		t.Errorf("Expected %q, got %q", expected, transformed)
-	}
-}
-
-func TestGenerateVirtualInstallInstructions(t *testing.T) {
+func TestGenerateVirtualInstalls(t *testing.T) {
 	tests := []struct {
 		name              string
 		input             []db.InstallInstruction
@@ -262,14 +363,16 @@ func TestGenerateVirtualInstallInstructions(t *testing.T) {
 			expectedPlatforms: []string{"mise:go"},
 		},
 		{
-			name:  "empty_input",
-			input: []db.InstallInstruction{},
+			name:              "empty_input",
+			input:             []db.InstallInstruction{},
+			expectedCount:     0,
+			expectedPlatforms: []string{},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := GenerateVirtualInstallInstructions(tt.input)
+			result := GenerateVirtualInstalls(tt.input)
 
 			if len(result) != tt.expectedCount {
 				t.Errorf("Expected %d virtuals, got %d", tt.expectedCount, len(result))
@@ -296,11 +399,11 @@ func TestGenerateVirtualInstallInstructions(t *testing.T) {
 	}
 }
 
-func TestExtractBackendType(t *testing.T) {
+func TestExtractBackend(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
-		expected BackendType
+		expected Backend
 	}{
 		{
 			name:     "go_backend",
@@ -351,9 +454,62 @@ func TestExtractBackendType(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := extractBackendType(tt.input)
+			result := extractBackend(tt.input)
 			if result != tt.expected {
-				t.Errorf("extractBackendType(%q) = %q, want %q", tt.input, result, tt.expected)
+				t.Errorf("extractBackend(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestTransformToMise(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "go_install",
+			input:    "go install github.com/user/repo",
+			expected: "mise use --global go:github.com/user/repo",
+		},
+		{
+			name:     "cargo_install",
+			input:    "cargo install some-crate",
+			expected: "mise use --global cargo:some-crate",
+		},
+		{
+			name:     "npm_install_global",
+			input:    "npm install -g package",
+			expected: "mise use --global npm:package",
+		},
+		{
+			name:     "pip_install",
+			input:    "pip install package",
+			expected: "mise use --global pipx:package",
+		},
+		{
+			name:     "eget",
+			input:    "eget user/repo",
+			expected: "mise use --global github:user/repo",
+		},
+		{
+			name:     "brew_no_transform",
+			input:    "brew install package",
+			expected: "brew install package",
+		},
+		{
+			name:     "apt_no_transform",
+			input:    "apt install package",
+			expected: "apt install package",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := TransformToMise(tt.input)
+			if result != tt.expected {
+				t.Errorf("TransformToMise(%q) = %q, want %q", tt.input, result, tt.expected)
 			}
 		})
 	}

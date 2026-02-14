@@ -1,34 +1,9 @@
-package lib
+package platform
 
 import (
 	"strings"
 )
 
-const (
-	platformOSArch    = "arch"
-	platformOSRHEL    = "rhel"
-	platformOSUbuntu  = "ubuntu"
-	platformOSDebian  = "debian"
-	platformOSFedora  = "fedora"
-	platformOSCentos  = "centos"
-	platformOSAlpine  = "alpine"
-	platformOSGentoo  = "gentoo"
-	platformOSManjaro = "manjaro"
-)
-
-var PlatformAliases = map[string]string{
-	"pip":   "python (pip)",
-	"pipx":  "python (pipx)",
-	"uv":    "python (uv)",
-	"npm":   "node (npm)",
-	"yarn":  "node (yarn)",
-	"pnpm":  "node (pnpm)",
-	"bun":   "node (bun)",
-	"cargo": "rust (cargo)",
-}
-
-// LanguageToPackageManager maps programming languages to their package managers
-// For compiled languages (C, C++, Shell), we return empty to use OS detection
 var LanguageToPackageManager = map[string][]string{
 	"python":      {"python", "pip", "pipx", "uv"},
 	"rust":        {"rust", "cargo"},
@@ -44,14 +19,6 @@ var LanguageToPackageManager = map[string][]string{
 	"zig":         {"zig"},
 	"common-lisp": {"common-lisp", "quicklisp"},
 	"haxe":        {"haxe", "haxelib"},
-}
-
-func NormalizePlatform(platform string) string {
-	if normalized, ok := PlatformAliases[strings.ToLower(platform)]; ok {
-		return normalized
-	}
-
-	return platform
 }
 
 func MatchPlatform(detectedID string, installPlatform string) bool {
@@ -89,14 +56,14 @@ func MatchPlatform(detectedID string, installPlatform string) bool {
 		}
 	}
 
-	if detectedID == platformOSRHEL {
-		return platformOS == platformOSRHEL || platformOS == platformOSFedora || platformOS == platformOSCentos
+	if detectedID == OSRHEL {
+		return platformOS == OSRHEL || platformOS == OSFedora || platformOS == OSCentos
 	}
-	if detectedID == platformOSArch {
-		return platformOS == platformOSArch || platformOS == platformOSManjaro
+	if detectedID == OSArch {
+		return platformOS == OSArch || platformOS == OSManjaro
 	}
-	if detectedID == platformOSUbuntu {
-		return platformOS == platformOSUbuntu || platformOS == platformOSDebian
+	if detectedID == OSUbuntu {
+		return platformOS == OSUbuntu || platformOS == OSDebian
 	}
 
 	return false
@@ -106,20 +73,16 @@ func MatchLanguage(language string, installPlatform string) bool {
 	language = strings.ToLower(language)
 	installPlatform = strings.ToLower(installPlatform)
 
-	// Exact match (e.g., "rust" == "rust", "python" == "python")
 	if installPlatform == language {
 		return true
 	}
 
-	// Prefix match (e.g., "python (pip)", "rust (cargo)")
 	if strings.HasPrefix(installPlatform, language+" ") || strings.HasPrefix(installPlatform, language+"(") {
 		return true
 	}
 
-	// Check language-to-package-manager mappings
 	if managers, ok := LanguageToPackageManager[language]; ok {
 		for _, manager := range managers {
-			// Check if install platform is this manager or starts with it
 			if installPlatform == manager {
 				return true
 			}
@@ -130,4 +93,28 @@ func MatchLanguage(language string, installPlatform string) bool {
 	}
 
 	return false
+}
+
+func IsLinuxFamily(osID string) bool {
+	switch osID {
+	case OSUbuntu, OSDebian, OSFedora, OSArch, OSManjaro, OSRHEL, OSCentos:
+		return true
+	default:
+		return strings.Contains(strings.ToLower(osID), "linux")
+	}
+}
+
+func IsMacFamily(osID string) bool {
+	osID = strings.ToLower(osID)
+
+	return strings.Contains(osID, OSMacOS) || strings.Contains(osID, OSDarwin)
+}
+
+func IsBSDFamily(osID string) bool {
+	switch osID {
+	case OSFreeBSD, OSOpenBSD, OSNetBSD:
+		return true
+	default:
+		return strings.Contains(strings.ToLower(osID), "bsd")
+	}
 }

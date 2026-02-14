@@ -7,7 +7,7 @@ import (
 
 	"troveler/config"
 	"troveler/db"
-	"troveler/lib"
+	"troveler/internal/platform"
 )
 
 const (
@@ -332,14 +332,14 @@ mise_mode = true`
 			if override != "" {
 				if override == "LANG" {
 					for _, inst := range installs {
-						if lib.MatchLanguage(tool.Language, inst.Platform) {
+						if platform.MatchLanguage(tool.Language, inst.Platform) {
 							matched = append(matched, inst)
 						}
 					}
 				} else {
-					platform := lib.NormalizePlatform(override)
+					platformID := platform.Normalize(override)
 					for _, inst := range installs {
-						if lib.MatchPlatform(platform, inst.Platform) {
+						if platform.MatchPlatform(platformID, inst.Platform) {
 							matched = append(matched, inst)
 						}
 					}

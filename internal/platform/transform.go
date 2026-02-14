@@ -1,11 +1,10 @@
-package install
+package platform
 
 import (
 	"regexp"
 	"strings"
 )
 
-// TransformToMise converts standard install commands to mise-en-place commands
 func TransformToMise(command string) string {
 	command = strings.TrimSpace(command)
 

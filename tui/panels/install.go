@@ -9,7 +9,7 @@ import (
 
 	"troveler/db"
 	"troveler/internal/install"
-	"troveler/lib"
+	"troveler/internal/platform"
 	"troveler/tui/styles"
 )
 
@@ -54,7 +54,7 @@ func (p *InstallPanel) SetTool(tool *db.Tool, installs []db.InstallInstruction) 
 	p.toolLanguage = tool.Language
 
 	// Determine platform using priority logic
-	osInfo, _ := lib.DetectOS()
+	osInfo, _ := platform.DetectOS()
 	detectedOS := ""
 	if osInfo != nil {
 		detectedOS = osInfo.ID
@@ -80,10 +80,10 @@ func (p *InstallPanel) SetTool(tool *db.Tool, installs []db.InstallInstruction) 
 		p.fallback,
 		tool.Language,
 	)
-	platform := selector.SelectPlatform(detectedOS)
+	platformID := selector.SelectPlatform(detectedOS)
 
 	// Filter commands based on platform
-	filtered, usedFallback := install.FilterCommands(installs, platform, tool.Language)
+	filtered, usedFallback := install.FilterCommands(installs, platformID, tool.Language)
 	defaultCmd := install.SelectDefaultCommand(filtered, usedFallback, detectedOS)
 
 	// Generate virtual install instructions
@@ -241,12 +241,8 @@ func (p *InstallPanel) Blur() {
 
 // resolveVirtualPlatform resolves virtual mise:* platforms back to their source platforms
 // For example: mise:github → github, mise:go → go
-func (p *InstallPanel) resolveVirtualPlatform(platform string) string {
-	if strings.HasPrefix(platform, "mise:") {
-		return strings.TrimPrefix(platform, "mise:")
-	}
-
-	return platform
+func (p *InstallPanel) resolveVirtualPlatform(platformID string) string {
+	return platform.ResolveVirtual(platformID)
 }
 
 // IsFocused returns focus state

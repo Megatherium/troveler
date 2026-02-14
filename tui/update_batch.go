@@ -8,7 +8,7 @@ import (
 
 	"troveler/db"
 	"troveler/internal/install"
-	"troveler/lib"
+	"troveler/internal/platform"
 	"troveler/tui/panels"
 )
 
@@ -106,7 +106,7 @@ func (m *Model) processBatchTool(index int) tea.Cmd {
 		}
 
 		selector := install.NewPlatformSelector("", "", "", tool.Language)
-		osInfo, _ := lib.DetectOS()
+		osInfo, _ := platform.DetectOS()
 		detectedOS := ""
 		if osInfo != nil {
 			detectedOS = osInfo.ID

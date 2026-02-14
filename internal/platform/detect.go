@@ -1,18 +1,8 @@
-package lib
+package platform
 
 import (
 	"os"
 	"strings"
-)
-
-const (
-	osIDFedora = "fedora"
-	osIDCentos = "centos"
-	osIDAlpine = "alpine"
-	osIDGentoo = "gentoo"
-	osIDRHEL   = "rhel"
-	osIDDebian = "debian"
-	osIDArch   = "arch"
 )
 
 type OSInfo struct {
@@ -25,7 +15,6 @@ type OSInfo struct {
 func DetectOS() (*OSInfo, error) {
 	info := &OSInfo{}
 
-	// Try /etc/os-release first (most modern distros)
 	data, err := os.ReadFile("/etc/os-release")
 	if err == nil {
 		content := string(data)
@@ -48,7 +37,6 @@ func DetectOS() (*OSInfo, error) {
 		}
 	}
 
-	// Try /etc/lsb-release (Ubuntu and derivatives)
 	data, err = os.ReadFile("/etc/lsb-release")
 	if err == nil {
 		content := string(data)
@@ -65,54 +53,49 @@ func DetectOS() (*OSInfo, error) {
 		}
 	}
 
-	// Try /etc/redhat-release (RHEL/CentOS/Fedora)
 	data, err = os.ReadFile("/etc/redhat-release")
 	if err == nil {
 		content := string(data)
 		lower := strings.ToLower(content)
-		if strings.Contains(lower, osIDFedora) {
-			info.ID = osIDFedora
-		} else if strings.Contains(lower, osIDCentos) {
-			info.ID = osIDCentos
-		} else if strings.Contains(lower, osIDRHEL) || strings.Contains(lower, "red hat") {
-			info.ID = osIDRHEL
+		if strings.Contains(lower, OSFedora) {
+			info.ID = OSFedora
+		} else if strings.Contains(lower, OSCentos) {
+			info.ID = OSCentos
+		} else if strings.Contains(lower, OSRHEL) || strings.Contains(lower, "red hat") {
+			info.ID = OSRHEL
 			info.Name = "Red Hat Enterprise Linux"
 		}
 
 		return normalizeOSInfo(info), nil
 	}
 
-	// Try /etc/debian_version
 	data, err = os.ReadFile("/etc/debian_version")
 	if err == nil && len(data) > 0 {
-		info.ID = osIDDebian
+		info.ID = OSDebian
 		info.Name = "Debian"
 
 		return normalizeOSInfo(info), nil
 	}
 
-	// Try /etc/alpine-release
 	_, err = os.ReadFile("/etc/alpine-release")
 	if err == nil {
-		info.ID = osIDAlpine
+		info.ID = OSAlpine
 		info.Name = "Alpine Linux"
 
 		return normalizeOSInfo(info), nil
 	}
 
-	// Try /etc/arch-release (Arch Linux)
 	_, err = os.ReadFile("/etc/arch-release")
 	if err == nil {
-		info.ID = osIDArch
+		info.ID = OSArch
 		info.Name = "Arch Linux"
 
 		return normalizeOSInfo(info), nil
 	}
 
-	// Try /etc/gentoo-release
 	_, err = os.ReadFile("/etc/gentoo-release")
 	if err == nil {
-		info.ID = osIDGentoo
+		info.ID = OSGentoo
 		info.Name = "Gentoo"
 
 		return normalizeOSInfo(info), nil
@@ -123,34 +106,34 @@ func DetectOS() (*OSInfo, error) {
 
 func normalizeOSInfo(info *OSInfo) *OSInfo {
 	switch info.ID {
-	case "ubuntu", "linuxmint", "pop":
-		info.ID = "ubuntu"
-	case osIDCentos, "rhel", "rocky", "alma":
-		info.ID = "rhel"
-	case osIDFedora:
-		info.ID = osIDFedora
-	case osIDAlpine:
-		info.ID = osIDAlpine
-	case osIDGentoo:
-		info.ID = osIDGentoo
-	case "debian":
-		info.ID = "debian"
-	case "arch", "manjaro", "endeavouros":
-		info.ID = "arch"
+	case OSUbuntu, "linuxmint", "pop":
+		info.ID = OSUbuntu
+	case OSCentos, OSRHEL, "rocky", "alma":
+		info.ID = OSRHEL
+	case OSFedora:
+		info.ID = OSFedora
+	case OSAlpine:
+		info.ID = OSAlpine
+	case OSGentoo:
+		info.ID = OSGentoo
+	case OSDebian:
+		info.ID = OSDebian
+	case OSArch, OSManjaro, "endeavouros":
+		info.ID = OSArch
 	case "opensuse-tumbleweed", "opensuse-leap":
-		info.ID = "opensuse"
-	case "nixos":
-		info.ID = "nixos"
-	case "freebsd":
-		info.ID = "freebsd"
-	case "openbsd":
-		info.ID = "openbsd"
-	case "netbsd":
-		info.ID = "netbsd"
-	case "darwin":
-		info.ID = "macos"
-	case "windows":
-		info.ID = "windows"
+		info.ID = OSOpenSUSE
+	case OSNixOS:
+		info.ID = OSNixOS
+	case OSFreeBSD:
+		info.ID = OSFreeBSD
+	case OSOpenBSD:
+		info.ID = OSOpenBSD
+	case OSNetBSD:
+		info.ID = OSNetBSD
+	case OSDarwin:
+		info.ID = OSMacOS
+	case OSWindows:
+		info.ID = OSWindows
 	}
 
 	return info
