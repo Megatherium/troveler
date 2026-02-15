@@ -49,6 +49,31 @@ func NewInstallPanel(cliOverride, configOverride, fallback string, miseMode bool
 	}
 }
 
+func (p *InstallPanel) resolveCLIOverride() string {
+	if p.miseMode && p.cliOverride == "" {
+		return "LANG"
+	}
+
+	return platform.ResolveVirtual(p.cliOverride)
+}
+
+func (p *InstallPanel) appendVirtualCommands(installs []db.InstallInstruction) {
+	virtuals := install.GenerateVirtualInstallInstructions(installs)
+	for _, v := range virtuals {
+		p.commands = append(p.commands, install.CommandInfo{
+			Platform:  v.Platform,
+			Command:   v.Command,
+			IsDefault: false,
+		})
+	}
+}
+
+func (p *InstallPanel) transformCommandsToMise() {
+	for i := range p.commands {
+		p.commands[i].Command = install.TransformToMise(p.commands[i].Command)
+	}
+}
+
 // SetTool updates the install commands for a tool
 func (p *InstallPanel) SetTool(tool *db.Tool, installs []db.InstallInstruction) {
 	p.toolLanguage = tool.Language
@@ -60,52 +85,19 @@ func (p *InstallPanel) SetTool(tool *db.Tool, installs []db.InstallInstruction) 
 		detectedOS = osInfo.ID
 	}
 
-	// If mise mode is enabled AND no CLI override was provided, force LANG override
-	// CLI parameters have higher priority than config settings
-	cliOverride := p.cliOverride
-	configOverride := p.configOverride
-
 	// Resolve virtual platforms (mise:* → source platform)
-	if cliOverride != "" {
-		cliOverride = p.resolveVirtualPlatform(cliOverride)
-	}
-
-	if p.miseMode && p.cliOverride == "" {
-		cliOverride = "LANG"
-	}
-
-	selector := install.NewPlatformSelector(
-		cliOverride,
-		configOverride,
-		p.fallback,
-		tool.Language,
-	)
+	cliOverride := p.resolveCLIOverride()
+	selector := install.NewPlatformSelector(cliOverride, p.configOverride, p.fallback, tool.Language)
 	platformID := selector.SelectPlatform(detectedOS)
 
 	// Filter commands based on platform
 	filtered, usedFallback := install.FilterCommands(installs, platformID, tool.Language)
 	defaultCmd := install.SelectDefaultCommand(filtered, usedFallback, detectedOS)
 
-	// Generate virtual install instructions
-	virtuals := install.GenerateVirtualInstallInstructions(installs)
-
-	// Format for display and transform if mise mode is enabled
 	p.commands = install.FormatCommands(filtered, defaultCmd)
-
-	// Add virtual commands to the display
-	for _, v := range virtuals {
-		cmd := install.CommandInfo{
-			Platform:  v.Platform,
-			Command:   v.Command,
-			IsDefault: false, // Virtuals are never the default
-		}
-		p.commands = append(p.commands, cmd)
-	}
-
+	p.appendVirtualCommands(installs)
 	if p.miseMode {
-		for i := range p.commands {
-			p.commands[i].Command = install.TransformToMise(p.commands[i].Command)
-		}
+		p.transformCommandsToMise()
 	}
 	p.usedFallback = usedFallback
 	p.cursor = 0
@@ -160,13 +152,8 @@ func (p *InstallPanel) Update(msg tea.Msg) tea.Cmd {
 			return nil
 
 		case msg.Alt && (msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 'i'):
-			// Execute selected install command
 			if p.cursor >= 0 && p.cursor < len(p.commands) {
 				cmd := p.commands[p.cursor].Command
-				// Transform command if mise mode is enabled (already done in SetTool, but for safety)
-				if p.miseMode {
-					cmd = install.TransformToMise(cmd)
-				}
 
 				return func() tea.Msg {
 					return InstallExecuteMsg{Command: cmd}
@@ -176,11 +163,8 @@ func (p *InstallPanel) Update(msg tea.Msg) tea.Cmd {
 			return nil
 
 		case msg.Alt && (msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 'm'):
-			// Execute selected install command via mise (force mise transformation)
 			if p.cursor >= 0 && p.cursor < len(p.commands) {
-				cmd := p.commands[p.cursor].Command
-				// Always transform to mise for Alt+m
-				cmd = install.TransformToMise(cmd)
+				cmd := install.TransformToMise(p.commands[p.cursor].Command)
 
 				return func() tea.Msg {
 					return InstallExecuteMiseMsg{Command: cmd}
@@ -237,12 +221,6 @@ func (p *InstallPanel) Focus() {
 // Blur unfocuses the panel
 func (p *InstallPanel) Blur() {
 	p.focused = false
-}
-
-// resolveVirtualPlatform resolves virtual mise:* platforms back to their source platforms
-// For example: mise:github → github, mise:go → go
-func (p *InstallPanel) resolveVirtualPlatform(platformID string) string {
-	return platform.ResolveVirtual(platformID)
 }
 
 // IsFocused returns focus state
