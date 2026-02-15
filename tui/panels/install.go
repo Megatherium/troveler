@@ -13,7 +13,7 @@ import (
 	"troveler/tui/styles"
 )
 
-// InstallPanel displays install options
+// InstallPanel displays install options.
 type InstallPanel struct {
 	commands       []install.CommandInfo
 	cursor         int
@@ -26,17 +26,17 @@ type InstallPanel struct {
 	miseMode       bool
 }
 
-// InstallExecuteMsg is sent when user wants to execute install
+// InstallExecuteMsg is sent when user wants to execute install.
 type InstallExecuteMsg struct {
 	Command string
 }
 
-// InstallExecuteMiseMsg is sent when user wants to execute install via mise
+// InstallExecuteMiseMsg is sent when user wants to execute install via mise.
 type InstallExecuteMiseMsg struct {
 	Command string
 }
 
-// NewInstallPanel creates a new install panel
+// NewInstallPanel creates a new install panel.
 func NewInstallPanel(cliOverride, configOverride, fallback string, miseMode bool) *InstallPanel {
 	return &InstallPanel{
 		commands:       []install.CommandInfo{},
@@ -74,7 +74,7 @@ func (p *InstallPanel) transformCommandsToMise() {
 	}
 }
 
-// SetTool updates the install commands for a tool
+// SetTool updates the install commands for a tool.
 func (p *InstallPanel) SetTool(tool *db.Tool, installs []db.InstallInstruction) {
 	p.toolLanguage = tool.Language
 
@@ -103,13 +103,13 @@ func (p *InstallPanel) SetTool(tool *db.Tool, installs []db.InstallInstruction) 
 	p.cursor = 0
 }
 
-// Clear clears the install commands
+// Clear clears the install commands.
 func (p *InstallPanel) Clear() {
 	p.commands = []install.CommandInfo{}
 	p.cursor = 0
 }
 
-// GetSelectedCommand returns the currently selected install command
+// GetSelectedCommand returns the currently selected install command.
 func (p *InstallPanel) GetSelectedCommand() string {
 	if p.cursor >= 0 && p.cursor < len(p.commands) {
 		return p.commands[p.cursor].Command
@@ -118,17 +118,17 @@ func (p *InstallPanel) GetSelectedCommand() string {
 	return ""
 }
 
-// HasCommands returns true if there are install commands available
+// HasCommands returns true if there are install commands available.
 func (p *InstallPanel) HasCommands() bool {
 	return len(p.commands) > 0
 }
 
-// IsFallbackMode returns true if showing all install entries due to platform detection failure
+// IsFallbackMode returns true if showing all install entries due to platform detection failure.
 func (p *InstallPanel) IsFallbackMode() bool {
 	return p.usedFallback
 }
 
-// Update handles messages
+// Update handles messages.
 func (p *InstallPanel) Update(msg tea.Msg) tea.Cmd {
 	if !p.focused {
 		return nil
@@ -178,7 +178,7 @@ func (p *InstallPanel) Update(msg tea.Msg) tea.Cmd {
 	return nil
 }
 
-// View renders the install panel
+// View renders the install panel.
 func (p *InstallPanel) View(width, height int) string {
 	if len(p.commands) == 0 {
 		return styles.MutedStyle.Render("Select a tool to see install options")
@@ -213,17 +213,17 @@ func (p *InstallPanel) View(width, height int) string {
 	return b.String()
 }
 
-// Focus focuses the panel
+// Focus focuses the panel.
 func (p *InstallPanel) Focus() {
 	p.focused = true
 }
 
-// Blur unfocuses the panel
+// Blur unfocuses the panel.
 func (p *InstallPanel) Blur() {
 	p.focused = false
 }
 
-// IsFocused returns focus state
+// IsFocused returns focus state.
 func (p *InstallPanel) IsFocused() bool {
 	return p.focused
 }

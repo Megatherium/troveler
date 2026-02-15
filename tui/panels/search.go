@@ -9,7 +9,7 @@ import (
 	"troveler/tui/styles"
 )
 
-// SearchPanel handles the search input
+// SearchPanel handles the search input.
 type SearchPanel struct {
 	textInput    textinput.Model
 	focused      bool
@@ -18,12 +18,12 @@ type SearchPanel struct {
 	debounceTime time.Duration
 }
 
-// SearchTriggeredMsg is sent when search should be executed
+// SearchTriggeredMsg is sent when search should be executed.
 type SearchTriggeredMsg struct {
 	Query string
 }
 
-// NewSearchPanel creates a new search panel
+// NewSearchPanel creates a new search panel.
 func NewSearchPanel() *SearchPanel {
 	ti := textinput.New()
 	ti.Placeholder = "Search tools..."
@@ -37,7 +37,7 @@ func NewSearchPanel() *SearchPanel {
 	}
 }
 
-// Update handles messages
+// Update handles messages.
 func (p *SearchPanel) Update(msg tea.Msg) (tea.Cmd, *SearchPanel) {
 	var cmd tea.Cmd
 
@@ -101,7 +101,7 @@ func (p *SearchPanel) triggerSearch(query string) tea.Cmd {
 	}
 }
 
-// View renders the search panel
+// View renders the search panel.
 func (p *SearchPanel) View(width, height int) string {
 	// Adjust input width to fit panel, ensuring it's at least 10 columns
 	inputWidth := width - 4
@@ -113,29 +113,29 @@ func (p *SearchPanel) View(width, height int) string {
 	return p.textInput.View()
 }
 
-// Focus focuses the search panel
+// Focus focuses the search panel.
 func (p *SearchPanel) Focus() {
 	p.focused = true
 	p.textInput.Focus()
 }
 
-// Blur unfocuses the search panel
+// Blur unfocuses the search panel.
 func (p *SearchPanel) Blur() {
 	p.focused = false
 	p.textInput.Blur()
 }
 
-// IsFocused returns whether the panel is focused
+// IsFocused returns whether the panel is focused.
 func (p *SearchPanel) IsFocused() bool {
 	return p.focused
 }
 
-// GetQuery returns the current search query
+// GetQuery returns the current search query.
 func (p *SearchPanel) GetQuery() string {
 	return p.textInput.Value()
 }
 
-// SetStyles updates the input style based on focus
+// SetStyles updates the input style based on focus.
 func (p *SearchPanel) SetStyles() {
 	if p.focused {
 		p.textInput.PromptStyle = styles.CursorStyle

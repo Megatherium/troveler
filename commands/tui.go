@@ -9,6 +9,7 @@ import (
 	"troveler/tui"
 )
 
+// TUICmd is the cobra command for launching the Terminal User Interface.
 var TUICmd = &cobra.Command{
 	Use:   "tui",
 	Short: "Launch the Terminal User Interface",

@@ -12,17 +12,21 @@ import (
 	"troveler/tui/panels"
 )
 
-// PanelID identifies which panel is active
+// PanelID identifies which panel is active.
 type PanelID int
 
 const (
+	// PanelSearch is the search panel ID.
 	PanelSearch PanelID = iota
+	// PanelTools is the tools list panel ID.
 	PanelTools
+	// PanelInfo is the tool info panel ID.
 	PanelInfo
+	// PanelInstall is the install commands panel ID.
 	PanelInstall
 )
 
-// Model is the main TUI model
+// Model is the main TUI model.
 type Model struct {
 	// Core dependencies
 	db            *db.SQLiteDB
@@ -75,7 +79,7 @@ type Model struct {
 	err error
 }
 
-// Panel interface for all panel types
+// Panel interface defines the behavior of a TUI panel.
 type Panel interface {
 	Update(msg tea.Msg) (Panel, tea.Cmd)
 	View(width, height int) string
@@ -84,7 +88,7 @@ type Panel interface {
 	IsFocused() bool
 }
 
-// NewModel creates a new TUI model
+// NewModel creates a new TUI model.
 func NewModel(database *db.SQLiteDB, cfg *config.Config) *Model {
 	searchPanel := panels.NewSearchPanel()
 	searchPanel.Focus() // Start with search focused
@@ -114,19 +118,19 @@ func NewModel(database *db.SQLiteDB, cfg *config.Config) *Model {
 	return m
 }
 
-// Init initializes the model
+// Init initializes the model.
 func (m *Model) Init() tea.Cmd {
 	// Load initial tools (empty query = all tools)
 	return m.performSearch("")
 }
 
-// SetSize sets the terminal size
+// SetSize sets the terminal size.
 func (m *Model) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 }
 
-// performSearch executes a search query
+// performSearch executes a search query.
 func (m *Model) performSearch(query string) tea.Cmd {
 	return func() tea.Msg {
 		opts := search.Options{
@@ -148,18 +152,18 @@ func (m *Model) performSearch(query string) tea.Cmd {
 	}
 }
 
-// searchResultMsg contains search results
+// searchResultMsg contains search results.
 type searchResultMsg struct {
 	tools []db.SearchResult
 	query string
 }
 
-// searchErrorMsg contains search errors
+// searchErrorMsg contains search errors.
 type searchErrorMsg struct {
 	err error
 }
 
-// NextPanel cycles to the next panel
+// NextPanel cycles to the next panel.
 func (m *Model) NextPanel() {
 	// Blur current panel
 	switch m.activePanel {
@@ -178,7 +182,7 @@ func (m *Model) NextPanel() {
 	}
 }
 
-// SetError sets an error to display
+// SetError sets an error to display.
 func (m *Model) SetError(err error) {
 	m.err = err
 }

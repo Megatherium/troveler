@@ -13,7 +13,7 @@ import (
 	"troveler/tui/styles"
 )
 
-// ToolsPanel displays the tools list in a table
+// ToolsPanel displays the tools list in a table.
 type ToolsPanel struct {
 	tools         []db.SearchResult
 	cursor        int
@@ -28,23 +28,23 @@ type ToolsPanel struct {
 	markedTools   map[string]bool // Set of marked tool IDs for batch install
 }
 
-// ToolSelectedMsg is sent when a tool is selected (Enter pressed)
+// ToolSelectedMsg is sent when a tool is selected (Enter pressed).
 type ToolSelectedMsg struct {
 	Tool db.SearchResult
 }
 
-// ToolMarkedMsg is sent when a tool's mark status changes
+// ToolMarkedMsg is sent when a tool's mark status changes.
 type ToolMarkedMsg struct {
 	Tool     db.SearchResult
 	IsMarked bool
 }
 
-// ToolCursorChangedMsg is sent when the cursor moves to a different tool
+// ToolCursorChangedMsg is sent when the cursor moves to a different tool.
 type ToolCursorChangedMsg struct {
 	Tool db.SearchResult
 }
 
-// NewToolsPanel creates a new tools panel
+// NewToolsPanel creates a new tools panel.
 func NewToolsPanel() *ToolsPanel {
 	return &ToolsPanel{
 		tools:         []db.SearchResult{},
@@ -58,14 +58,14 @@ func NewToolsPanel() *ToolsPanel {
 	}
 }
 
-// SetTools updates the tools list
+// SetTools updates the tools list.
 func (p *ToolsPanel) SetTools(tools []db.SearchResult) {
 	p.tools = tools
 	p.cursor = 0
 	p.scrollOffset = 0
 }
 
-// Update handles messages
+// Update handles messages.
 func (p *ToolsPanel) Update(msg tea.Msg) tea.Cmd {
 	if !p.focused {
 		return nil
@@ -161,7 +161,7 @@ func (p *ToolsPanel) Update(msg tea.Msg) tea.Cmd {
 	return nil
 }
 
-// adjustScroll adjusts scroll offset to keep cursor visible
+// adjustScroll adjusts scroll offset to keep cursor visible.
 func (p *ToolsPanel) adjustScroll() {
 	visibleRows := p.height - 4 // Account for header and borders
 	if visibleRows < 1 {
@@ -175,7 +175,7 @@ func (p *ToolsPanel) adjustScroll() {
 	}
 }
 
-// sortTools sorts the tools based on current sort settings
+// sortTools sorts the tools based on current sort settings.
 func (p *ToolsPanel) sortTools() {
 	sort.Slice(p.tools, func(i, j int) bool {
 		switch p.sortCol {
@@ -209,7 +209,7 @@ func (p *ToolsPanel) sortTools() {
 	})
 }
 
-// View renders the tools table
+// View renders the tools panel.
 func (p *ToolsPanel) View(width, height int) string {
 	p.width = width
 	p.height = height
@@ -269,7 +269,7 @@ func (p *ToolsPanel) View(width, height int) string {
 	return b.String()
 }
 
-// renderHeader renders a column header with sort indicator
+// renderHeader renders a column header with sort indicator.
 func (p *ToolsPanel) renderHeader(title string, col int, width int) string {
 	// Ensure width is positive
 	if width <= 0 {
@@ -300,7 +300,7 @@ func (p *ToolsPanel) renderHeader(title string, col int, width int) string {
 	return style.Render(lipgloss.NewStyle().Width(width).Render(text))
 }
 
-// renderRow renders a single tool row
+// renderRow renders a single tool row.
 func (p *ToolsPanel) renderRow(
 	idx int, tool db.SearchResult, nameWidth, taglineWidth, langWidth, installedWidth int,
 ) string {
@@ -378,22 +378,22 @@ func (p *ToolsPanel) renderRow(
 	)
 }
 
-// Focus focuses the panel
+// Focus focuses the tools panel.
 func (p *ToolsPanel) Focus() {
 	p.focused = true
 }
 
-// Blur unfocuses the panel
+// Blur unfocuses the tools panel.
 func (p *ToolsPanel) Blur() {
 	p.focused = false
 }
 
-// IsFocused returns focus state
+// IsFocused returns whether the tools panel is focused.
 func (p *ToolsPanel) IsFocused() bool {
 	return p.focused
 }
 
-// GetSelectedTool returns the currently selected tool
+// GetSelectedTool returns the currently selected tool.
 func (p *ToolsPanel) GetSelectedTool() *db.SearchResult {
 	if p.cursor >= 0 && p.cursor < len(p.tools) {
 		return &p.tools[p.cursor]
@@ -402,8 +402,8 @@ func (p *ToolsPanel) GetSelectedTool() *db.SearchResult {
 	return nil
 }
 
-// UpdateInstalledStatus updates the installed status for all tools
-// This should be called when install instructions are available
+// UpdateInstalledStatus updates the installed status for all tools.
+// This should be called when install instructions are available.
 func (p *ToolsPanel) UpdateInstalledStatus(installs []db.InstallInstruction) {
 	for i := range p.tools {
 		if _, ok := p.installedMap[p.tools[i].ID]; !ok {
@@ -414,7 +414,7 @@ func (p *ToolsPanel) UpdateInstalledStatus(installs []db.InstallInstruction) {
 	}
 }
 
-// UpdateToolInstalledStatus updates the installed status for a specific tool
+// UpdateToolInstalledStatus updates the installed status for a specific tool.
 func (p *ToolsPanel) UpdateToolInstalledStatus(toolID string, isInstalled bool) {
 	p.installedMap[toolID] = isInstalled
 	for i := range p.tools {
@@ -426,7 +426,7 @@ func (p *ToolsPanel) UpdateToolInstalledStatus(toolID string, isInstalled bool) 
 	}
 }
 
-// UpdateAllInstalledStatus updates the installed status for all tools using their install instructions
+// UpdateAllInstalledStatus updates installed status for all tools using a callback.
 func (p *ToolsPanel) UpdateAllInstalledStatus(getInstalls func(string) ([]db.InstallInstruction, error)) {
 	for i := range p.tools {
 		installs, err := getInstalls(p.tools[i].ID)
@@ -437,7 +437,7 @@ func (p *ToolsPanel) UpdateAllInstalledStatus(getInstalls func(string) ([]db.Ins
 	}
 }
 
-// GetTool returns a tool by index
+// GetTool returns a tool by index.
 func (p *ToolsPanel) GetTool(idx int) *db.SearchResult {
 	if idx >= 0 && idx < len(p.tools) {
 		return &p.tools[idx]
@@ -446,7 +446,7 @@ func (p *ToolsPanel) GetTool(idx int) *db.SearchResult {
 	return nil
 }
 
-// GetMarkedTools returns all marked tools for batch install
+// GetMarkedTools returns all marked tools for batch install.
 func (p *ToolsPanel) GetMarkedTools() []db.SearchResult {
 	var marked []db.SearchResult
 	for _, tool := range p.tools {
@@ -458,17 +458,17 @@ func (p *ToolsPanel) GetMarkedTools() []db.SearchResult {
 	return marked
 }
 
-// GetMarkedCount returns the number of marked tools
+// GetMarkedCount returns the number of marked tools.
 func (p *ToolsPanel) GetMarkedCount() int {
 	return len(p.markedTools)
 }
 
-// ClearMarks clears all marked tools
+// ClearMarks clears all marked tools.
 func (p *ToolsPanel) ClearMarks() {
 	p.markedTools = make(map[string]bool)
 }
 
-// IsMarked returns true if a tool is marked
+// IsMarked returns true if a tool is marked.
 func (p *ToolsPanel) IsMarked(toolID string) bool {
 	return p.markedTools[toolID]
 }

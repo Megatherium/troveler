@@ -10,6 +10,7 @@ const (
 	tableBorderChar = "│"
 )
 
+// TableConfig holds configuration for rendering a table.
 type TableConfig struct {
 	Headers    []string
 	Rows       [][]string
@@ -18,17 +19,20 @@ type TableConfig struct {
 	ShowHeader bool
 }
 
+// DefaultHeaderStyle returns the default style for table headers.
 func DefaultHeaderStyle() lipgloss.Style {
 	return lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("#00FF00"))
 }
 
+// DefaultRowStyle returns the default style for table rows.
 func DefaultRowStyle(rowIdx, colIdx int) lipgloss.Style {
 	return lipgloss.NewStyle().
 		Foreground(lipgloss.Color(GetGradientColorSimple(rowIdx)))
 }
 
+// RenderTable renders a table as a string with borders.
 func RenderTable(config TableConfig) string {
 	if len(config.Headers) == 0 && len(config.Rows) == 0 {
 		return ""
@@ -177,6 +181,7 @@ func renderRows(b *strings.Builder, rows [][]string, colWidths []int, styleFunc 
 	}
 }
 
+// RenderKeyValueTable renders a two-column key-value table.
 func RenderKeyValueTable(rows [][]string) string {
 	if len(rows) == 0 {
 		return ""

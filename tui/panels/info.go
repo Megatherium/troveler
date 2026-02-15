@@ -11,7 +11,7 @@ import (
 	"troveler/tui/styles"
 )
 
-// InfoPanel displays tool information
+// InfoPanel displays tool information.
 type InfoPanel struct {
 	viewport viewport.Model
 	tool     *info.ToolInfo
@@ -19,7 +19,7 @@ type InfoPanel struct {
 	ready    bool
 }
 
-// NewInfoPanel creates a new info panel
+// NewInfoPanel creates a new info panel.
 func NewInfoPanel() *InfoPanel {
 	vp := viewport.New(40, 20)
 
@@ -30,19 +30,19 @@ func NewInfoPanel() *InfoPanel {
 	}
 }
 
-// SetTool updates the displayed tool
+// SetTool updates the displayed tool.
 func (p *InfoPanel) SetTool(tool *db.Tool, installs []db.InstallInstruction) {
 	p.tool = info.FormatTool(tool, installs)
 	p.updateContent()
 }
 
-// Clear clears the displayed tool
+// Clear clears the displayed tool.
 func (p *InfoPanel) Clear() {
 	p.tool = nil
 	p.updateContent()
 }
 
-// updateContent renders the tool info into the viewport
+// updateContent renders the tool info into the viewport.
 func (p *InfoPanel) updateContent() {
 	if p.tool == nil {
 		p.viewport.SetContent(styles.MutedStyle.Render("Select a tool to view details"))
@@ -84,7 +84,7 @@ func (p *InfoPanel) updateContent() {
 	p.viewport.SetContent(b.String())
 }
 
-// Update handles messages
+// Update handles messages.
 func (p *InfoPanel) Update(msg tea.Msg) tea.Cmd {
 	if !p.focused || !p.ready {
 		return nil
@@ -96,7 +96,7 @@ func (p *InfoPanel) Update(msg tea.Msg) tea.Cmd {
 	return cmd
 }
 
-// View renders the info panel
+// View renders the info panel.
 func (p *InfoPanel) View(width, height int) string {
 	if !p.ready || p.viewport.Width != width || p.viewport.Height != height {
 		p.viewport.Width = width
@@ -108,17 +108,17 @@ func (p *InfoPanel) View(width, height int) string {
 	return p.viewport.View()
 }
 
-// Focus focuses the panel
+// Focus focuses the panel.
 func (p *InfoPanel) Focus() {
 	p.focused = true
 }
 
-// Blur unfocuses the panel
+// Blur unfocuses the panel.
 func (p *InfoPanel) Blur() {
 	p.focused = false
 }
 
-// IsFocused returns focus state
+// IsFocused returns focus state.
 func (p *InfoPanel) IsFocused() bool {
 	return p.focused
 }

@@ -12,6 +12,7 @@ import (
 	"troveler/db"
 )
 
+// SearchResponse represents the structure of a search results response.
 type SearchResponse struct {
 	Found       int64        `json:"found"`
 	OutOf       int64        `json:"out_of"`
@@ -19,20 +20,24 @@ type SearchResponse struct {
 	Hits        []Hit        `json:"hits"`
 }
 
+// FacetCount contains a field name and its possible values with counts.
 type FacetCount struct {
 	FieldName string       `json:"field_name"`
 	Counts    []FacetValue `json:"counts"`
 }
 
+// FacetValue represents a single value and its count in a facet.
 type FacetValue struct {
 	Value string `json:"value"`
 	Count int64  `json:"count"`
 }
 
+// Hit represents a single search result document.
 type Hit struct {
 	Document HitDocument `json:"document"`
 }
 
+// HitDocument contains the core information about a tool.
 type HitDocument struct {
 	Slug        string   `json:"slug"`
 	Name        string   `json:"name"`
@@ -42,6 +47,7 @@ type HitDocument struct {
 	License     []string `json:"license"`
 }
 
+// ParseSearchResponse parses a JSON response into a SearchResponse.
 func ParseSearchResponse(data []byte) (*SearchResponse, error) {
 	var resp SearchResponse
 	if err := json.Unmarshal(data, &resp); err != nil {
@@ -51,6 +57,7 @@ func ParseSearchResponse(data []byte) (*SearchResponse, error) {
 	return &resp, nil
 }
 
+// DetailPage contains parsed data from a tool detail page.
 type DetailPage struct {
 	Tool          db.Tool
 	Installations map[string]string
@@ -64,11 +71,13 @@ var (
 	taglineRegex  = regexp.MustCompile(`id="tagline">([^<]+)`)
 )
 
+// JSONLD represents the JSON-LD embedded in the detail page.
 type JSONLD struct {
 	Context string           `json:"@context"`
 	Graph   []map[string]any `json:"@graph"`
 }
 
+// ParseDetailPage parses HTML and JSON-LD to extract tool details.
 func ParseDetailPage(data []byte) (*DetailPage, error) {
 	page := &DetailPage{
 		Installations: make(map[string]string),
@@ -192,6 +201,7 @@ func ParseDetailPage(data []byte) (*DetailPage, error) {
 	return page, nil
 }
 
+// ToInstallInstructions converts installation data to []InstallInstruction.
 func (p *DetailPage) ToInstallInstructions() []db.InstallInstruction {
 	var insts []db.InstallInstruction
 	for platform, command := range p.Installations {
@@ -207,10 +217,12 @@ func (p *DetailPage) ToInstallInstructions() []db.InstallInstruction {
 	return insts
 }
 
+// ToTool converts the DetailPage to a db.Tool.
 func (p *DetailPage) ToTool() *db.Tool {
 	return &p.Tool
 }
 
+// ParseError represents an error during parsing.
 type ParseError struct {
 	Inner error
 }
@@ -223,6 +235,7 @@ func (e *ParseError) Unwrap() error {
 	return e.Inner
 }
 
+// NewParseError creates a new ParseError.
 func NewParseError(format string, args ...any) *ParseError {
 	return &ParseError{
 		Inner: fmt.Errorf(format, args...),

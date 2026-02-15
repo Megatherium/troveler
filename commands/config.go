@@ -12,10 +12,12 @@ import (
 
 type contextKey struct{}
 
+// WithConfig adds a config to the context.
 func WithConfig(ctx context.Context, cfg *config.Config) context.Context {
 	return context.WithValue(ctx, contextKey{}, cfg)
 }
 
+// GetConfig retrieves the config from the context.
 func GetConfig(ctx context.Context) *config.Config {
 	if cfg, ok := ctx.Value(contextKey{}).(*config.Config); ok {
 		return cfg
@@ -24,10 +26,12 @@ func GetConfig(ctx context.Context) *config.Config {
 	return nil
 }
 
+// LoadConfig loads the configuration from a file.
 func LoadConfig(path string) (*config.Config, error) {
 	return config.Load(path)
 }
 
+// WithDB provides a database connection to a command function.
 func WithDB(cmd *cobra.Command, fn func(ctx context.Context, database *db.SQLiteDB) error) error {
 	cfg := GetConfig(cmd.Context())
 	if cfg == nil {

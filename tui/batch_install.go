@@ -4,7 +4,7 @@ import (
 	"troveler/db"
 )
 
-// BatchInstallConfig holds configuration for batch tool installation
+// BatchInstallConfig holds configuration for batch tool installation.
 type BatchInstallConfig struct {
 	ReuseConfig    bool   // Use same config for all tools
 	UseSudo        bool   // Use sudo for all installs
@@ -15,7 +15,7 @@ type BatchInstallConfig struct {
 	ConfigStep     int    // Current step in config wizard (0-4)
 }
 
-// BatchInstallProgress tracks batch install progress
+// BatchInstallProgress tracks the progress of a batch installation.
 type BatchInstallProgress struct {
 	Tools         []db.SearchResult
 	CurrentIndex  int
@@ -27,7 +27,7 @@ type BatchInstallProgress struct {
 	IsComplete    bool
 }
 
-// NewBatchInstallConfig creates a new batch install configuration
+// NewBatchInstallConfig creates a new batch install configuration.
 func NewBatchInstallConfig() *BatchInstallConfig {
 	return &BatchInstallConfig{
 		ReuseConfig:    true,
@@ -39,7 +39,7 @@ func NewBatchInstallConfig() *BatchInstallConfig {
 	}
 }
 
-// NewBatchInstallProgress creates a new batch install progress tracker
+// NewBatchInstallProgress creates a new batch install progress tracker.
 func NewBatchInstallProgress(tools []db.SearchResult) *BatchInstallProgress {
 	return &BatchInstallProgress{
 		Tools:        tools,
@@ -51,19 +51,19 @@ func NewBatchInstallProgress(tools []db.SearchResult) *BatchInstallProgress {
 	}
 }
 
-// ConfigStepCount returns the total number of config steps
+// ConfigStepCount returns the total number of config steps.
 func (c *BatchInstallConfig) ConfigStepCount() int {
 	return 5 // reuse, sudo, sudo-only-system, skip-if-blind, mise
 }
 
-// NextStep advances to the next config step
+// NextStep advances to the next config step.
 func (c *BatchInstallConfig) NextStep() bool {
 	c.ConfigStep++
 
 	return c.ConfigStep < c.ConfigStepCount()
 }
 
-// PrevStep goes back to the previous config step
+// PrevStep goes back to the previous config step.
 func (c *BatchInstallConfig) PrevStep() bool {
 	if c.ConfigStep > 0 {
 		c.ConfigStep--
@@ -74,12 +74,12 @@ func (c *BatchInstallConfig) PrevStep() bool {
 	return false
 }
 
-// IsConfigComplete returns true if configuration is complete
+// IsConfigComplete returns true if configuration is complete.
 func (c *BatchInstallConfig) IsConfigComplete() bool {
 	return c.ConfigStep >= c.ConfigStepCount()
 }
 
-// GetCurrentStepTitle returns the title for the current config step
+// GetCurrentStepTitle returns the title for the current config step.
 func (c *BatchInstallConfig) GetCurrentStepTitle() string {
 	switch c.ConfigStep {
 	case 0:
@@ -97,7 +97,7 @@ func (c *BatchInstallConfig) GetCurrentStepTitle() string {
 	}
 }
 
-// GetCurrentStepOptions returns the options for the current config step
+// GetCurrentStepOptions returns the options for the current config step.
 func (c *BatchInstallConfig) GetCurrentStepOptions() []string {
 	switch c.ConfigStep {
 	case 0:
@@ -115,7 +115,7 @@ func (c *BatchInstallConfig) GetCurrentStepOptions() []string {
 	}
 }
 
-// SetCurrentStepValue sets the value for the current config step
+// SetCurrentStepValue sets the value for the current config step.
 func (c *BatchInstallConfig) SetCurrentStepValue(optionIndex int) {
 	switch c.ConfigStep {
 	case 0:

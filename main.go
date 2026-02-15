@@ -9,6 +9,7 @@ import (
 	"troveler/commands"
 )
 
+// RootCmd is the root cobra command for the troveler CLI.
 var RootCmd = &cobra.Command{
 	Use:   "troveler",
 	Short: "Local terminaltrove.com mirror",
@@ -43,6 +44,7 @@ Use 'troveler tui' to launch the interactive Terminal User Interface.`,
 
 var configPath string
 
+// completionCmd generates shell completion scripts.
 var completionCmd = &cobra.Command{
 	Use:   "completion [bash|zsh|fish]",
 	Short: "Generate shell completion script",

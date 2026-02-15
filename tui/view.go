@@ -4,6 +4,7 @@ import (
 	"fmt"
 )
 
+// View renders the full TUI layout.
 func (m *Model) View() string {
 	if m.width == 0 || m.height == 0 {
 		return "Initializing..."

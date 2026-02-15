@@ -19,6 +19,7 @@ const (
 	burstRate      = 40
 )
 
+// Fetcher handles HTTP requests with caching and rate limiting.
 type Fetcher struct {
 	client  *http.Client
 	limiter *rate.Limiter
@@ -26,12 +27,14 @@ type Fetcher struct {
 	mu      sync.RWMutex
 }
 
+// FetchResult contains the result of a fetch operation.
 type FetchResult struct {
 	URL  string
 	Data []byte
 	Err  error
 }
 
+// NewFetcher creates a new Fetcher with default configuration.
 func NewFetcher() *Fetcher {
 	return &Fetcher{
 		client: &http.Client{
@@ -42,18 +45,21 @@ func NewFetcher() *Fetcher {
 	}
 }
 
+// FetchSearchPage retrieves a search results page from the server.
 func (f *Fetcher) FetchSearchPage(ctx context.Context, page int) ([]byte, error) {
 	url := fmt.Sprintf("%s/search?q=*&page=%d&per_page=%d", baseURL, page, resultsPerPage)
 
 	return f.Fetch(ctx, url)
 }
 
+// FetchDetailPage retrieves a tool detail page from the server.
 func (f *Fetcher) FetchDetailPage(ctx context.Context, slug string) ([]byte, error) {
 	url := fmt.Sprintf("%s/%s/", baseURL, slug)
 
 	return f.Fetch(ctx, url)
 }
 
+// Fetch retrieves a URL with caching, rate limiting, and retry logic.
 func (f *Fetcher) Fetch(ctx context.Context, url string) ([]byte, error) {
 	f.mu.RLock()
 	if data, ok := f.cache[url]; ok {
@@ -135,6 +141,7 @@ func (f *Fetcher) Fetch(ctx context.Context, url string) ([]byte, error) {
 	return body, nil
 }
 
+// FetchSearchPagesConcurrently fetches multiple search pages in parallel.
 func (f *Fetcher) FetchSearchPagesConcurrently(ctx context.Context, totalPages int) (map[int][]byte, error) {
 	results := make(map[int][]byte)
 	var mu sync.Mutex

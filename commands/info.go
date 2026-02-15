@@ -13,6 +13,7 @@ import (
 	"troveler/pkg/ui"
 )
 
+// InfoCmd is the cobra command for showing tool details.
 var InfoCmd = &cobra.Command{
 	Use:   "info <slug>",
 	Short: "Show detailed information about a tool",
