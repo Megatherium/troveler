@@ -307,7 +307,7 @@ func handleDatabaseWrites(ctx context.Context, database *db.SQLiteDB, detailChan
 			select {
 			case writeChan <- inst:
 			case <-ctx.Done():
-				break
+				return
 			}
 		}
 	}

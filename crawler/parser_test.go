@@ -1,3 +1,4 @@
+//nolint:lll
 package crawler
 
 import (
@@ -112,10 +113,11 @@ func TestParseDetailPage(t *testing.T) {
 }
 
 func TestDetailPageToTool(t *testing.T) {
+	jsonLD := `{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","@id":"https://terminaltrove.com/testtool/","name":"Test Tool","description":"A test tool","programmingLanguage":"rust","codeRepository":"https://github.com/test/test","datePublished":"2024-01-01"}]}`
 	input := `<!DOCTYPE html>
 <html>
 <head>
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","@id":"https://terminaltrove.com/testtool/","name":"Test Tool","description":"A test tool","programmingLanguage":"rust","codeRepository":"https://github.com/test/test","datePublished":"2024-01-01"}]}</script>
+<script type="application/ld+json">` + jsonLD + `</script>
 </head>
 <body>
 <p id="tagline">Test tagline</p>
@@ -142,10 +144,11 @@ func TestDetailPageToTool(t *testing.T) {
 }
 
 func TestDetailPageWithNestedInstallData(t *testing.T) {
+	jsonLD := `{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","@id":"https://terminaltrove.com/testtool/","name":"Test Tool"}]}`
 	input := `<!DOCTYPE html>
 <html>
 <head>
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","@id":"https://terminaltrove.com/testtool/","name":"Test Tool"}]}</script>
+<script type="application/ld+json">` + jsonLD + `</script>
 </head>
 <body>
 <div id="install" data-install='{"linux": {"arch": "pacman -S test"}, "macos": {"brew": "brew install test"}}'></div>

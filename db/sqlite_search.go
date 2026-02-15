@@ -44,6 +44,7 @@ func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResu
 	if err != nil {
 		return nil, err
 	}
+	defer func() { _ = rows.Close() }()
 
 	var tools []Tool
 	for rows.Next() {
@@ -53,18 +54,13 @@ func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResu
 			&t.Language, &t.License, &t.DatePublished, &t.CodeRepository,
 		)
 		if err != nil {
-			defer rows.Close()
-
 			return nil, err
 		}
 		tools = append(tools, t)
 	}
 	if err := rows.Err(); err != nil {
-		defer rows.Close()
-
 		return nil, err
 	}
-	defer rows.Close()
 
 	var results []SearchResult
 	for _, t := range tools {
