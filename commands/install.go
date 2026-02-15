@@ -7,14 +7,12 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 
 	"troveler/config"
 	"troveler/db"
 	"troveler/internal/install"
 	"troveler/internal/platform"
-	"troveler/pkg/ui"
 )
 
 var all bool
@@ -72,22 +70,6 @@ func init() {
 	InstallCmd.Flags().BoolVar(&skipIfBlind, "skip-if-blind", false, "Skip tools without compatible install method")
 }
 
-func FindMatchingInstalls(osID string, installs []db.InstallInstruction) []db.InstallInstruction {
-	var matched []db.InstallInstruction
-
-	for _, inst := range installs {
-		if platform.MatchPlatform(osID, inst.Platform) {
-			matched = append(matched, inst)
-		}
-	}
-
-	return matched
-}
-
-func ResolveVirtualPlatform(platformID string) string {
-	return platform.ResolveVirtual(platformID)
-}
-
 func runInstall(
 	database *db.SQLiteDB, slug string, showAll bool, runFlag bool, sudoFlag bool,
 	cliOverride string, configOverride string, fallbackPlatform string,
@@ -115,74 +97,31 @@ func runInstall(
 		return showAllInstalls(tool.Name, installs)
 	}
 
-	var platformID string
-	var matched []db.InstallInstruction
-
-	if miseEnabled && override == "" {
+	if miseEnabled && cliOverride == "" {
 		cliOverride = platformLang
 	}
 
-	overrideVal := selectOverride(cliOverride, configOverride)
+	selector := platform.NewSelector(cliOverride, configOverride, fallbackPlatform, tool.Language)
 
-	overrideVal = platform.ResolveVirtual(overrideVal)
-
-	if overrideVal != "" {
-		if overrideVal == platformLang {
-			for _, inst := range installs {
-				if platform.MatchLanguage(tool.Language, inst.Platform) {
-					matched = append(matched, inst)
-				}
-			}
-			platformID = tool.Language
-		} else {
-			platformID = platform.Normalize(overrideVal)
-			matched = FindMatchingInstalls(platformID, installs)
-		}
-	} else {
-		osInfo, err := platform.DetectOS()
-		if err == nil {
-			platformID = osInfo.ID
-			matched = FindMatchingInstalls(platformID, installs)
-		}
-
-		if len(matched) == 0 && fallbackPlatform != "" {
-			if fallbackPlatform == platformLang {
-				for _, inst := range installs {
-					if platform.MatchLanguage(tool.Language, inst.Platform) {
-						matched = append(matched, inst)
-					}
-				}
-				platformID = tool.Language
-			} else {
-				platformID = platform.Normalize(fallbackPlatform)
-				matched = FindMatchingInstalls(platformID, installs)
-			}
-		}
-
-		if len(matched) == 0 && err != nil {
-			fmt.Printf("Warning: Could not detect OS: %v\n\n", err)
-			fmt.Println("Available commands:")
-
-			return showAllInstalls(tool.Name, installs)
-		}
+	osInfo, _ := platform.DetectOS()
+	detectedOS := ""
+	if osInfo != nil {
+		detectedOS = osInfo.ID
 	}
+
+	platformID := selector.Select(detectedOS)
+
+	platformID = platform.ResolveVirtual(platformID)
+	matched, _ := platform.FilterDBInstalls(installs, platformID, tool.Language)
 
 	if len(matched) == 0 {
 		fmt.Printf("No install command found for %s.\n\n", platformID)
 
 		if platformID != tool.Language {
 			var langMatched []db.InstallInstruction
-			for _, inst := range installs {
-				if platform.MatchLanguage(tool.Language, inst.Platform) {
-					langMatched = append(langMatched, inst)
-				}
-			}
+			langMatched, _ = platform.FilterDBInstalls(installs, platformLang, tool.Language)
 			if len(langMatched) > 0 {
-				fmt.Printf("Trying language (%s):\n", tool.Language)
-				for _, inst := range langMatched {
-					fmt.Println(lipgloss.NewStyle().Bold(true).Render(inst.Command))
-				}
-				fmt.Println()
+				displayLanguageFallback(tool.Language, langMatched)
 
 				return nil
 			}
@@ -193,21 +132,7 @@ func runInstall(
 		return showAllInstalls(tool.Name, installs)
 	}
 
-	fmt.Println()
-	fmt.Println(lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#00FF00")).
-		Render("Install command for " + platformID + ":"))
-	fmt.Println()
-
-	for _, inst := range matched {
-		cmd := inst.Command
-		if miseEnabled {
-			cmd = install.TransformToMise(cmd)
-		}
-		fmt.Println(lipgloss.NewStyle().Bold(true).Render(cmd))
-	}
-	fmt.Println()
+	displayInstallCommands(platformID, matched, miseEnabled)
 
 	if runFlag {
 		cmd := matched[0].Command
@@ -217,101 +142,6 @@ func runInstall(
 
 		return executeInstall(cmd, sudoFlag, useSudo, alwaysRun)
 	}
-
-	return nil
-}
-
-func selectOverride(cliOverride, configOverride string) string {
-	if cliOverride != "" {
-		return cliOverride
-	}
-
-	return configOverride
-}
-
-func executeInstall(command string, sudoFlag bool, useSudo string, alwaysRun bool) error {
-	shouldSudo := sudoFlag
-
-	if !sudoFlag && useSudo == "ask" {
-		fmt.Print("Use sudo? [y/N] ")
-		var confirm string
-		if _, err := fmt.Scanln(&confirm); err != nil {
-			shouldSudo = false
-		} else {
-			shouldSudo = confirm == "y" || confirm == "Y"
-		}
-	} else if !sudoFlag && useSudo == "true" {
-		shouldSudo = true
-	}
-
-	if shouldSudo {
-		command = "sudo " + command
-	}
-
-	if !alwaysRun {
-		fmt.Print("Execute this command? [y/N] ")
-		var confirm string
-		if _, err := fmt.Scanln(&confirm); err != nil {
-			confirm = ""
-		}
-
-		if confirm != "y" && confirm != "Y" {
-			fmt.Println("Aborted.")
-
-			return nil
-		}
-	}
-
-	fmt.Printf("\nExecuting: %s\n\n", command)
-
-	cmd := exec.Command("sh", "-c", command) //nolint:noctx //nolint:gosec // G204: user install
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	return cmd.Run()
-}
-
-func showAllInstalls(name string, installs []db.InstallInstruction) error {
-	fmt.Println()
-	fmt.Println(lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#00FFFF")).
-		Render(name + " - All Install Commands:"))
-	fmt.Println(strings.Repeat("─", len(name)+len(" - All Install Commands:")))
-	fmt.Println()
-
-	virtuals := install.GenerateVirtualInstallInstructions(installs)
-
-	headers := []string{"Platform", "Command"}
-
-	totalRows := len(installs) + len(virtuals)
-	rows := make([][]string, 0, totalRows)
-
-	for _, inst := range installs {
-		rows = append(rows, []string{inst.Platform, inst.Command})
-	}
-
-	for _, v := range virtuals {
-		rows = append(rows, []string{v.Platform, v.Command})
-	}
-
-	tableConfig := ui.TableConfig{
-		Headers: headers,
-		Rows:    rows,
-		RowFunc: func(cell string, rowIdx, colIdx int) string {
-			var color string
-			if colIdx == 0 {
-				color = ui.GetGradientColorSimple(rowIdx)
-			} else {
-				color = ui.GetGradientColorSimple((rowIdx + len(rows)/2) % len(ui.GradientColors))
-			}
-
-			return lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(cell)
-		},
-		ShowHeader: true,
-	}
-
-	fmt.Println(ui.RenderTable(tableConfig))
 
 	return nil
 }
@@ -330,52 +160,10 @@ func runBatchInstall(
 ) error {
 	fmt.Printf("\n🔧 Batch Install: %d tools\n\n", len(slugs))
 
-	var batchCfg *BatchConfig
-	shouldReuse := reuseConfig == "true"
-	shouldAsk := reuseConfig == "ask"
-
-	if shouldAsk {
-		fmt.Print("Use same configuration for all tools? [Y/n] ")
-		var confirm string
-		_, _ = fmt.Scanln(&confirm)
-		shouldReuse = confirm != "n" && confirm != "N"
-	}
-
-	if shouldReuse {
-		batchCfg = &BatchConfig{
-			UseSudo:        sudoFlag,
-			SudoOnlySystem: sudoOnlySystemFlag,
-			SkipIfBlind:    skipIfBlindFlag,
-			UseMise:        miseEnabled,
-			AlwaysRun:      cfg.Install.AlwaysRun,
-		}
-
-		if !sudoFlag && !sudoOnlySystemFlag {
-			fmt.Print("Use sudo? [y/N/s=system-only] ")
-			var confirm string
-			_, _ = fmt.Scanln(&confirm)
-			switch confirm {
-			case "y", "Y":
-				batchCfg.UseSudo = true
-			case "s", "S":
-				batchCfg.SudoOnlySystem = true
-			}
-		}
-
-		if !skipIfBlindFlag {
-			fmt.Print("Skip tools without install method? [y/N] ")
-			var confirm string
-			_, _ = fmt.Scanln(&confirm)
-			batchCfg.SkipIfBlind = confirm == "y" || confirm == "Y"
-		}
-
-		if !miseEnabled {
-			fmt.Print("Use mise for installations? [y/N] ")
-			var confirm string
-			_, _ = fmt.Scanln(&confirm)
-			batchCfg.UseMise = confirm == "y" || confirm == "Y"
-		}
-	}
+	batchCfg := promptBatchConfig(
+		sudoFlag, sudoOnlySystemFlag, skipIfBlindFlag, miseEnabled,
+		reuseConfig, cfg.Install.AlwaysRun,
+	)
 
 	var completed, failed, skipped []string
 
@@ -437,15 +225,10 @@ func installSingleTool(
 		detectedOS = osInfo.ID
 	}
 
-	selector := install.NewPlatformSelector("", cfg.Install.PlatformOverride, cfg.Install.FallbackPlatform, tool.Language)
-	platformID := selector.SelectPlatform(detectedOS)
+	selector := platform.NewSelector("", cfg.Install.PlatformOverride, cfg.Install.FallbackPlatform, tool.Language)
+	platformID := selector.Select(detectedOS)
 
-	var matched []db.InstallInstruction
-	for _, inst := range installs {
-		if platform.MatchPlatform(platformID, inst.Platform) || platform.MatchLanguage(tool.Language, inst.Platform) {
-			matched = append(matched, inst)
-		}
-	}
+	matched, _ := platform.FilterDBInstalls(installs, platformID, tool.Language)
 
 	if len(matched) == 0 {
 		if batchCfg != nil && batchCfg.SkipIfBlind {
@@ -481,15 +264,12 @@ func installSingleTool(
 	}
 
 	if !alwaysRun {
-		fmt.Print("Execute? [y/N] ")
-		var confirm string
-		_, _ = fmt.Scanln(&confirm)
-		if confirm != "y" && confirm != "Y" {
-			return fmt.Errorf("skipped: user declined")
+		if err := promptExecute(); err != nil {
+			return err
 		}
 	}
 
-	execCmd := exec.Command("sh", "-c", cmd) //nolint:gosec // G204: user install
+	execCmd := exec.Command("sh", "-c", cmd)
 	execCmd.Stdout = os.Stdout
 	execCmd.Stderr = os.Stderr
 

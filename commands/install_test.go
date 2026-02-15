@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"troveler/db"
+	"troveler/internal/platform"
 )
 
 func TestResolveVirtualPlatform(t *testing.T) {
@@ -56,7 +57,7 @@ func TestResolveVirtualPlatform(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := ResolveVirtualPlatform(tt.input)
+			result := platform.ResolveVirtual(tt.input)
 			if result != tt.expected {
 				t.Errorf("resolveVirtualPlatform(%q) = %q, want %q", tt.input, result, tt.expected)
 			}
@@ -105,8 +106,13 @@ func TestFindMatchingInstallsWithVirtualPlatforms(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			override := ResolveVirtualPlatform(tt.override)
-			matched := FindMatchingInstalls(override, installs)
+			override := platform.ResolveVirtual(tt.override)
+			var matched []db.InstallInstruction
+			for _, inst := range installs {
+				if platform.MatchPlatform(override, inst.Platform) {
+					matched = append(matched, inst)
+				}
+			}
 
 			if len(matched) != tt.expectCount {
 				t.Errorf("Expected %d matches for override %s, got %d",

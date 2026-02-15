@@ -4,10 +4,6 @@ import (
 	"testing"
 )
 
-const (
-	platformLang = "LANG"
-)
-
 func TestOverrideFlagPriority(t *testing.T) {
 	testCases := []struct {
 		name             string

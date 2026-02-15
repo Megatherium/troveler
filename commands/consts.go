@@ -1,3 +1,6 @@
 package commands
 
-const platformLang = "LANG"
+const (
+	platformLang  = "LANG"
+	platformGOPip = "go (pip)"
+)
