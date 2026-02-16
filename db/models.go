@@ -12,6 +12,7 @@ type Tool struct {
 	License        string    `json:"license" db:"license"`
 	DatePublished  string    `json:"date_published" db:"date_published"`
 	CodeRepository string    `json:"code_repository" db:"code_repository"`
+	ToolOfTheWeek  bool      `json:"tool_of_the_week" db:"tool_of_the_week"`
 	CreatedAt      time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at" db:"updated_at"`
 	Installed      bool      `json:"installed" db:"-"`

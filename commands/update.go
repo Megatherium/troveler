@@ -185,15 +185,17 @@ func abs(x int) int {
 	return x
 }
 
-func fetchAndParseSlugs(ctx context.Context, fetcher *crawler.Fetcher, limit int) ([]string, int, error) {
+func fetchAndParseSlugs(
+	ctx context.Context, fetcher *crawler.Fetcher, limit int,
+) ([]string, map[string]bool, int, error) {
 	initialData, err := fetcher.FetchSearchPage(ctx, 1)
 	if err != nil {
-		return nil, 0, fmt.Errorf("initial fetch: %w", err)
+		return nil, nil, 0, fmt.Errorf("initial fetch: %w", err)
 	}
 
 	initialResp, err := crawler.ParseSearchResponse(initialData)
 	if err != nil {
-		return nil, 0, fmt.Errorf("parse initial: %w", err)
+		return nil, nil, 0, fmt.Errorf("parse initial: %w", err)
 	}
 
 	totalTools := int(initialResp.Found)
@@ -203,10 +205,11 @@ func fetchAndParseSlugs(ctx context.Context, fetcher *crawler.Fetcher, limit int
 
 	pageResults, err := fetcher.FetchSearchPagesConcurrently(ctx, (totalTools+99)/100)
 	if err != nil {
-		return nil, 0, fmt.Errorf("fetch pages: %w", err)
+		return nil, nil, 0, fmt.Errorf("fetch pages: %w", err)
 	}
 
 	allSlugs := make([]string, 0, totalTools)
+	slugToToolOfTheWeek := make(map[string]bool)
 
 	for i := 1; i <= (totalTools+99)/100; i++ {
 		data, ok := pageResults[i]
@@ -222,6 +225,7 @@ func fetchAndParseSlugs(ctx context.Context, fetcher *crawler.Fetcher, limit int
 		for _, item := range resp.Hits {
 			if item.Document.Slug != "" {
 				allSlugs = append(allSlugs, item.Document.Slug)
+				slugToToolOfTheWeek[item.Document.Slug] = item.Document.ToolOfTheWeek
 				if limit > 0 && len(allSlugs) >= limit {
 					break
 				}
@@ -232,11 +236,11 @@ func fetchAndParseSlugs(ctx context.Context, fetcher *crawler.Fetcher, limit int
 		}
 	}
 
-	return allSlugs, int(initialResp.Found), nil
+	return allSlugs, slugToToolOfTheWeek, int(initialResp.Found), nil
 }
 
 func processDetailsConcurrently(
-	ctx context.Context, fetcher *crawler.Fetcher, slugs []string, ui *UpdateUI,
+	ctx context.Context, fetcher *crawler.Fetcher, slugs []string, slugToToolOfTheWeek map[string]bool, ui *UpdateUI,
 ) (<-chan crawler.DetailPage, <-chan error) {
 	detailChan := make(chan crawler.DetailPage, 100)
 	errChan := make(chan error, 1)
@@ -263,6 +267,11 @@ func processDetailsConcurrently(
 				detail, err := crawler.ParseDetailPage(data)
 				if err != nil {
 					continue
+				}
+
+				// Set tool of the week from search hit
+				if totw, ok := slugToToolOfTheWeek[slug]; ok {
+					detail.Tool.ToolOfTheWeek = totw
 				}
 
 				ui.IncProcessed()
@@ -358,7 +367,7 @@ func runUpdate(
 		fmt.Println()
 	}
 
-	slugs, total, err := fetchAndParseSlugs(ctx, fetcher, limit)
+	slugs, slugToToolOfTheWeek, total, err := fetchAndParseSlugs(ctx, fetcher, limit)
 	if err != nil {
 		return err
 	}
@@ -393,7 +402,7 @@ func runUpdate(
 
 	ui := NewUpdateUI(len(slugs))
 
-	detailChan, errChan := processDetailsConcurrently(ctx, fetcher, slugs, ui)
+	detailChan, errChan := processDetailsConcurrently(ctx, fetcher, slugs, slugToToolOfTheWeek, ui)
 
 	detailDone := make(chan struct{})
 	go func() {

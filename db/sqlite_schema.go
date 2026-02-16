@@ -14,6 +14,7 @@ func (s *SQLiteDB) createTables() error {
 			license TEXT,
 			date_published TEXT,
 			code_repository TEXT,
+			tool_of_the_week BOOLEAN DEFAULT false,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)`,

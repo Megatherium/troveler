@@ -34,12 +34,13 @@ type Hit struct {
 }
 
 type HitDocument struct {
-	Slug        string   `json:"slug"`
-	Name        string   `json:"name"`
-	Tagline     string   `json:"tagline"`
-	Description string   `json:"preview"`
-	Language    string   `json:"language"`
-	License     []string `json:"license"`
+	Slug          string   `json:"slug"`
+	Name          string   `json:"name"`
+	Tagline       string   `json:"tagline"`
+	Description   string   `json:"preview"`
+	Language      string   `json:"language"`
+	License       []string `json:"license"`
+	ToolOfTheWeek bool     `json:"tool_of_the_week"`
 }
 
 func ParseSearchResponse(data []byte) (*SearchResponse, error) {

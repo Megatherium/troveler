@@ -7,9 +7,10 @@ import (
 
 func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResult, error) {
 	allowedFields := map[string]string{
-		"name":     "name",
-		"tagline":  "tagline",
-		"language": "language",
+		"name":           "name",
+		"tagline":        "tagline",
+		"language":       "language",
+		"date_published": "date_published",
 	}
 
 	sortField, ok := allowedFields[opts.SortField]
@@ -31,7 +32,7 @@ func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResu
 	}
 
 	sqlQuery := fmt.Sprintf(`
-		SELECT id, slug, name, tagline, description, language, license, date_published, code_repository
+		SELECT id, slug, name, tagline, description, language, license, date_published, code_repository, tool_of_the_week
 		FROM tools
 		WHERE %s
 		ORDER BY %s %s
@@ -51,7 +52,7 @@ func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResu
 		var t Tool
 		err := rows.Scan(
 			&t.ID, &t.Slug, &t.Name, &t.Tagline, &t.Description,
-			&t.Language, &t.License, &t.DatePublished, &t.CodeRepository,
+			&t.Language, &t.License, &t.DatePublished, &t.CodeRepository, &t.ToolOfTheWeek,
 		)
 		if err != nil {
 			return nil, err

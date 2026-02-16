@@ -8,8 +8,8 @@ import (
 func (s *SQLiteDB) UpsertTool(ctx context.Context, tool *Tool) error {
 	query := `
 		INSERT INTO tools (id, slug, name, tagline, description, language, license,
-			date_published, code_repository, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			date_published, code_repository, tool_of_the_week, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			slug = excluded.slug,
 			name = excluded.name,
@@ -19,13 +19,14 @@ func (s *SQLiteDB) UpsertTool(ctx context.Context, tool *Tool) error {
 			license = excluded.license,
 			date_published = excluded.date_published,
 			code_repository = excluded.code_repository,
+			tool_of_the_week = excluded.tool_of_the_week,
 			updated_at = excluded.updated_at
 	`
 
 	tool.UpdatedAt = time.Now()
 	_, err := s.getDB().ExecContext(ctx, query,
 		tool.ID, tool.Slug, tool.Name, tool.Tagline, tool.Description,
-		tool.Language, tool.License, tool.DatePublished, tool.CodeRepository, tool.UpdatedAt,
+		tool.Language, tool.License, tool.DatePublished, tool.CodeRepository, tool.ToolOfTheWeek, tool.UpdatedAt,
 	)
 
 	return err
@@ -48,7 +49,7 @@ func (s *SQLiteDB) UpsertInstallInstruction(ctx context.Context, inst *InstallIn
 
 func (s *SQLiteDB) GetAllTools(ctx context.Context) ([]Tool, error) {
 	query := `SELECT id, slug, name, tagline, description, language, license,
-		date_published, code_repository, created_at, updated_at FROM tools`
+		date_published, code_repository, tool_of_the_week, created_at, updated_at FROM tools`
 	rows, err := s.getDB().QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
@@ -61,7 +62,7 @@ func (s *SQLiteDB) GetAllTools(ctx context.Context) ([]Tool, error) {
 		err := rows.Scan(
 			&t.ID, &t.Slug, &t.Name, &t.Tagline, &t.Description,
 			&t.Language, &t.License, &t.DatePublished, &t.CodeRepository,
-			&t.CreatedAt, &t.UpdatedAt,
+			&t.ToolOfTheWeek, &t.CreatedAt, &t.UpdatedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -74,7 +75,7 @@ func (s *SQLiteDB) GetAllTools(ctx context.Context) ([]Tool, error) {
 
 func (s *SQLiteDB) GetToolBySlug(slug string) ([]Tool, error) {
 	query := `SELECT id, slug, name, tagline, description, language, license,
-		date_published, code_repository, created_at, updated_at FROM tools WHERE slug = ?`
+		date_published, code_repository, tool_of_the_week, created_at, updated_at FROM tools WHERE slug = ?`
 	rows, err := s.getDB().QueryContext(context.Background(), query, slug)
 	if err != nil {
 		return nil, err
@@ -87,7 +88,7 @@ func (s *SQLiteDB) GetToolBySlug(slug string) ([]Tool, error) {
 		err := rows.Scan(
 			&t.ID, &t.Slug, &t.Name, &t.Tagline, &t.Description,
 			&t.Language, &t.License, &t.DatePublished, &t.CodeRepository,
-			&t.CreatedAt, &t.UpdatedAt,
+			&t.ToolOfTheWeek, &t.CreatedAt, &t.UpdatedAt,
 		)
 		if err != nil {
 			return nil, err

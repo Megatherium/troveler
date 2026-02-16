@@ -12,7 +12,7 @@ func TestFetchAndParseSlugs(t *testing.T) {
 
 	fetcher := crawler.NewFetcher()
 
-	slugs, _, err := fetchAndParseSlugs(ctx, fetcher, 10)
+	slugs, _, _, err := fetchAndParseSlugs(ctx, fetcher, 10)
 	if err != nil {
 		t.Fatalf("fetchAndParseSlugs failed: %v", err)
 	}
@@ -27,7 +27,7 @@ func TestFetchAndParseSlugsNoLimit(t *testing.T) {
 
 	fetcher := crawler.NewFetcher()
 
-	slugs, _, err := fetchAndParseSlugs(ctx, fetcher, 0)
+	slugs, _, _, err := fetchAndParseSlugs(ctx, fetcher, 0)
 	if err != nil {
 		t.Fatalf("fetchAndParseSlugs failed: %v", err)
 	}
