@@ -33,6 +33,10 @@ func New(dbPath string) (*SQLiteDB, error) {
 		return nil, fmt.Errorf("failed to create tables: %w", err)
 	}
 
+	if err := sqlite.runMigrations(); err != nil {
+		return nil, fmt.Errorf("failed to run migrations: %w", err)
+	}
+
 	return sqlite, nil
 }
 
