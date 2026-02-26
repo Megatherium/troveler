@@ -111,6 +111,42 @@ func runInstall(
 
 	platformID := selector.Select(detectedOS)
 
+	// Check for explicit virtual platform requests (e.g., "mise:github")
+	// before resolving the virtual prefix
+	if strings.HasPrefix(platformID, "mise:") {
+		virtuals := install.GenerateVirtualInstallInstructions(installs)
+		requestedBackend := strings.TrimPrefix(platformID, "mise:")
+
+		for _, v := range virtuals {
+			if v.Platform == platformID {
+				displayInstallCommands(platformID, []db.InstallInstruction{
+					{Platform: v.Platform, Command: v.Command},
+				}, miseEnabled)
+
+				if runFlag {
+					return executeInstall(v.Command, sudoFlag, useSudo, alwaysRun)
+				}
+
+				return nil
+			}
+		}
+
+		// Virtual platform not found - show helpful error
+		fmt.Printf("No install command found for %s (backend: %s).\n\n", platformID, requestedBackend)
+
+		if len(virtuals) > 0 {
+			fmt.Println("Available virtual platforms:")
+			for _, v := range virtuals {
+				fmt.Printf("  - %s\n", v.Platform)
+			}
+			fmt.Println()
+		}
+
+		fmt.Println("Available commands:")
+
+		return showAllInstalls(tool.Name, installs)
+	}
+
 	platformID = platform.ResolveVirtual(platformID)
 	matched, _ := platform.FilterDBInstalls(installs, platformID, tool.Language)
 
