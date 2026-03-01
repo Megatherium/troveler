@@ -1,0 +1,13 @@
+{
+  "last_dolt_commit": "pgu1573jm4tiba84dgi9969egpbkogs4",
+  "last_event_id": 0,
+  "timestamp": "2026-03-01T12:20:38.781875583Z",
+  "counts": {
+    "issues": 53,
+    "events": 213,
+    "comments": 0,
+    "dependencies": 43,
+    "labels": 0,
+    "config": 15
+  }
+}
