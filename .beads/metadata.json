@@ -2,7 +2,6 @@
   "database": "dolt",
   "backend": "dolt",
   "dolt_mode": "server",
-  "dolt_server_host": "127.0.0.1",
-  "dolt_server_port": 3307,
-  "dolt_database": "beads_troveler"
+  "dolt_database": "beads_troveler",
+  "project_id": "3a75a50b-8054-4b07-9d30-7882737fbf6a"
 }
