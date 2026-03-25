@@ -3,6 +3,12 @@ package db
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
+)
+
+const (
+	defaultUnfilteredLimit = 100000
 )
 
 func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResult, error) {
@@ -23,6 +29,8 @@ func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResu
 		sortOrder = "DESC"
 	}
 
+	hasInstalled := hasInstalledFilter(opts.Filter)
+
 	whereClause, args := BuildWhereClause(opts.Filter, opts.Query)
 
 	if whereClause == "" {
@@ -31,15 +39,30 @@ func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResu
 		args = []interface{}{likeQuery, likeQuery, likeQuery}
 	}
 
-	sqlQuery := fmt.Sprintf(`
-		SELECT id, slug, name, tagline, description, language, license, date_published, code_repository, tool_of_the_week
-		FROM tools
-		WHERE %s
-		ORDER BY %s %s
-		LIMIT ?
-	`, whereClause, sortField, sortOrder)
+	limit := opts.Limit
+	if hasInstalled {
+		limit = defaultUnfilteredLimit
+	}
 
-	args = append(args, opts.Limit)
+	var sqlQuery string
+	if hasInstalled {
+		sqlQuery = fmt.Sprintf(`
+			SELECT id, slug, name, tagline, description, language, license, date_published, code_repository, tool_of_the_week
+			FROM tools
+			WHERE %s
+			LIMIT ?
+		`, whereClause)
+	} else {
+		sqlQuery = fmt.Sprintf(`
+			SELECT id, slug, name, tagline, description, language, license, date_published, code_repository, tool_of_the_week
+			FROM tools
+			WHERE %s
+			ORDER BY %s %s
+			LIMIT ?
+		`, whereClause, sortField, sortOrder)
+	}
+
+	args = append(args, limit)
 
 	rows, err := s.getDB().QueryContext(ctx, sqlQuery, args...)
 	if err != nil {
@@ -70,9 +93,60 @@ func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResu
 		results = append(results, SearchResult{Tool: t})
 	}
 
-	if opts.Filter != nil {
+	if hasInstalled {
 		results = filterByInstalled(results, opts.Filter)
+		results = sortAndLimitResults(results, opts.SortField, sortOrder, opts.Limit)
 	}
 
 	return results, nil
+}
+
+func sortAndLimitResults(results []SearchResult, sortField, sortOrder string, limit int) []SearchResult {
+	if len(results) == 0 {
+		return results
+	}
+
+	sortField = strings.ToLower(sortField)
+
+	switch sortField {
+	case "name":
+		sort.Slice(results, func(i, j int) bool {
+			return compareASC(results[i].Name, results[j].Name, sortOrder == "DESC")
+		})
+	case "tagline":
+		sort.Slice(results, func(i, j int) bool {
+			return compareASC(results[i].Tagline, results[j].Tagline, sortOrder == "DESC")
+		})
+	case "language":
+		sort.Slice(results, func(i, j int) bool {
+			return compareASC(results[i].Language, results[j].Language, sortOrder == "DESC")
+		})
+	case "date_published":
+		sort.Slice(results, func(i, j int) bool {
+			return compareASC(results[i].DatePublished, results[j].DatePublished, sortOrder == "DESC")
+		})
+	default:
+		sort.Slice(results, func(i, j int) bool {
+			return compareASC(results[i].Name, results[j].Name, sortOrder == "DESC")
+		})
+	}
+
+	if limit > 0 && limit < len(results) {
+		return results[:limit]
+	}
+
+	return results
+}
+
+func compareASC(a, b string, reverse bool) bool {
+	lowA := strings.ToLower(a)
+	lowB := strings.ToLower(b)
+	if lowA < lowB {
+		return !reverse
+	}
+	if lowA > lowB {
+		return reverse
+	}
+
+	return false
 }
