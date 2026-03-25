@@ -31,26 +31,74 @@ const (
 	tokenNot
 )
 
-// ParseFilters parses a query string into a db.Filter AST
-func ParseFilters(query string) (*db.Filter, string, error) {
-	// Check if there are any field=value patterns
-	if !strings.Contains(query, "=") {
-		// No filters, return the query as-is
-		return nil, query, nil
+func isOperator(token string) bool {
+	for _, r := range token {
+		if r == '&' || r == '|' || r == '!' || r == '(' || r == ')' {
+			return true
+		}
 	}
+	return false
+}
 
-	p := &Parser{}
-	p.tokenize(query)
+func isFilterToken(t string) bool {
+	return strings.Contains(t, "=") || isOperator(t)
+}
+
+func extractFilterTokens(tokens []string) (filterTokens []string, searchTokens []string) {
+	for _, t := range tokens {
+		if t != "" && isFilterToken(t) {
+			filterTokens = append(filterTokens, t)
+		} else if t != "" {
+			searchTokens = append(searchTokens, t)
+		}
+	}
+	return
+}
+
+func joinTokens(tokens []string) string {
+	return strings.Join(tokens, " ")
+}
+
+func (p *Parser) parseFromTokens(tokens []string) (*db.Filter, error) {
+	p.tokens = nil
+	p.pos = 0
+	p.tokenize(joinTokens(tokens))
 	if len(p.tokens) == 0 {
-		return nil, query, nil
+		return nil, fmt.Errorf("empty filter expression")
+	}
+	return p.parseExpression()
+}
+
+func ParseFilters(query string) (*db.Filter, string, string, error) {
+	if !strings.Contains(query, "=") && !strings.ContainsAny(query, "&|!()") {
+		return nil, query, "", nil
 	}
 
-	ast, err := p.parseExpression()
+	rawTokens := strings.Fields(query)
+	filterTokens, searchTokens := extractFilterTokens(rawTokens)
+
+	if len(filterTokens) == 0 {
+		return nil, query, "", nil
+	}
+
+	filterExpr := joinTokens(filterTokens)
+
+	if len(searchTokens) == 0 {
+		p := &Parser{}
+		ast, err := p.parseFromTokens(filterTokens)
+		if err != nil {
+			return nil, query, fmt.Sprintf("Malformed filter \"%s\" - using filter expression as search term", filterExpr), nil
+		}
+		return ast, "", "", nil
+	}
+
+	ast, err := (&Parser{}).parseFromTokens(filterTokens)
 	if err != nil {
-		return nil, query, err
+		searchTerm := joinTokens(searchTokens)
+		return nil, searchTerm, fmt.Sprintf("Malformed filter \"%s\" - using search term: \"%s\"", filterExpr, searchTerm), nil
 	}
 
-	return ast, "", nil
+	return ast, joinTokens(searchTokens), "", nil
 }
 
 func (p *Parser) tokenize(query string) {

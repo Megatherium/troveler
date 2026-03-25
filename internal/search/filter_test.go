@@ -15,7 +15,7 @@ const (
 )
 
 func TestParseFiltersNoFilters(t *testing.T) {
-	ast, searchTerm, err := ParseFilters(testToolBat)
+	ast, searchTerm, _, err := ParseFilters(testToolBat)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -29,7 +29,7 @@ func TestParseFiltersNoFilters(t *testing.T) {
 }
 
 func TestParseFiltersSimpleField(t *testing.T) {
-	ast, searchTerm, err := ParseFilters("name=bat")
+	ast, searchTerm, _, err := ParseFilters("name=bat")
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -50,7 +50,7 @@ func TestParseFiltersSimpleField(t *testing.T) {
 }
 
 func TestParseFiltersAnd(t *testing.T) {
-	ast, _, err := ParseFilters("name=bat&language=rust")
+	ast, _, _, err := ParseFilters("name=bat&language=rust")
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -68,7 +68,7 @@ func TestParseFiltersAnd(t *testing.T) {
 }
 
 func TestParseFiltersOr(t *testing.T) {
-	ast, _, err := ParseFilters("name=bat|name=batcat")
+	ast, _, _, err := ParseFilters("name=bat|name=batcat")
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -86,7 +86,7 @@ func TestParseFiltersOr(t *testing.T) {
 }
 
 func TestParseFiltersWithParentheses(t *testing.T) {
-	ast, _, err := ParseFilters("(name=git|tagline=git)&language=go")
+	ast, _, _, err := ParseFilters("(name=git|tagline=git)&language=go")
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -108,7 +108,7 @@ func TestParseFiltersWithParentheses(t *testing.T) {
 }
 
 func TestParseFiltersInstalled(t *testing.T) {
-	ast, searchTerm, err := ParseFilters("installed=true")
+	ast, searchTerm, _, err := ParseFilters("installed=true")
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -129,7 +129,7 @@ func TestParseFiltersInstalled(t *testing.T) {
 }
 
 func TestParseFiltersTagline(t *testing.T) {
-	ast, _, err := ParseFilters("tagline=cli")
+	ast, _, _, err := ParseFilters("tagline=cli")
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -147,15 +147,21 @@ func TestParseFiltersTagline(t *testing.T) {
 }
 
 func TestParseFiltersMissingClosingParen(t *testing.T) {
-	_, _, err := ParseFilters("(name=bat")
+	ast, searchTerm, _, err := ParseFilters("(name=bat")
 
-	if err == nil {
-		t.Error("expected error for missing closing parenthesis")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if ast != nil {
+		t.Errorf("expected nil AST for malformed filter, got %+v", ast)
+	}
+	if searchTerm != "(name=bat" {
+		t.Errorf("expected searchTerm '(name=bat', got '%s'", searchTerm)
 	}
 }
 
 func TestParseFiltersInvalidSyntax(t *testing.T) {
-	ast, searchTerm, err := ParseFilters("name bat")
+	ast, searchTerm, _, err := ParseFilters("name bat")
 
 	// "name bat" without = is treated as a search term, not an error
 	if err != nil {
@@ -170,7 +176,7 @@ func TestParseFiltersInvalidSyntax(t *testing.T) {
 }
 
 func TestParseFiltersNotSimple(t *testing.T) {
-	ast, _, err := ParseFilters("!installed=true")
+	ast, _, _, err := ParseFilters("!installed=true")
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -188,7 +194,7 @@ func TestParseFiltersNotSimple(t *testing.T) {
 }
 
 func TestParseFiltersNotWithParens(t *testing.T) {
-	ast, _, err := ParseFilters("!(language=go|language=rust)")
+	ast, _, _, err := ParseFilters("!(language=go|language=rust)")
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -203,7 +209,7 @@ func TestParseFiltersNotWithParens(t *testing.T) {
 }
 
 func TestParseFiltersNotWithAnd(t *testing.T) {
-	ast, _, err := ParseFilters("!installed=true&language=go")
+	ast, _, _, err := ParseFilters("!installed=true&language=go")
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -221,7 +227,7 @@ func TestParseFiltersNotWithAnd(t *testing.T) {
 }
 
 func TestParseFiltersDoubleNot(t *testing.T) {
-	ast, _, err := ParseFilters("!!installed=true")
+	ast, _, _, err := ParseFilters("!!installed=true")
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -239,7 +245,7 @@ func TestParseFiltersDoubleNot(t *testing.T) {
 }
 
 func TestParseFiltersTag(t *testing.T) {
-	ast, _, err := ParseFilters("tag=cli")
+	ast, _, _, err := ParseFilters("tag=cli")
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -257,7 +263,7 @@ func TestParseFiltersTag(t *testing.T) {
 }
 
 func TestParseFiltersTagAndTag(t *testing.T) {
-	ast, _, err := ParseFilters("tag=cli&tag=fuzzy")
+	ast, _, _, err := ParseFilters("tag=cli&tag=fuzzy")
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -275,7 +281,7 @@ func TestParseFiltersTagAndTag(t *testing.T) {
 }
 
 func TestParseFiltersTagOrTag(t *testing.T) {
-	ast, _, err := ParseFilters("tag=cli|tag=tui")
+	ast, _, _, err := ParseFilters("tag=cli|tag=tui")
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -293,7 +299,7 @@ func TestParseFiltersTagOrTag(t *testing.T) {
 }
 
 func TestParseFiltersNotTag(t *testing.T) {
-	ast, _, err := ParseFilters("!tag=experimental")
+	ast, _, _, err := ParseFilters("!tag=experimental")
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -311,7 +317,7 @@ func TestParseFiltersNotTag(t *testing.T) {
 }
 
 func TestParseFiltersTagWithLanguage(t *testing.T) {
-	ast, _, err := ParseFilters("language=go&tag=ai")
+	ast, _, _, err := ParseFilters("language=go&tag=ai")
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -329,7 +335,7 @@ func TestParseFiltersTagWithLanguage(t *testing.T) {
 }
 
 func TestParseFiltersComplexTagExpression(t *testing.T) {
-	ast, _, err := ParseFilters("(tag=cli|tag=tui)&!tag=experimental")
+	ast, _, _, err := ParseFilters("(tag=cli|tag=tui)&!tag=experimental")
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -345,5 +351,161 @@ func TestParseFiltersComplexTagExpression(t *testing.T) {
 
 	if ast.Right.Type != db.FilterNot {
 		t.Errorf("expected db.FilterNot on right, got %v", ast.Right.Type)
+	}
+}
+
+func TestParseFiltersSearchTermWithFilter(t *testing.T) {
+	ast, searchTerm, _, err := ParseFilters("model installed=true")
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if searchTerm != "model" {
+		t.Errorf("expected searchTerm 'model', got '%s'", searchTerm)
+	}
+	if ast == nil {
+		t.Fatal("expected non-nil AST")
+	}
+	if ast.Type != db.FilterField || ast.Field != "installed" || ast.Value != "true" {
+		t.Errorf("expected installed=true filter, got %+v", ast)
+	}
+}
+
+func TestParseFiltersFilterWithSearchTerm(t *testing.T) {
+	ast, searchTerm, _, err := ParseFilters("installed=true model")
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if searchTerm != "model" {
+		t.Errorf("expected searchTerm 'model', got '%s'", searchTerm)
+	}
+	if ast == nil {
+		t.Fatal("expected non-nil AST")
+	}
+	if ast.Type != db.FilterField || ast.Field != "installed" || ast.Value != "true" {
+		t.Errorf("expected installed=true filter, got %+v", ast)
+	}
+}
+
+func TestParseFiltersMultipleFiltersWithSearchTerm(t *testing.T) {
+	ast, searchTerm, _, err := ParseFilters("model name=bat & language=rust")
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if searchTerm != "model" {
+		t.Errorf("expected searchTerm 'model', got '%s'", searchTerm)
+	}
+	if ast == nil {
+		t.Fatal("expected non-nil AST")
+	}
+	if ast.Type != db.FilterAnd {
+		t.Errorf("expected FilterAnd at root, got %v", ast.Type)
+	}
+}
+
+func TestParseFiltersSearchTermWithComplexFilter(t *testing.T) {
+	ast, searchTerm, _, err := ParseFilters("model (name=bat|tagline=cli)&!language=rust")
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if searchTerm != "model" {
+		t.Errorf("expected searchTerm 'model', got '%s'", searchTerm)
+	}
+	if ast == nil {
+		t.Fatal("expected non-nil AST")
+	}
+	if ast.Type != db.FilterAnd {
+		t.Errorf("expected FilterAnd at root, got %v", ast.Type)
+	}
+}
+
+func TestParseFiltersWarningForOperatorOnly(t *testing.T) {
+	_, searchTerm, warning, err := ParseFilters("&")
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if searchTerm != "&" {
+		t.Errorf("expected searchTerm '&', got '%s'", searchTerm)
+	}
+	if warning == "" {
+		t.Fatal("expected non-empty warning")
+	}
+	if warning != "Malformed filter \"&\" - using filter expression as search term" {
+		t.Errorf("unexpected warning: %s", warning)
+	}
+}
+
+func TestParseFiltersWarningForMalformedFilterWithSearchTerm(t *testing.T) {
+	_, searchTerm, warning, err := ParseFilters("model &")
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if searchTerm != "model" {
+		t.Errorf("expected searchTerm 'model', got '%s'", searchTerm)
+	}
+	if warning == "" {
+		t.Fatal("expected non-empty warning")
+	}
+	if warning != "Malformed filter \"&\" - using search term: \"model\"" {
+		t.Errorf("unexpected warning: %s", warning)
+	}
+}
+
+func TestParseFiltersWarningForInvalidEquals(t *testing.T) {
+	_, searchTerm, warning, err := ParseFilters("=")
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if searchTerm != "=" {
+		t.Errorf("expected searchTerm '=', got '%s'", searchTerm)
+	}
+	if warning == "" {
+		t.Fatal("expected non-empty warning")
+	}
+	if warning != "Malformed filter \"=\" - using filter expression as search term" {
+		t.Errorf("unexpected warning: %s", warning)
+	}
+}
+
+func TestParseFiltersNoWarningForValidQueries(t *testing.T) {
+	testCases := []string{
+		"bat",
+		"name=bat",
+		"name=bat&language=rust",
+		"model installed=true",
+		"installed=true model",
+	}
+
+	for _, tc := range testCases {
+		_, _, warning, err := ParseFilters(tc)
+		if err != nil {
+			t.Fatalf("unexpected error for '%s': %v", tc, err)
+		}
+		if warning != "" {
+			t.Errorf("expected no warning for '%s', got: %s", tc, warning)
+		}
+	}
+}
+
+func TestParseFiltersWarningForMultiOperator(t *testing.T) {
+	_, searchTerm, warning, err := ParseFilters("&|")
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if searchTerm != "&|" {
+		t.Errorf("expected searchTerm '&|', got '%s'", searchTerm)
+	}
+	if warning == "" {
+		t.Fatal("expected non-empty warning")
+	}
+	if warning != "Malformed filter \"&|\" - using filter expression as search term" {
+		t.Errorf("unexpected warning: %s", warning)
 	}
 }

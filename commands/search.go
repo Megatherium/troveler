@@ -98,12 +98,19 @@ func runSearch(
 	}
 
 	results := result.Tools
+	filterWarning := result.FilterWarning
 
 	if len(results) == 0 {
 		if format == "json" {
 			fmt.Println("[]")
 		} else {
 			fmt.Printf("No tools found matching '%s'\n", opts.Query)
+		}
+		if filterWarning != "" {
+			fmt.Println()
+			fmt.Println(lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#87CEEB")).
+				Render(filterWarning))
 		}
 
 		return nil
@@ -113,7 +120,7 @@ func runSearch(
 	case "json":
 		return outputJSON(results)
 	default:
-		return outputPretty(results, opts, taglineWidth)
+		return outputPretty(results, opts, taglineWidth, filterWarning)
 	}
 }
 
@@ -124,7 +131,7 @@ func outputJSON(results []db.SearchResult) error {
 	return encoder.Encode(results)
 }
 
-func outputPretty(results []db.SearchResult, opts db.SearchOptions, taglineWidth int) error {
+func outputPretty(results []db.SearchResult, opts db.SearchOptions, taglineWidth int, filterWarning string) error {
 	fmt.Println()
 	title := fmt.Sprintf("Found %d results for '%s' (sorted by %s %s)",
 		len(results), opts.Query, opts.SortField, opts.SortOrder)
@@ -173,6 +180,13 @@ func outputPretty(results []db.SearchResult, opts db.SearchOptions, taglineWidth
 	}
 
 	fmt.Println(ui.RenderTable(config))
+
+	if filterWarning != "" {
+		fmt.Println()
+		fmt.Println(lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#87CEEB")).
+			Render(filterWarning))
+	}
 
 	return nil
 }

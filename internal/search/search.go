@@ -27,11 +27,12 @@ type Options struct {
 
 // Result represents a search result with metadata
 type Result struct {
-	Tools      []db.SearchResult
-	TotalCount int
-	Query      string
-	SortField  string
-	SortOrder  string
+	Tools         []db.SearchResult
+	TotalCount    int
+	Query         string
+	SortField     string
+	SortOrder     string
+	FilterWarning string
 }
 
 // ValidSortFields defines allowed sort fields
@@ -43,8 +44,7 @@ var ValidSortFields = map[string]bool{
 
 // Search performs a tool search with:: given options
 func (s *Service) Search(ctx context.Context, opts Options) (*Result, error) {
-	// Parse filters from query
-	filter, searchTerm, err := ParseFilters(opts.Query)
+	filter, searchTerm, filterWarning, err := ParseFilters(opts.Query)
 	if err != nil {
 		return nil, fmt.Errorf("invalid filter syntax: %w", err)
 	}
@@ -79,11 +79,12 @@ func (s *Service) Search(ctx context.Context, opts Options) (*Result, error) {
 	}
 
 	return &Result{
-		Tools:      tools,
-		TotalCount: len(tools),
-		Query:      searchTerm,
-		SortField:  opts.SortField,
-		SortOrder:  opts.SortOrder,
+		Tools:         tools,
+		TotalCount:    len(tools),
+		Query:         searchTerm,
+		SortField:     opts.SortField,
+		SortOrder:     opts.SortOrder,
+		FilterWarning: filterWarning,
 	}, nil
 }
 
