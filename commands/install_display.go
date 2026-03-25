@@ -81,3 +81,34 @@ func displayLanguageFallback(toolLanguage string, langMatched []db.InstallInstru
 	}
 	fmt.Println()
 }
+
+func displayNoInstallMethod(toolName string, platformID string, installs []db.InstallInstruction, miseEnabled bool) {
+	virtuals := install.GenerateVirtualInstallInstructions(installs)
+
+	if miseEnabled && len(virtuals) > 0 {
+		fmt.Println(lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("#FFFF00")).
+			Render(fmt.Sprintf("No install method matched for %s.", platformID)))
+		fmt.Println()
+		fmt.Println(lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("#00FF00")).
+			Render("Suggested (mise):"))
+		fmt.Println()
+
+		for _, v := range virtuals {
+			fmt.Println(lipgloss.NewStyle().Bold(true).Render(v.Command))
+		}
+		fmt.Println()
+		fmt.Println("Or select a method manually with -o <platform>")
+	} else {
+		fmt.Println(lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("#FF0000")).
+			Render(fmt.Sprintf("No install method could be determined for %s.", platformID)))
+		fmt.Println()
+		fmt.Println("Select a method manually with -o <platform>, or use --all to see all options.")
+	}
+	fmt.Println()
+}

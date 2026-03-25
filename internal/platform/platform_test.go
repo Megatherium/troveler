@@ -185,6 +185,42 @@ func TestFilterInstallsLANG(t *testing.T) {
 	}
 }
 
+func TestFilterInstallsLANG_EmptyLanguage(t *testing.T) {
+	installs := []db.InstallInstruction{
+		{Platform: "pacman", Command: "pacman -S tool"},
+		{Platform: "brew", Command: "brew install tool"},
+		{Platform: "apt", Command: "apt install tool"},
+	}
+
+	matched, usedFallback := FilterDBInstalls(installs, "LANG", "")
+
+	if !usedFallback {
+		t.Error("Expected usedFallback=true when tool language is empty")
+	}
+
+	if len(matched) != 3 {
+		t.Errorf("Expected all 3 installs returned as fallback, got %d", len(matched))
+	}
+}
+
+func TestFilterInstallsLANG_NoMatch(t *testing.T) {
+	installs := []db.InstallInstruction{
+		{Platform: "pacman", Command: "pacman -S tool"},
+		{Platform: "brew", Command: "brew install tool"},
+		{Platform: "apt", Command: "apt install tool"},
+	}
+
+	matched, usedFallback := FilterDBInstalls(installs, "LANG", "haskell")
+
+	if !usedFallback {
+		t.Error("Expected usedFallback=true when language doesn't match any platform")
+	}
+
+	if len(matched) != 3 {
+		t.Errorf("Expected all 3 installs returned as fallback, got %d", len(matched))
+	}
+}
+
 func TestResolveVirtual(t *testing.T) {
 	tests := []struct {
 		name     string

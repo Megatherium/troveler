@@ -148,7 +148,13 @@ func runInstall(
 	}
 
 	platformID = platform.ResolveVirtual(platformID)
-	matched, _ := platform.FilterDBInstalls(installs, platformID, tool.Language)
+	matched, usedFallback := platform.FilterDBInstalls(installs, platformID, tool.Language)
+
+	if usedFallback {
+		displayNoInstallMethod(tool.Name, platformID, installs, miseEnabled)
+
+		return nil
+	}
 
 	if len(matched) == 0 {
 		fmt.Printf("No install command found for %s.\n\n", platformID)
@@ -264,9 +270,9 @@ func installSingleTool(
 	selector := platform.NewSelector("", cfg.Install.PlatformOverride, cfg.Install.FallbackPlatform, tool.Language)
 	platformID := selector.Select(detectedOS)
 
-	matched, _ := platform.FilterDBInstalls(installs, platformID, tool.Language)
+	matched, usedFallback := platform.FilterDBInstalls(installs, platformID, tool.Language)
 
-	if len(matched) == 0 {
+	if usedFallback || len(matched) == 0 {
 		if batchCfg != nil && batchCfg.SkipIfBlind {
 			return fmt.Errorf("skipped: no compatible install method")
 		}
