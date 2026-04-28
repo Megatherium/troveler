@@ -8,8 +8,6 @@ import (
 
 // Update handles messages and updates the model
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmds []tea.Cmd
-
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		return m.handleKeyPress(msg)
@@ -18,6 +16,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 
+		return m, nil
+
+	case tea.MouseMsg:
 		return m, nil
 
 	case panels.SearchTriggeredMsg:
@@ -61,33 +62,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case slugTickMsg:
 		return m.handleSlugTick()
-
-	case tea.MouseMsg:
-		return m, nil
 	}
 
-	switch m.activePanel {
-	case PanelSearch:
-		newModel, cmd := m.searchPanel.Update(msg)
-		if p, ok := newModel.(*panels.SearchPanel); ok {
-			m.searchPanel = p
-		}
-		cmds = append(cmds, cmd)
-	case PanelTools:
-		newModel, cmd := m.toolsPanel.Update(msg)
-		if p, ok := newModel.(*panels.ToolsPanel); ok {
-			m.toolsPanel = p
-		}
-		cmds = append(cmds, cmd)
-	case PanelInstall:
-		newModel, cmd := m.installPanel.Update(msg)
-		if p, ok := newModel.(*panels.InstallPanel); ok {
-			m.installPanel = p
-		}
-		cmds = append(cmds, cmd)
-	}
-
-	return m, tea.Batch(cmds...)
+	return m.delegateToActivePanel(msg)
 }
 
 type installCompleteMsg struct {

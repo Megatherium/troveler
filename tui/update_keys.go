@@ -9,69 +9,33 @@ import (
 )
 
 func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Layer 1: Global keys (quit, help, tab)
 	if result, cmd, handled := m.handleGlobalKeys(msg); handled {
 		return result, cmd
 	}
 
-	if m.showBatchConfigModal && m.batchConfig != nil && msg.Type == tea.KeyRunes && len(msg.Runes) > 0 {
-		r := msg.Runes[0]
-		if r == '1' || r == '2' {
-			optionIndex := int(r - '1')
-			m.batchConfig.SetCurrentStepValue(optionIndex)
-			if !m.batchConfig.NextStep() {
-				m.showBatchConfigModal = false
-
-				return m, m.startBatchInstall()
-			}
-		}
-
-		return m, nil
+	// Layer 2: Batch config modal input
+	if m.showBatchConfigModal && m.batchConfig != nil {
+		return m.handleBatchConfigInput(msg)
 	}
 
+	// Layer 3: Search panel text input (unmodified rune keys)
 	if m.activePanel == PanelSearch && !msg.Alt && msg.Type == tea.KeyRunes {
-		newModel, cmd := m.searchPanel.Update(msg)
-		if p, ok := newModel.(*panels.SearchPanel); ok {
-			m.searchPanel = p
-		}
-
-		return m, cmd
+		return m.delegateToSearchPanel(msg)
 	}
 
+	// Layer 4: Escape key
 	if key.Matches(msg, m.keys.Escape) {
 		return m.handleEscapeKey()
 	}
 
+	// Layer 5: Action keys (alt+u, i, alt+i, alt+m, alt+r)
 	if result, cmd, handled := m.handleActionKeys(msg); handled {
 		return result, cmd
 	}
 
-	if m.activePanel == PanelSearch {
-		newModel, cmd := m.searchPanel.Update(msg)
-		if p, ok := newModel.(*panels.SearchPanel); ok {
-			m.searchPanel = p
-		}
-
-		return m, cmd
-	}
-
-	switch m.activePanel {
-	case PanelTools:
-		newModel, cmd := m.toolsPanel.Update(msg)
-		if p, ok := newModel.(*panels.ToolsPanel); ok {
-			m.toolsPanel = p
-		}
-
-		return m, cmd
-	case PanelInstall:
-		newModel, cmd := m.installPanel.Update(msg)
-		if p, ok := newModel.(*panels.InstallPanel); ok {
-			m.installPanel = p
-		}
-
-		return m, cmd
-	}
-
-	return m, nil
+	// Layer 6: Panel delegation
+	return m.delegateToActivePanel(msg)
 }
 
 func (m *Model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
@@ -167,4 +131,60 @@ func (m *Model) handleInfoModalKey() (tea.Model, tea.Cmd, bool) {
 	}
 
 	return m, nil, true
+}
+
+// delegateToActivePanel forwards a message to the currently focused panel.
+func (m *Model) delegateToActivePanel(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch m.activePanel {
+	case PanelSearch:
+		return m.delegateToSearchPanel(msg)
+	case PanelTools:
+		newModel, cmd := m.toolsPanel.Update(msg)
+		if p, ok := newModel.(*panels.ToolsPanel); ok {
+			m.toolsPanel = p
+		}
+
+		return m, cmd
+	case PanelInstall:
+		newModel, cmd := m.installPanel.Update(msg)
+		if p, ok := newModel.(*panels.InstallPanel); ok {
+			m.installPanel = p
+		}
+
+		return m, cmd
+	}
+
+	return m, nil
+}
+
+// delegateToSearchPanel forwards a message to the search panel.
+func (m *Model) delegateToSearchPanel(msg tea.Msg) (tea.Model, tea.Cmd) {
+	newModel, cmd := m.searchPanel.Update(msg)
+	if p, ok := newModel.(*panels.SearchPanel); ok {
+		m.searchPanel = p
+	}
+
+	return m, cmd
+}
+
+// handleBatchConfigInput processes key input when the batch config modal is open.
+func (m *Model) handleBatchConfigInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if msg.Type != tea.KeyRunes || len(msg.Runes) == 0 {
+		return m, nil
+	}
+
+	r := msg.Runes[0]
+	if r != '1' && r != '2' {
+		return m, nil
+	}
+
+	optionIndex := int(r - '1')
+	m.batchConfig.SetCurrentStepValue(optionIndex)
+	if !m.batchConfig.NextStep() {
+		m.showBatchConfigModal = false
+
+		return m, m.startBatchInstall()
+	}
+
+	return m, nil
 }
