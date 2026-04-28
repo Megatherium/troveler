@@ -160,7 +160,7 @@ func TestSelectorPriority(t *testing.T) {
 	}
 }
 
-func TestFilterInstallsLANG(t *testing.T) {
+func TestFilterInstallsLang(t *testing.T) {
 	installs := []db.InstallInstruction{
 		{Platform: "go", Command: "go install"},
 		{Platform: "go (cargo)", Command: "cargo install"},
@@ -168,7 +168,7 @@ func TestFilterInstallsLANG(t *testing.T) {
 		{Platform: "python (pip)", Command: "pip install"},
 	}
 
-	matched, usedFallback := FilterDBInstalls(installs, "LANG", "go")
+	matched, usedFallback := FilterDBInstalls(installs, "lang", "go")
 
 	if usedFallback {
 		t.Error("Expected normal match, got fallback")
@@ -185,14 +185,33 @@ func TestFilterInstallsLANG(t *testing.T) {
 	}
 }
 
-func TestFilterInstallsLANG_EmptyLanguage(t *testing.T) {
+func TestFilterInstallsMiseLang(t *testing.T) {
+	installs := []db.InstallInstruction{
+		{Platform: "go", Command: "go install"},
+		{Platform: "go (cargo)", Command: "cargo install"},
+		{Platform: "rust", Command: "cargo install"},
+		{Platform: "python (pip)", Command: "pip install"},
+	}
+
+	matched, usedFallback := FilterDBInstalls(installs, "mise_lang", "go")
+
+	if usedFallback {
+		t.Error("Expected normal match, got fallback")
+	}
+
+	if len(matched) != 2 {
+		t.Errorf("Expected 2 matches for go language via mise_lang, got %d", len(matched))
+	}
+}
+
+func TestFilterInstallsLang_EmptyLanguage(t *testing.T) {
 	installs := []db.InstallInstruction{
 		{Platform: "pacman", Command: "pacman -S tool"},
 		{Platform: "brew", Command: "brew install tool"},
 		{Platform: "apt", Command: "apt install tool"},
 	}
 
-	matched, usedFallback := FilterDBInstalls(installs, "LANG", "")
+	matched, usedFallback := FilterDBInstalls(installs, "lang", "")
 
 	if !usedFallback {
 		t.Error("Expected usedFallback=true when tool language is empty")
@@ -203,14 +222,14 @@ func TestFilterInstallsLANG_EmptyLanguage(t *testing.T) {
 	}
 }
 
-func TestFilterInstallsLANG_NoMatch(t *testing.T) {
+func TestFilterInstallsLang_NoMatch(t *testing.T) {
 	installs := []db.InstallInstruction{
 		{Platform: "pacman", Command: "pacman -S tool"},
 		{Platform: "brew", Command: "brew install tool"},
 		{Platform: "apt", Command: "apt install tool"},
 	}
 
-	matched, usedFallback := FilterDBInstalls(installs, "LANG", "haskell")
+	matched, usedFallback := FilterDBInstalls(installs, "lang", "haskell")
 
 	if !usedFallback {
 		t.Error("Expected usedFallback=true when language doesn't match any platform")

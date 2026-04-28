@@ -1,6 +1,8 @@
 package commands
 
+// Platform constants for language-based platform matching.
 const (
-	platformLang  = "LANG"
-	platformGOPip = "go (pip)"
+	PlatformLang     = "lang"
+	PlatformMiseLang = "mise_lang"
+	platformGOPip    = "go (pip)"
 )

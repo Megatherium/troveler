@@ -5,6 +5,7 @@ import (
 	"fmt"
 )
 
+// GetTags returns the tag names for the tool identified by slug.
 func (s *SQLiteDB) GetTags(slug string) ([]string, error) {
 	tools, err := s.GetToolBySlug(slug)
 	if err != nil {
@@ -39,6 +40,7 @@ func (s *SQLiteDB) GetTags(slug string) ([]string, error) {
 	return tags, rows.Err()
 }
 
+// GetAllTags returns every tag with its tool count.
 func (s *SQLiteDB) GetAllTags() ([]TagCount, error) {
 	query := `
 		SELECT tt.tag_name, COUNT(tt.tool_id) as count
@@ -64,6 +66,7 @@ func (s *SQLiteDB) GetAllTags() ([]TagCount, error) {
 	return tags, rows.Err()
 }
 
+// GetToolsByTag returns all tools that have the given tag.
 func (s *SQLiteDB) GetToolsByTag(tagName string) ([]Tool, error) {
 	normalized, err := normalizeTagName(tagName)
 	if err != nil {
@@ -101,6 +104,7 @@ func (s *SQLiteDB) GetToolsByTag(tagName string) ([]Tool, error) {
 	return tools, rows.Err()
 }
 
+// GetAllTagsBySlug returns a map of slug to tag names for all tools.
 func (s *SQLiteDB) GetAllTagsBySlug() (map[string][]string, error) {
 	query := `
 		SELECT t.slug, tt.tag_name

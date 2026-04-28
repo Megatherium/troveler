@@ -9,8 +9,13 @@ import (
 
 const (
 	defaultUnfilteredLimit = 100000
+	sortOrderDesc          = "DESC"
+	sortOrderDescLower     = "desc"
+	sortOrderAsc           = "ASC"
+	sortFieldName          = "name"
 )
 
+// Search queries tools matching opts, applying filters and sorting.
 func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResult, error) {
 	allowedFields := map[string]string{
 		"name":           "name",
@@ -21,12 +26,12 @@ func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResu
 
 	sortField, ok := allowedFields[opts.SortField]
 	if !ok {
-		sortField = "name"
+		sortField = sortFieldName
 	}
 
-	sortOrder := "ASC"
-	if opts.SortOrder == "DESC" || opts.SortOrder == "desc" {
-		sortOrder = "DESC"
+	sortOrder := sortOrderAsc
+	if opts.SortOrder == sortOrderDesc || opts.SortOrder == sortOrderDescLower {
+		sortOrder = sortOrderDesc
 	}
 
 	hasInstalled := hasInstalledFilter(opts.Filter)
@@ -109,25 +114,25 @@ func sortAndLimitResults(results []SearchResult, sortField, sortOrder string, li
 	sortField = strings.ToLower(sortField)
 
 	switch sortField {
-	case "name":
+	case sortFieldName:
 		sort.Slice(results, func(i, j int) bool {
-			return compareASC(results[i].Name, results[j].Name, sortOrder == "DESC")
+			return compareASC(results[i].Name, results[j].Name, sortOrder == sortOrderDesc)
 		})
 	case "tagline":
 		sort.Slice(results, func(i, j int) bool {
-			return compareASC(results[i].Tagline, results[j].Tagline, sortOrder == "DESC")
+			return compareASC(results[i].Tagline, results[j].Tagline, sortOrder == sortOrderDesc)
 		})
 	case "language":
 		sort.Slice(results, func(i, j int) bool {
-			return compareASC(results[i].Language, results[j].Language, sortOrder == "DESC")
+			return compareASC(results[i].Language, results[j].Language, sortOrder == sortOrderDesc)
 		})
 	case "date_published":
 		sort.Slice(results, func(i, j int) bool {
-			return compareASC(results[i].DatePublished, results[j].DatePublished, sortOrder == "DESC")
+			return compareASC(results[i].DatePublished, results[j].DatePublished, sortOrder == sortOrderDesc)
 		})
 	default:
 		sort.Slice(results, func(i, j int) bool {
-			return compareASC(results[i].Name, results[j].Name, sortOrder == "DESC")
+			return compareASC(results[i].Name, results[j].Name, sortOrder == sortOrderDesc)
 		})
 	}
 

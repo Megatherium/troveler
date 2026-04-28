@@ -19,6 +19,7 @@ const (
 	burstRate      = 40
 )
 
+// Fetcher handles HTTP requests to terminaltrove.com with rate limiting and caching.
 type Fetcher struct {
 	client  *http.Client
 	limiter *rate.Limiter
@@ -26,12 +27,14 @@ type Fetcher struct {
 	mu      sync.RWMutex
 }
 
+// FetchResult holds the outcome of a single fetch operation.
 type FetchResult struct {
 	URL  string
 	Data []byte
 	Err  error
 }
 
+// NewFetcher creates a new Fetcher with default rate limiting and caching.
 func NewFetcher() *Fetcher {
 	return &Fetcher{
 		client: &http.Client{
@@ -42,18 +45,21 @@ func NewFetcher() *Fetcher {
 	}
 }
 
+// FetchSearchPage fetches a single search results page.
 func (f *Fetcher) FetchSearchPage(ctx context.Context, page int) ([]byte, error) {
 	url := fmt.Sprintf("%s/search?q=*&page=%d&per_page=%d", baseURL, page, resultsPerPage)
 
 	return f.Fetch(ctx, url)
 }
 
+// FetchDetailPage fetches a single tool detail page by slug.
 func (f *Fetcher) FetchDetailPage(ctx context.Context, slug string) ([]byte, error) {
 	url := fmt.Sprintf("%s/%s/", baseURL, slug)
 
 	return f.Fetch(ctx, url)
 }
 
+// Fetch retrieves a URL with caching, rate limiting, and retries.
 func (f *Fetcher) Fetch(ctx context.Context, url string) ([]byte, error) {
 	f.mu.RLock()
 	if data, ok := f.cache[url]; ok {
@@ -135,6 +141,7 @@ func (f *Fetcher) Fetch(ctx context.Context, url string) ([]byte, error) {
 	return body, nil
 }
 
+// FetchSearchPagesConcurrently fetches all search pages in parallel.
 func (f *Fetcher) FetchSearchPagesConcurrently(ctx context.Context, totalPages int) (map[int][]byte, error) {
 	results := make(map[int][]byte)
 	var mu sync.Mutex

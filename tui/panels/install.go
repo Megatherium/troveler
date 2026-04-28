@@ -23,7 +23,6 @@ type InstallPanel struct {
 	fallback       string
 	toolLanguage   string
 	usedFallback   bool
-	miseMode       bool
 }
 
 // InstallExecuteMsg is sent when user wants to execute install
@@ -37,7 +36,7 @@ type InstallExecuteMiseMsg struct {
 }
 
 // NewInstallPanel creates a new install panel
-func NewInstallPanel(cliOverride, configOverride, fallback string, miseMode bool) *InstallPanel {
+func NewInstallPanel(cliOverride, configOverride, fallback string) *InstallPanel {
 	return &InstallPanel{
 		commands:       []install.CommandInfo{},
 		cursor:         0,
@@ -45,15 +44,16 @@ func NewInstallPanel(cliOverride, configOverride, fallback string, miseMode bool
 		cliOverride:    cliOverride,
 		configOverride: configOverride,
 		fallback:       fallback,
-		miseMode:       miseMode,
 	}
 }
 
-func (p *InstallPanel) resolveCLIOverride() string {
-	if p.miseMode && p.cliOverride == "" {
-		return "LANG"
-	}
+// isMiseLangResolved returns true if the resolved platform is mise_lang,
+// meaning commands should be transformed to mise format.
+func (p *InstallPanel) isMiseLangResolved() bool {
+	return p.configOverride == "mise_lang" || p.fallback == "mise_lang"
+}
 
+func (p *InstallPanel) resolveCLIOverride() string {
 	return platform.ResolveVirtual(p.cliOverride)
 }
 
@@ -96,7 +96,7 @@ func (p *InstallPanel) SetTool(tool *db.Tool, installs []db.InstallInstruction) 
 
 	p.commands = install.FormatCommands(filtered, defaultCmd)
 	p.appendVirtualCommands(installs)
-	if p.miseMode {
+	if p.isMiseLangResolved() {
 		p.transformCommandsToMise()
 	}
 	p.usedFallback = usedFallback
@@ -179,7 +179,7 @@ func (p *InstallPanel) Update(msg tea.Msg) tea.Cmd {
 }
 
 // View renders the install panel
-func (p *InstallPanel) View(width, height int) string {
+func (p *InstallPanel) View(_ int, _ int) string {
 	if len(p.commands) == 0 {
 		return styles.MutedStyle.Render("Select a tool to see install options")
 	}

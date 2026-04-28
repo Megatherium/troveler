@@ -13,7 +13,7 @@ import (
 
 func (m *Model) executeInstallCommand(command string) tea.Cmd {
 	return func() tea.Msg {
-		cmd := exec.Command("sh", "-c", command) //nolint:noctx //nolint:gosec // G204
+		cmd := exec.Command("sh", "-c", command) //nolint:noctx,gosec // G204: user install command
 		output, err := cmd.CombinedOutput()
 
 		return installCompleteMsg{
@@ -34,11 +34,11 @@ func (m *Model) openRepositoryURL() tea.Cmd {
 
 		switch runtime.GOOS {
 		case "darwin":
-			cmd = exec.Command("open", url) //nolint:noctx //nolint:gosec // G204
+			cmd = exec.Command("open", url) //nolint:noctx,gosec // G204: user URL open
 		case "windows":
-			cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url) //nolint:noctx //nolint:gosec // G204
+			cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url) //nolint:noctx,gosec // G204: user URL open
 		default:
-			cmd = exec.Command("xdg-open", url) //nolint:noctx //nolint:gosec // G204
+			cmd = exec.Command("xdg-open", url) //nolint:noctx,gosec // G204: user URL open
 		}
 
 		_ = cmd.Start()
@@ -75,7 +75,7 @@ func (m *Model) startUpdate() tea.Cmd {
 	ctx, cancel := context.WithCancel(context.Background())
 	m.updateCancel = cancel
 
-	opts := update.UpdateOptions{
+	opts := update.Options{
 		Limit:    0,
 		Progress: m.updateProgress,
 	}

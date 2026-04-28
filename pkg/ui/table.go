@@ -10,6 +10,7 @@ const (
 	tableBorderChar = "│"
 )
 
+// TableConfig controls table rendering options.
 type TableConfig struct {
 	Headers    []string
 	Rows       [][]string
@@ -18,17 +19,20 @@ type TableConfig struct {
 	ShowHeader bool
 }
 
+// DefaultHeaderStyle returns the standard bold green header style.
 func DefaultHeaderStyle() lipgloss.Style {
 	return lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("#00FF00"))
 }
 
-func DefaultRowStyle(rowIdx, colIdx int) lipgloss.Style {
+// DefaultRowStyle returns a gradient-colored row style.
+func DefaultRowStyle(rowIdx, _ int) lipgloss.Style {
 	return lipgloss.NewStyle().
 		Foreground(lipgloss.Color(GetGradientColorSimple(rowIdx)))
 }
 
+// RenderTable renders a bordered ASCII table.
 func RenderTable(config TableConfig) string {
 	if len(config.Headers) == 0 && len(config.Rows) == 0 {
 		return ""
@@ -177,6 +181,7 @@ func renderRows(b *strings.Builder, rows [][]string, colWidths []int, styleFunc 
 	}
 }
 
+// RenderKeyValueTable renders a two-column key-value table.
 func RenderKeyValueTable(rows [][]string) string {
 	if len(rows) == 0 {
 		return ""
@@ -185,7 +190,7 @@ func RenderKeyValueTable(rows [][]string) string {
 	colWidths := []int{0, 0}
 	for _, row := range rows {
 		if len(row) >= 2 {
-			if len(row[0]) > colWidths[0] { //nolint:gosec // G602: bounds-checked len(row)>=2
+			if len(row[0]) > colWidths[0] { // bounds-checked: len(row)>=2 above
 				colWidths[0] = len(row[0])
 			}
 			if len(row[1]) > colWidths[1] {

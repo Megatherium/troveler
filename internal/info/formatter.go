@@ -1,3 +1,4 @@
+// Package info provides tool information formatting and rendering.
 package info
 
 import (
@@ -71,23 +72,23 @@ func (ti *ToolInfo) RenderPlainText() string {
 
 	b.WriteString("Info:\n")
 	if ti.Language != "" {
-		b.WriteString(fmt.Sprintf("  Language:   %s\n", ti.Language))
+		fmt.Fprintf(&b, "  Language:   %s\n", ti.Language)
 	}
 	if ti.License != "" {
-		b.WriteString(fmt.Sprintf("  License:    %s\n", ti.License))
+		fmt.Fprintf(&b, "  License:    %s\n", ti.License)
 	}
 	if ti.Repository != "" {
-		b.WriteString(fmt.Sprintf("  Repository: %s\n", ti.Repository))
+		fmt.Fprintf(&b, "  Repository: %s\n", ti.Repository)
 	}
 	if ti.DatePublished != "" {
-		b.WriteString(fmt.Sprintf("  Published:  %s\n", ti.DatePublished))
+		fmt.Fprintf(&b, "  Published:  %s\n", ti.DatePublished)
 	}
-	b.WriteString(fmt.Sprintf("  Slug:       %s\n", ti.Slug))
+	fmt.Fprintf(&b, "  Slug:       %s\n", ti.Slug)
 
 	if len(ti.InstallOptions) > 0 {
 		b.WriteString("\nInstall Instructions:\n")
 		for _, opt := range ti.InstallOptions {
-			b.WriteString(fmt.Sprintf("  %s: %s\n", opt.Platform, opt.Command))
+			fmt.Fprintf(&b, "  %s: %s\n", opt.Platform, opt.Command)
 		}
 	}
 

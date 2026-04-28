@@ -9,6 +9,7 @@ const (
 	testTagCLI    = "cli"
 	testTagFuzzy  = "fuzzy"
 	testTagSearch = "search"
+	testToolFzf   = "fzf"
 )
 
 func setupTestDB(t *testing.T) *SQLiteDB {

@@ -42,6 +42,7 @@ func executeInstall(command string, sudoFlag bool, useSudo string, alwaysRun boo
 
 	fmt.Printf("\nExecuting: %s\n\n", command)
 
+	//nolint:gosec // G204: user-requested install
 	cmd := exec.CommandContext(context.Background(), "sh", "-c", command)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -50,7 +51,7 @@ func executeInstall(command string, sudoFlag bool, useSudo string, alwaysRun boo
 }
 
 func promptBatchConfig(
-	sudoFlag, sudoOnlySystemFlag, skipIfBlindFlag, miseEnabled bool,
+	sudoFlag, sudoOnlySystemFlag, skipIfBlindFlag bool,
 	reuseConfig string, alwaysRun bool,
 ) *BatchConfig {
 	var batchCfg *BatchConfig
@@ -69,7 +70,7 @@ func promptBatchConfig(
 			UseSudo:        sudoFlag,
 			SudoOnlySystem: sudoOnlySystemFlag,
 			SkipIfBlind:    skipIfBlindFlag,
-			UseMise:        miseEnabled,
+			UseMise:        false,
 			AlwaysRun:      alwaysRun,
 		}
 
@@ -92,12 +93,10 @@ func promptBatchConfig(
 			batchCfg.SkipIfBlind = confirm == "y" || confirm == "Y"
 		}
 
-		if !miseEnabled {
-			fmt.Print("Use mise for installations? [y/N] ")
-			var confirm string
-			_, _ = fmt.Scanln(&confirm)
-			batchCfg.UseMise = confirm == "y" || confirm == "Y"
-		}
+		fmt.Print("Use mise for installations? [y/N] ")
+		var confirm string
+		_, _ = fmt.Scanln(&confirm)
+		batchCfg.UseMise = confirm == "y" || confirm == "Y"
 	}
 
 	return batchCfg

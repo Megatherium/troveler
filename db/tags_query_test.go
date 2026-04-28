@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"testing"
 )
 
@@ -108,14 +109,14 @@ func TestForeignKeyCascade(t *testing.T) {
 		t.Fatalf("AddTag failed: %v", err)
 	}
 
-	_, err := database.db.ExecContext(nil,
+	_, err := database.db.ExecContext(context.TODO(),
 		"DELETE FROM tools WHERE slug = ?", "fzf")
 	if err != nil {
 		t.Fatalf("DELETE tool failed: %v", err)
 	}
 
 	var count int
-	err = database.db.QueryRowContext(nil,
+	err = database.db.QueryRowContext(context.TODO(),
 		"SELECT COUNT(*) FROM tool_tags").Scan(&count)
 	if err != nil {
 		t.Fatalf("COUNT tool_tags failed: %v", err)

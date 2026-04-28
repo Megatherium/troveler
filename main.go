@@ -1,3 +1,4 @@
+// Package main is the troveler CLI entry point.
 package main
 
 import (
@@ -20,7 +21,7 @@ Use 'troveler info <slug>' to see details of a specific tool.
 Use 'troveler install <slug>' to get install commands for your OS.
 Use 'troveler tui' to launch the interactive Terminal User Interface.`,
 	Version: "0.1.0",
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		configPath, _ := cmd.Flags().GetString("config")
 		cfg, err := commands.LoadConfig(configPath)
 		if err != nil {
@@ -79,7 +80,7 @@ Fish:
 	DisableFlagsInUseLine: true,
 	ValidArgs:             []string{"bash", "zsh", "fish"},
 	Args:                  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, args []string) {
 		switch args[0] {
 		case "bash":
 			_ = RootCmd.GenBashCompletion(os.Stdout)

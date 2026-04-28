@@ -22,6 +22,7 @@ func (s *SQLiteDB) pruneOrphanedTags() error {
 	return err
 }
 
+// AddTag adds a tag to the tool identified by slug.
 func (s *SQLiteDB) AddTag(slug, tagName string) error {
 	normalized, err := normalizeTagName(tagName)
 	if err != nil {
@@ -49,6 +50,7 @@ func (s *SQLiteDB) AddTag(slug, tagName string) error {
 	return err
 }
 
+// RemoveTag removes a tag from the tool identified by slug.
 func (s *SQLiteDB) RemoveTag(slug, tagName string) error {
 	normalized, err := normalizeTagName(tagName)
 	if err != nil {
@@ -81,6 +83,7 @@ func (s *SQLiteDB) RemoveTag(slug, tagName string) error {
 	return s.pruneOrphanedTags()
 }
 
+// ClearTags removes all tags from the tool identified by slug.
 func (s *SQLiteDB) ClearTags(slug string) error {
 	tools, err := s.GetToolBySlug(slug)
 	if err != nil {
@@ -100,6 +103,7 @@ func (s *SQLiteDB) ClearTags(slug string) error {
 	return s.pruneOrphanedTags()
 }
 
+// ReapplyTags bulk-inserts tag associations from a slug-to-tags map.
 func (s *SQLiteDB) ReapplyTags(slugToTags map[string][]string) error {
 	for slug, tagNames := range slugToTags {
 		tools, err := s.GetToolBySlug(slug)

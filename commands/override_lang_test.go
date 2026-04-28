@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestOverrideLANGLanguageMatching(t *testing.T) {
+func TestOverrideLangLanguageMatching(t *testing.T) {
 	testCases := []struct {
 		name             string
 		fallbackPlatform string
@@ -14,36 +14,44 @@ func TestOverrideLANGLanguageMatching(t *testing.T) {
 		reason           string
 	}{
 		{
-			name:             "LANG_matches_go_platforms",
-			fallbackPlatform: "LANG",
+			name:             "lang_matches_go_platforms",
+			fallbackPlatform: "lang",
 			toolLanguage:     "go",
 			installPlatform:  platformGOPip,
 			shouldMatch:      true,
-			reason:           "LANG fallback with Go tool should match go (pip) platforms",
+			reason:           "lang fallback with Go tool should match go (pip) platforms",
 		},
 		{
-			name:             "LANG_doesnt_match_different_language",
-			fallbackPlatform: "LANG",
+			name:             "lang_doesnt_match_different_language",
+			fallbackPlatform: "lang",
 			toolLanguage:     "go",
 			installPlatform:  "rust",
 			shouldMatch:      false,
-			reason:           "LANG fallback with Go tool should NOT match rust platforms",
+			reason:           "lang fallback with Go tool should NOT match rust platforms",
 		},
 		{
-			name:             "LANG_matches_python_platforms",
-			fallbackPlatform: "LANG",
+			name:             "lang_matches_python_platforms",
+			fallbackPlatform: "lang",
 			toolLanguage:     "python",
 			installPlatform:  "python (pip)",
 			shouldMatch:      true,
-			reason:           "LANG fallback with Python tool should match python (pip) platforms",
+			reason:           "lang fallback with Python tool should match python (pip) platforms",
 		},
 		{
-			name:             "non_LANG_uses_OS_detection",
+			name:             "mise_lang_matches_go_platforms",
+			fallbackPlatform: "mise_lang",
+			toolLanguage:     "go",
+			installPlatform:  platformGOPip,
+			shouldMatch:      true,
+			reason:           "mise_lang fallback with Go tool should match go (pip) platforms",
+		},
+		{
+			name:             "non_lang_uses_OS_detection",
 			fallbackPlatform: "macos",
 			toolLanguage:     "go",
 			installPlatform:  "brew",
 			shouldMatch:      true,
-			reason:           "Non-LANG fallback platform should use platform matching",
+			reason:           "Non-lang fallback platform should use platform matching",
 		},
 	}
 
@@ -51,7 +59,7 @@ func TestOverrideLANGLanguageMatching(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Logf("Testing: %s", tc.reason)
 
-			if tc.fallbackPlatform == platformLang {
+			if tc.fallbackPlatform == PlatformLang || tc.fallbackPlatform == PlatformMiseLang {
 				if tc.toolLanguage == "go" && tc.installPlatform == platformGOPip {
 					t.Logf("✓ Language match: %s matches %s", tc.toolLanguage, tc.installPlatform)
 				}
@@ -71,7 +79,10 @@ func TestOverrideLANGLanguageMatching(t *testing.T) {
 }
 
 func TestSpecificFallbackPlatform(t *testing.T) {
-	platforms := []string{"macos", "linux:arch", "ubuntu", "fedora", "windows", "alpine", "arch", "freebsd"}
+	platforms := []string{
+		"macos", "linux:arch", "ubuntu", "fedora", "windows",
+		"alpine", "arch", "freebsd", "lang", "mise_lang",
+	}
 
 	for _, platform := range platforms {
 		t.Run(platform, func(t *testing.T) {

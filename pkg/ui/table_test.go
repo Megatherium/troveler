@@ -139,7 +139,7 @@ func TestRenderTableCustomStyle(t *testing.T) {
 	config := TableConfig{
 		Headers: []string{"#", "Name"},
 		Rows:    [][]string{{"1", "test"}},
-		RowFunc: func(s string, rowIdx, colIdx int) string {
+		RowFunc: func(s string, _, _ int) string {
 			return s
 		},
 		ShowHeader: true,

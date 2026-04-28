@@ -13,12 +13,13 @@ import (
 	"troveler/pkg/ui"
 )
 
+// NewestCmd lists the most recently published tools.
 var NewestCmd = &cobra.Command{
 	Use:   "newest",
 	Short: "Show newest tools sorted by published date",
 	Long: "Show newest tools sorted by published date descending, " +
 		"with options to filter by language or tool of the week.",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		onlyTotw, _ := cmd.Flags().GetBool("only-totw")
 		langs, _ := cmd.Flags().GetStringSlice("lang")
 		limit, _ := cmd.Flags().GetInt("limit")
@@ -92,6 +93,7 @@ func formatDate(dateStr string) string {
 func outputNewest(results []db.SearchResult) error {
 	if len(results) == 0 {
 		fmt.Println("No tools found.")
+
 		return nil
 	}
 
@@ -133,5 +135,6 @@ func outputNewest(results []db.SearchResult) error {
 	}
 
 	fmt.Println()
+
 	return nil
 }

@@ -1,3 +1,4 @@
+// Package panels implements the TUI panel components.
 package panels
 
 import (

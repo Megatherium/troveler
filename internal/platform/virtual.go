@@ -75,8 +75,20 @@ func GenerateVirtualInstalls(installs []db.InstallInstruction) []VirtualInstall 
 	return result
 }
 
+// IsLangPlatform returns true if the platform value triggers language-based matching.
+// Both "lang" and "mise_lang" use language matching instead of platform matching.
+func IsLangPlatform(platform string) bool {
+	return platform == "lang" || platform == "mise_lang"
+}
+
+// IsMiseLangPlatform returns true if the platform value triggers mise command transformation.
+// Only "mise_lang" enables mise formatting.
+func IsMiseLangPlatform(platform string) bool {
+	return platform == "mise_lang"
+}
+
 // FilterDBInstalls filters install instructions by platform or language.
-// When platform is "LANG", matches instructions by tool language using MatchLanguage.
+// When platform is "lang" or "mise_lang", matches instructions by tool language using MatchLanguage.
 // Otherwise matches by platform ID using MatchPlatform after normalization.
 // Returns the matched instructions and a boolean indicating if fallback was used.
 func FilterDBInstalls(
@@ -84,7 +96,7 @@ func FilterDBInstalls(
 ) ([]db.InstallInstruction, bool) {
 	var matched []db.InstallInstruction
 
-	if platform == "LANG" {
+	if IsLangPlatform(platform) {
 		for _, inst := range installs {
 			if MatchLanguage(toolLanguage, inst.Platform) {
 				matched = append(matched, inst)

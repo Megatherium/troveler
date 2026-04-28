@@ -37,6 +37,7 @@ func isOperator(token string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -52,6 +53,7 @@ func extractFilterTokens(tokens []string) (filterTokens []string, searchTokens [
 			searchTokens = append(searchTokens, t)
 		}
 	}
+
 	return
 }
 
@@ -66,9 +68,11 @@ func (p *Parser) parseFromTokens(tokens []string) (*db.Filter, error) {
 	if len(p.tokens) == 0 {
 		return nil, fmt.Errorf("empty filter expression")
 	}
+
 	return p.parseExpression()
 }
 
+// ParseFilters parses a query string into a filter tree, remaining search terms, and warnings.
 func ParseFilters(query string) (*db.Filter, string, string, error) {
 	if !strings.Contains(query, "=") && !strings.ContainsAny(query, "&|!()") {
 		return nil, query, "", nil
@@ -87,15 +91,24 @@ func ParseFilters(query string) (*db.Filter, string, string, error) {
 		p := &Parser{}
 		ast, err := p.parseFromTokens(filterTokens)
 		if err != nil {
-			return nil, query, fmt.Sprintf("Malformed filter \"%s\" - using filter expression as search term", filterExpr), nil
+			// Intentionally swallow parse error: fall back to using
+			// the raw filter expression as a search term instead.
+			return nil, query, //nolint:nilerr // graceful degradation
+				fmt.Sprintf("Malformed filter \"%s\" - using filter expression as search term", filterExpr), nil
 		}
+
 		return ast, "", "", nil
 	}
 
 	ast, err := (&Parser{}).parseFromTokens(filterTokens)
 	if err != nil {
 		searchTerm := joinTokens(searchTokens)
-		return nil, searchTerm, fmt.Sprintf("Malformed filter \"%s\" - using search term: \"%s\"", filterExpr, searchTerm), nil
+		warn := fmt.Sprintf(
+			"Malformed filter \"%s\" - using search term: \"%s\"",
+			filterExpr, searchTerm,
+		)
+		// Intentionally swallow parse error: fall back to search term.
+		return nil, searchTerm, warn, nil //nolint:nilerr // graceful degradation
 	}
 
 	return ast, joinTokens(searchTokens), "", nil

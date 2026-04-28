@@ -145,7 +145,7 @@ func (m *Model) processBatchTool(index int) tea.Cmd {
 			}
 		}
 
-		execCmd := exec.Command("sh", "-c", cmd) //nolint:noctx //nolint:gosec // G204: user install
+		execCmd := exec.Command("sh", "-c", cmd) //nolint:noctx,gosec // G204: user install command
 		output, err := execCmd.CombinedOutput()
 
 		return batchInstallProgressMsg{

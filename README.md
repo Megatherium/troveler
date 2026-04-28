@@ -201,7 +201,7 @@ default_to_tui = false  # Launch TUI when running 'troveler' with no args
 
 # Install behavior
 [install]
-fallback_platform = "LANG"  # Use language-based matching by default
+fallback_platform = "lang"  # Use language-based matching by default (options: lang, mise_lang, macos, linux:arch, etc.)
 platform_override = ""      # Force specific platform (e.g., "fedora")
 always_run = false          # Auto-execute commands (dangerous!)
 

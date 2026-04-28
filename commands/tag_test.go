@@ -213,7 +213,7 @@ type testEncoder struct {
 	w *bytes.Buffer
 }
 
-func (e *testEncoder) Encode(v any) error {
+func (e *testEncoder) Encode(_ any) error {
 	e.w.WriteString("[\n  {\n    \"name\": \"cli\",\n    \"count\": 2\n  }\n]\n")
 
 	return nil

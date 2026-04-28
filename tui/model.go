@@ -15,6 +15,7 @@ import (
 // PanelID identifies which panel is active
 type PanelID int
 
+// Panel identifiers for the active TUI panel.
 const (
 	PanelSearch PanelID = iota
 	PanelTools
@@ -95,7 +96,6 @@ func NewModel(database *db.SQLiteDB, cfg *config.Config) *Model {
 		"", // CLI override (will be set from command line later)
 		cfg.Install.PlatformOverride,
 		cfg.Install.FallbackPlatform,
-		cfg.Install.MiseMode,
 	)
 
 	m := &Model{

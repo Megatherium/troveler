@@ -7,11 +7,14 @@ import (
 )
 
 const (
-	filterFieldLanguage = "language"
-	testToolBat         = "bat"
-	testFilterCLI       = "cli"
-	testFilterTag       = "tag"
-	testFilterName      = "name"
+	filterFieldLanguage  = "language"
+	testToolBat          = "bat"
+	testFilterCLI        = "cli"
+	testFilterTag        = "tag"
+	testFilterName       = "name"
+	filterFieldInstalled = "installed"
+	filterValueTrue      = "true"
+	testSearchModel      = "model"
 )
 
 func TestParseFiltersNoFilters(t *testing.T) {
@@ -120,10 +123,10 @@ func TestParseFiltersInstalled(t *testing.T) {
 	if ast.Type != db.FilterField {
 		t.Errorf("expected db.FilterField, got %v", ast.Type)
 	}
-	if ast.Field != "installed" {
+	if ast.Field != filterFieldInstalled {
 		t.Errorf("expected field 'installed', got '%s'", ast.Field)
 	}
-	if ast.Value != "true" {
+	if ast.Value != filterValueTrue {
 		t.Errorf("expected value 'true', got '%s'", ast.Value)
 	}
 }
@@ -188,7 +191,7 @@ func TestParseFiltersNotSimple(t *testing.T) {
 	if ast.Left == nil || ast.Left.Type != db.FilterField {
 		t.Errorf("expected FilterField child, got %+v", ast.Left)
 	}
-	if ast.Left.Field != "installed" || ast.Left.Value != "true" {
+	if ast.Left.Field != filterFieldInstalled || ast.Left.Value != filterValueTrue {
 		t.Errorf("expected installed=true, got field=%s value=%s", ast.Left.Field, ast.Left.Value)
 	}
 }
@@ -360,13 +363,13 @@ func TestParseFiltersSearchTermWithFilter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if searchTerm != "model" {
+	if searchTerm != testSearchModel {
 		t.Errorf("expected searchTerm 'model', got '%s'", searchTerm)
 	}
 	if ast == nil {
 		t.Fatal("expected non-nil AST")
 	}
-	if ast.Type != db.FilterField || ast.Field != "installed" || ast.Value != "true" {
+	if ast.Type != db.FilterField || ast.Field != filterFieldInstalled || ast.Value != filterValueTrue {
 		t.Errorf("expected installed=true filter, got %+v", ast)
 	}
 }
@@ -377,13 +380,13 @@ func TestParseFiltersFilterWithSearchTerm(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if searchTerm != "model" {
+	if searchTerm != testSearchModel {
 		t.Errorf("expected searchTerm 'model', got '%s'", searchTerm)
 	}
 	if ast == nil {
 		t.Fatal("expected non-nil AST")
 	}
-	if ast.Type != db.FilterField || ast.Field != "installed" || ast.Value != "true" {
+	if ast.Type != db.FilterField || ast.Field != filterFieldInstalled || ast.Value != filterValueTrue {
 		t.Errorf("expected installed=true filter, got %+v", ast)
 	}
 }
@@ -394,7 +397,7 @@ func TestParseFiltersMultipleFiltersWithSearchTerm(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if searchTerm != "model" {
+	if searchTerm != testSearchModel {
 		t.Errorf("expected searchTerm 'model', got '%s'", searchTerm)
 	}
 	if ast == nil {
@@ -411,7 +414,7 @@ func TestParseFiltersSearchTermWithComplexFilter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if searchTerm != "model" {
+	if searchTerm != testSearchModel {
 		t.Errorf("expected searchTerm 'model', got '%s'", searchTerm)
 	}
 	if ast == nil {
@@ -445,7 +448,7 @@ func TestParseFiltersWarningForMalformedFilterWithSearchTerm(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if searchTerm != "model" {
+	if searchTerm != testSearchModel {
 		t.Errorf("expected searchTerm 'model', got '%s'", searchTerm)
 	}
 	if warning == "" {

@@ -7,6 +7,7 @@ import (
 
 const (
 	filterFieldInstalled = "installed"
+	filterFieldName      = "name"
 	filterValueTrue      = "true"
 )
 
@@ -83,7 +84,7 @@ func buildFilterSQL(filter *Filter) (string, []interface{}) {
 // buildFieldFilter creates SQL for a single field filter
 func buildFieldFilter(field, value string) (string, []interface{}) {
 	switch strings.ToLower(field) {
-	case "name":
+	case filterFieldName:
 		return "name LIKE ?", []interface{}{"%" + value + "%"}
 	case "tagline":
 		return "tagline LIKE ?", []interface{}{"%" + value + "%"}

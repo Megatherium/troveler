@@ -102,7 +102,7 @@ func (p *SearchPanel) triggerSearch(query string) tea.Cmd {
 }
 
 // View renders the search panel
-func (p *SearchPanel) View(width, height int) string {
+func (p *SearchPanel) View(width, _ int) string {
 	// Adjust input width to fit panel, ensuring it's at least 10 columns
 	inputWidth := width - 4
 	if inputWidth < 10 {

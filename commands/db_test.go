@@ -48,7 +48,7 @@ func TestWithDBHelper(t *testing.T) {
 	called := false
 	var dbPtr *db.SQLiteDB
 
-	err := testWithDBHelper(cfg, func(ctx context.Context, database *db.SQLiteDB) error {
+	err := testWithDBHelper(cfg, func(_ context.Context, database *db.SQLiteDB) error {
 		called = true
 		dbPtr = database
 

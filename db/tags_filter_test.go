@@ -9,14 +9,14 @@ func TestSearchWithTagFilter(t *testing.T) {
 	database := setupTestDB(t)
 	defer checkClose(t, database)
 
-	seedTool(t, database, "fzf", "fzf")
+	seedTool(t, database, testToolFzf, testToolFzf)
 	seedTool(t, database, "bat", "bat")
 	seedTool(t, database, "ripgrep", "ripgrep")
 
-	if err := database.AddTag("fzf", "cli"); err != nil {
+	if err := database.AddTag(testToolFzf, "cli"); err != nil {
 		t.Fatalf("AddTag fzf/cli failed: %v", err)
 	}
-	if err := database.AddTag("fzf", "fuzzy"); err != nil {
+	if err := database.AddTag(testToolFzf, "fuzzy"); err != nil {
 		t.Fatalf("AddTag fzf/fuzzy failed: %v", err)
 	}
 	if err := database.AddTag("bat", "cli"); err != nil {
@@ -48,7 +48,7 @@ func TestSearchWithTagFilter(t *testing.T) {
 	for _, r := range results {
 		names[r.Name] = true
 	}
-	if !names["fzf"] || !names["bat"] {
+	if !names[testToolFzf] || !names["bat"] {
 		t.Errorf("Expected fzf and bat, got %v", names)
 	}
 }
@@ -57,11 +57,11 @@ func TestSearchWithTagNotFilter(t *testing.T) {
 	database := setupTestDB(t)
 	defer checkClose(t, database)
 
-	seedTool(t, database, "fzf", "fzf")
+	seedTool(t, database, testToolFzf, testToolFzf)
 	seedTool(t, database, "bat", "bat")
 	seedTool(t, database, "ripgrep", "ripgrep")
 
-	if err := database.AddTag("fzf", "experimental"); err != nil {
+	if err := database.AddTag(testToolFzf, "experimental"); err != nil {
 		t.Fatalf("AddTag failed: %v", err)
 	}
 	if err := database.AddTag("bat", "cli"); err != nil {
@@ -89,7 +89,7 @@ func TestSearchWithTagNotFilter(t *testing.T) {
 	}
 
 	for _, r := range results {
-		if r.Name == "fzf" {
+		if r.Name == testToolFzf {
 			t.Errorf("fzf should have been excluded by !tag=experimental")
 		}
 	}
@@ -99,14 +99,14 @@ func TestSearchWithMultipleTagFilters(t *testing.T) {
 	database := setupTestDB(t)
 	defer checkClose(t, database)
 
-	seedTool(t, database, "fzf", "fzf")
+	seedTool(t, database, testToolFzf, testToolFzf)
 	seedTool(t, database, "bat", "bat")
 	seedTool(t, database, "ripgrep", "ripgrep")
 
-	if err := database.AddTag("fzf", "cli"); err != nil {
+	if err := database.AddTag(testToolFzf, "cli"); err != nil {
 		t.Fatalf("AddTag failed: %v", err)
 	}
-	if err := database.AddTag("fzf", "fuzzy"); err != nil {
+	if err := database.AddTag(testToolFzf, "fuzzy"); err != nil {
 		t.Fatalf("AddTag failed: %v", err)
 	}
 	if err := database.AddTag("bat", "cli"); err != nil {
@@ -141,7 +141,7 @@ func TestSearchWithMultipleTagFilters(t *testing.T) {
 	if len(results) != 1 {
 		t.Errorf("Expected 1 result for tag=cli&tag=fuzzy, got %d", len(results))
 	}
-	if len(results) > 0 && results[0].Name != "fzf" {
+	if len(results) > 0 && results[0].Name != testToolFzf {
 		t.Errorf("Expected fzf, got %s", results[0].Name)
 	}
 }

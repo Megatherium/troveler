@@ -1,3 +1,4 @@
+// Package config handles application configuration loading and defaults.
 package config
 
 import (
@@ -8,6 +9,7 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
+// Config holds all application configuration.
 type Config struct {
 	DSN          string        `toml:"dsn"`
 	DefaultToTUI bool          `toml:"default_to_tui"`
@@ -16,24 +18,27 @@ type Config struct {
 	TUI          TUIConfig     `toml:"tui"`
 }
 
+// InstallConfig holds install-related settings.
 type InstallConfig struct {
 	FallbackPlatform string `toml:"fallback_platform"`
 	PlatformOverride string `toml:"platform_override"`
 	AlwaysRun        bool   `toml:"always_run"`
 	UseSudo          string `toml:"use_sudo"`
-	MiseMode         bool   `toml:"mise_mode"`
 }
 
+// SearchConfig holds search-related settings.
 type SearchConfig struct {
 	TaglineWidth int `toml:"tagline_width"`
 }
 
+// TUIConfig holds TUI-related settings.
 type TUIConfig struct {
 	Theme           string   `toml:"theme"`
 	TaglineMaxWidth int      `toml:"tagline_max_width"`
 	GradientColors  []string `toml:"gradient_colors"`
 }
 
+// Load reads configuration from the given path, applying defaults.
 func Load(configPath string) (*Config, error) {
 	if configPath == "" {
 		configPath = defaultConfigPath()
@@ -66,12 +71,6 @@ func Load(configPath string) (*Config, error) {
 
 	if cfg.TUI.TaglineMaxWidth == 0 {
 		cfg.TUI.TaglineMaxWidth = 40
-	}
-
-	// DefaultToTUI defaults to true
-	if !cfg.DefaultToTUI {
-		// Check if it was explicitly set to false in config
-		// For now, we'll default to true (will be overridden if explicitly set)
 	}
 
 	return cfg, nil

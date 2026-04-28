@@ -20,12 +20,13 @@ import (
 var limit int
 var logOutput bool
 
+// UpdateCmd crawls terminaltrove.com and updates the local database.
 var UpdateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Crawl terminaltrove.com and update local database",
 	Long: `Fetches all tools from terminaltrove.com and stores them in the local SQLite database.
 Use --log to show detailed logging output.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		return WithDB(cmd, func(ctx context.Context, database *db.SQLiteDB) error {
 			currentCount, err := database.ToolCount(context.Background())
 			if err != nil {
@@ -63,6 +64,7 @@ type slugEntry struct {
 	row      int
 }
 
+// UpdateUI renders an animated progress display for database updates.
 type UpdateUI struct {
 	totalTools int
 	processed  int64
@@ -72,6 +74,7 @@ type UpdateUI struct {
 	step       int
 }
 
+// NewUpdateUI creates a new update progress UI.
 func NewUpdateUI(totalTools int) *UpdateUI {
 	return &UpdateUI{
 		totalTools: totalTools,
@@ -80,6 +83,7 @@ func NewUpdateUI(totalTools int) *UpdateUI {
 	}
 }
 
+// AddSlug adds a tool slug to the animation buffer.
 func (u *UpdateUI) AddSlug(slug string) {
 	u.bufferMu.Lock()
 	entry := slugEntry{
@@ -95,10 +99,12 @@ func (u *UpdateUI) AddSlug(slug string) {
 	u.bufferMu.Unlock()
 }
 
+// IncProcessed atomically increments the processed tool count.
 func (u *UpdateUI) IncProcessed() {
 	atomic.AddInt64(&u.processed, 1)
 }
 
+// Render returns the current progress display as a string.
 func (u *UpdateUI) Render() string {
 	processed := atomic.LoadInt64(&u.processed)
 	percent := float64(processed) / float64(u.totalTools)

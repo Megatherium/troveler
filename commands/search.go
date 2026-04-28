@@ -15,6 +15,7 @@ import (
 	"troveler/pkg/ui"
 )
 
+// SearchCmd searches the local database for tools.
 var SearchCmd = &cobra.Command{
 	Use:   "search [query]",
 	Short: "Search the local database for tools",

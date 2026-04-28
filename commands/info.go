@@ -13,6 +13,7 @@ import (
 	"troveler/pkg/ui"
 )
 
+// InfoCmd shows detailed information about a tool.
 var InfoCmd = &cobra.Command{
 	Use:   "info <slug>",
 	Short: "Show detailed information about a tool",
@@ -21,7 +22,7 @@ var InfoCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		slug := args[0]
 
-		return WithDB(cmd, func(ctx context.Context, database *db.SQLiteDB) error {
+		return WithDB(cmd, func(_ context.Context, database *db.SQLiteDB) error {
 			return runInfo(database, slug)
 		})
 	},

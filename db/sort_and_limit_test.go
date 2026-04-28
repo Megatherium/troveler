@@ -4,10 +4,12 @@ import (
 	"testing"
 )
 
+const testToolApple = "apple"
+
 func TestSortAndLimitResultsNameASC(t *testing.T) {
 	results := []SearchResult{
 		{Tool: Tool{Name: "zebra"}},
-		{Tool: Tool{Name: "apple"}},
+		{Tool: Tool{Name: testToolApple}},
 		{Tool: Tool{Name: "mango"}},
 	}
 
@@ -16,7 +18,7 @@ func TestSortAndLimitResultsNameASC(t *testing.T) {
 	if len(sorted) != 3 {
 		t.Fatalf("expected 3 results, got %d", len(sorted))
 	}
-	if sorted[0].Name != "apple" {
+	if sorted[0].Name != testToolApple {
 		t.Errorf("expected 'apple' first, got '%s'", sorted[0].Name)
 	}
 	if sorted[1].Name != "mango" {
@@ -30,7 +32,7 @@ func TestSortAndLimitResultsNameASC(t *testing.T) {
 func TestSortAndLimitResultsNameDESC(t *testing.T) {
 	results := []SearchResult{
 		{Tool: Tool{Name: "zebra"}},
-		{Tool: Tool{Name: "apple"}},
+		{Tool: Tool{Name: testToolApple}},
 		{Tool: Tool{Name: "mango"}},
 	}
 
@@ -45,7 +47,7 @@ func TestSortAndLimitResultsNameDESC(t *testing.T) {
 	if sorted[1].Name != "mango" {
 		t.Errorf("expected 'mango' second, got '%s'", sorted[1].Name)
 	}
-	if sorted[2].Name != "apple" {
+	if sorted[2].Name != testToolApple {
 		t.Errorf("expected 'apple' third, got '%s'", sorted[2].Name)
 	}
 }
@@ -53,7 +55,7 @@ func TestSortAndLimitResultsNameDESC(t *testing.T) {
 func TestSortAndLimitResultsWithLimit(t *testing.T) {
 	results := []SearchResult{
 		{Tool: Tool{Name: "zebra"}},
-		{Tool: Tool{Name: "apple"}},
+		{Tool: Tool{Name: testToolApple}},
 		{Tool: Tool{Name: "mango"}},
 		{Tool: Tool{Name: "banana"}},
 		{Tool: Tool{Name: "cherry"}},
@@ -64,7 +66,7 @@ func TestSortAndLimitResultsWithLimit(t *testing.T) {
 	if len(sorted) != 3 {
 		t.Fatalf("expected 3 results, got %d", len(sorted))
 	}
-	if sorted[0].Name != "apple" {
+	if sorted[0].Name != testToolApple {
 		t.Errorf("expected 'apple' first, got '%s'", sorted[0].Name)
 	}
 	if sorted[1].Name != "banana" {
@@ -78,7 +80,7 @@ func TestSortAndLimitResultsWithLimit(t *testing.T) {
 func TestSortAndLimitResultsLimitExceedsLength(t *testing.T) {
 	results := []SearchResult{
 		{Tool: Tool{Name: "zebra"}},
-		{Tool: Tool{Name: "apple"}},
+		{Tool: Tool{Name: testToolApple}},
 	}
 
 	sorted := sortAndLimitResults(results, "name", "ASC", 10)
@@ -124,7 +126,7 @@ func TestSortAndLimitResultsEmpty(t *testing.T) {
 func TestSortAndLimitResultsCaseInsensitive(t *testing.T) {
 	results := []SearchResult{
 		{Tool: Tool{Name: "Zebra"}},
-		{Tool: Tool{Name: "apple"}},
+		{Tool: Tool{Name: testToolApple}},
 		{Tool: Tool{Name: "Mango"}},
 	}
 
@@ -133,7 +135,7 @@ func TestSortAndLimitResultsCaseInsensitive(t *testing.T) {
 	if len(sorted) != 3 {
 		t.Fatalf("expected 3 results, got %d", len(sorted))
 	}
-	if sorted[0].Name != "apple" {
+	if sorted[0].Name != testToolApple {
 		t.Errorf("expected 'apple' first (case-insensitive), got '%s'", sorted[0].Name)
 	}
 	if sorted[1].Name != "Mango" {
@@ -147,7 +149,7 @@ func TestSortAndLimitResultsCaseInsensitive(t *testing.T) {
 func TestSortAndLimitResultsUnknownSortField(t *testing.T) {
 	results := []SearchResult{
 		{Tool: Tool{Name: "zebra"}},
-		{Tool: Tool{Name: "apple"}},
+		{Tool: Tool{Name: testToolApple}},
 		{Tool: Tool{Name: "mango"}},
 	}
 
@@ -156,7 +158,7 @@ func TestSortAndLimitResultsUnknownSortField(t *testing.T) {
 	if len(sorted) != 3 {
 		t.Fatalf("expected 3 results, got %d", len(sorted))
 	}
-	if sorted[0].Name != "apple" {
+	if sorted[0].Name != testToolApple {
 		t.Errorf("expected 'apple' first (default to name), got '%s'", sorted[0].Name)
 	}
 }

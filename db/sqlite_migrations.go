@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"database/sql"
 )
 
 func (s *SQLiteDB) runMigrations() error {
@@ -28,18 +27,6 @@ func (s *SQLiteDB) addColumnIfNotExists(table, column, definition string) error 
 		context.Background(),
 		`ALTER TABLE `+table+` ADD COLUMN `+column+` `+definition,
 	)
-	return err
-}
 
-func (s *SQLiteDB) columnExists(table, column string) (bool, error) {
-	var count int
-	err := s.db.QueryRowContext(
-		context.Background(),
-		`SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?`,
-		table, column,
-	).Scan(&count)
-	if err == sql.ErrNoRows {
-		return false, nil
-	}
-	return count > 0, err
+	return err
 }

@@ -12,7 +12,7 @@ func TestLoadConfigWithDefaults(t *testing.T) {
 
 	//nolint:gosec // G306: test file
 	_ = os.WriteFile(configPath, []byte(`[install]
-fallback_platform = "LANG"`), 0644)
+fallback_platform = "lang"`), 0644)
 
 	cfg, err := Load(configPath)
 	if err != nil {
@@ -23,8 +23,8 @@ fallback_platform = "LANG"`), 0644)
 		t.Error("Expected DSN to have default value")
 	}
 
-	if cfg.Install.FallbackPlatform != "LANG" {
-		t.Errorf("Expected fallback_platform 'LANG', got '%s'", cfg.Install.FallbackPlatform)
+	if cfg.Install.FallbackPlatform != "lang" {
+		t.Errorf("Expected fallback_platform 'lang', got '%s'", cfg.Install.FallbackPlatform)
 	}
 
 	if cfg.Search.TaglineWidth != 50 {

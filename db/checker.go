@@ -1,3 +1,4 @@
+// Package db provides SQLite-backed storage for tools and install instructions.
 package db
 
 import (

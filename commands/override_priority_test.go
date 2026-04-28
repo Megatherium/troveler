@@ -19,7 +19,7 @@ func TestOverrideFlagPriority(t *testing.T) {
 			name:             "override_flag_highest_priority",
 			platformArg:      "brew",
 			platformOverride: "macos",
-			fallbackPlatform: "LANG",
+			fallbackPlatform: "lang",
 			detectedOS:       "linux:arch",
 			toolLanguage:     "go",
 			expectedPlatform: "brew",
@@ -29,21 +29,21 @@ func TestOverrideFlagPriority(t *testing.T) {
 			name:             "platformOverride_beats_OS_and_fallback",
 			platformArg:      "",
 			platformOverride: "macos",
-			fallbackPlatform: "LANG",
+			fallbackPlatform: "lang",
 			detectedOS:       "linux:arch",
 			toolLanguage:     "go",
 			expectedPlatform: "macos",
 			reason:           "platform_override config has higher priority than OS detection and fallback",
 		},
 		{
-			name:             "fallback_LANG_uses_language_when_os_no_match",
+			name:             "fallback_lang_uses_language_when_os_no_match",
 			platformArg:      "",
 			platformOverride: "",
-			fallbackPlatform: "LANG",
+			fallbackPlatform: "lang",
 			detectedOS:       "",
 			toolLanguage:     "go",
 			expectedPlatform: "go",
-			reason:           "fallback_platform=LANG should use tool language when OS detection fails",
+			reason:           "fallback_platform=lang should use tool language when OS detection fails",
 		},
 		{
 			name:             "OS_detection_beats_fallback",
@@ -69,7 +69,7 @@ func TestOverrideFlagPriority(t *testing.T) {
 			name:             "CLI_arg_overrides_everything",
 			platformArg:      "macos",
 			platformOverride: "windows",
-			fallbackPlatform: "LANG",
+			fallbackPlatform: "lang",
 			detectedOS:       "linux:arch",
 			toolLanguage:     "go",
 			expectedPlatform: "macos",
@@ -95,6 +95,26 @@ func TestOverrideFlagPriority(t *testing.T) {
 			expectedPlatform: "macos",
 			reason:           "OS detection takes priority over fallback when OS is detected",
 		},
+		{
+			name:             "mise_lang_as_fallback",
+			platformArg:      "",
+			platformOverride: "",
+			fallbackPlatform: "mise_lang",
+			detectedOS:       "",
+			toolLanguage:     "go",
+			expectedPlatform: "go",
+			reason:           "fallback_platform=mise_lang should use tool language matching",
+		},
+		{
+			name:             "mise_lang_as_override",
+			platformArg:      "",
+			platformOverride: "mise_lang",
+			fallbackPlatform: "",
+			detectedOS:       "linux:arch",
+			toolLanguage:     "go",
+			expectedPlatform: "go",
+			reason:           "platform_override=mise_lang should use language matching overriding OS detection",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -112,7 +132,7 @@ func TestOverrideFlagPriority(t *testing.T) {
 				selectedPlatform = tc.fallbackPlatform
 			}
 
-			if selectedPlatform == platformLang {
+			if selectedPlatform == PlatformLang || selectedPlatform == PlatformMiseLang {
 				selectedPlatform = tc.toolLanguage
 			}
 

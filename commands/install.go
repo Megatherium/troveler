@@ -24,13 +24,14 @@ var mise bool
 var reuseConfig string
 var skipIfBlind bool
 
+// InstallCmd shows or executes install commands for one or more tools.
 var InstallCmd = &cobra.Command{
 	Use:   "install <slug> [slug2] [slug3]...",
 	Short: "Show install command for one or more tools",
 	Long: `Show the appropriate install command for your current OS.
 Without flags, shows only the command for your detected OS.
 Use --all to show all install commands.
-Use --override to specify a platform manually.
+Use --override to specify a platform manually (e.g., macos, lang, mise_lang).
 Use --run to execute the install command after confirmation.
 Use --mise to output mise use commands for language-based installations.
 
@@ -42,17 +43,16 @@ For multiple tools:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return WithDB(cmd, func(ctx context.Context, database *db.SQLiteDB) error {
 			cfg := GetConfig(ctx)
-			miseEnabled := mise || cfg.Install.MiseMode
 
 			if len(args) == 1 {
 				return runInstall(
 					database, args[0], all, run, sudo, override,
 					cfg.Install.PlatformOverride, cfg.Install.FallbackPlatform,
-					cfg.Install.AlwaysRun, cfg.Install.UseSudo, miseEnabled,
+					cfg.Install.AlwaysRun, cfg.Install.UseSudo,
 				)
 			}
 
-			return runBatchInstall(database, args, run, sudo, sudoOnlySystem, skipIfBlind, miseEnabled, reuseConfig, cfg)
+			return runBatchInstall(database, args, run, sudo, sudoOnlySystem, skipIfBlind, reuseConfig, cfg)
 		})
 	},
 }
@@ -60,11 +60,11 @@ For multiple tools:
 func init() {
 	InstallCmd.Flags().BoolVarP(&all, "all", "a", false, "Show all install commands")
 	InstallCmd.Flags().StringVarP(&override, "override", "o", "",
-		"Override platform detection (e.g., macos, linux:arch, LANG)")
+		"Override platform detection (e.g., macos, linux:arch, lang, mise_lang)")
 	InstallCmd.Flags().BoolVarP(&run, "run", "r", false, "Run the install command after confirmation")
 	InstallCmd.Flags().BoolVarP(&sudo, "sudo", "s", false, "Prepend sudo to the install command")
 	InstallCmd.Flags().BoolVar(&mise, "mise", false,
-		"Output mise use commands for language-based installations (forces LANG override)")
+		"Output mise use commands for language-based installations (shorthand for --override mise_lang)")
 	InstallCmd.Flags().StringVar(&reuseConfig, "reuse-config", "ask", "Reuse config for all tools: true, ask, false")
 	InstallCmd.Flags().BoolVar(&sudoOnlySystem, "sudo-only-system", false, "Use sudo only for system package managers")
 	InstallCmd.Flags().BoolVar(&skipIfBlind, "skip-if-blind", false, "Skip tools without compatible install method")
@@ -73,7 +73,7 @@ func init() {
 func runInstall(
 	database *db.SQLiteDB, slug string, showAll bool, runFlag bool, sudoFlag bool,
 	cliOverride string, configOverride string, fallbackPlatform string,
-	alwaysRun bool, useSudo string, miseEnabled bool,
+	alwaysRun bool, useSudo string,
 ) error {
 	tools, err := database.GetToolBySlug(slug)
 	if err != nil {
@@ -97,8 +97,9 @@ func runInstall(
 		return showAllInstalls(tool.Name, installs)
 	}
 
-	if miseEnabled && cliOverride == "" {
-		cliOverride = platformLang
+	// --mise flag acts as shorthand for --override mise_lang when no explicit override given
+	if mise && cliOverride == "" {
+		cliOverride = PlatformMiseLang
 	}
 
 	selector := platform.NewSelector(cliOverride, configOverride, fallbackPlatform, tool.Language)
@@ -121,7 +122,7 @@ func runInstall(
 			if v.Platform == platformID {
 				displayInstallCommands(platformID, []db.InstallInstruction{
 					{Platform: v.Platform, Command: v.Command},
-				}, miseEnabled)
+				})
 
 				if runFlag {
 					return executeInstall(v.Command, sudoFlag, useSudo, alwaysRun)
@@ -151,7 +152,7 @@ func runInstall(
 	matched, usedFallback := platform.FilterDBInstalls(installs, platformID, tool.Language)
 
 	if usedFallback {
-		displayNoInstallMethod(tool.Name, platformID, installs, miseEnabled)
+		displayNoInstallMethod(tool.Name, platformID, installs)
 
 		return nil
 	}
@@ -159,9 +160,9 @@ func runInstall(
 	if len(matched) == 0 {
 		fmt.Printf("No install command found for %s.\n\n", platformID)
 
-		if platformID != tool.Language {
+		if !platform.IsLangPlatform(platformID) && platformID != tool.Language {
 			var langMatched []db.InstallInstruction
-			langMatched, _ = platform.FilterDBInstalls(installs, platformLang, tool.Language)
+			langMatched, _ = platform.FilterDBInstalls(installs, PlatformLang, tool.Language)
 			if len(langMatched) > 0 {
 				displayLanguageFallback(tool.Language, langMatched)
 
@@ -174,11 +175,11 @@ func runInstall(
 		return showAllInstalls(tool.Name, installs)
 	}
 
-	displayInstallCommands(platformID, matched, miseEnabled)
+	displayInstallCommands(platformID, matched)
 
 	if runFlag {
 		cmd := matched[0].Command
-		if miseEnabled {
+		if platform.IsMiseLangPlatform(platformID) {
 			cmd = install.TransformToMise(cmd)
 		}
 
@@ -188,6 +189,7 @@ func runInstall(
 	return nil
 }
 
+// BatchConfig holds user preferences for batch install mode.
 type BatchConfig struct {
 	UseSudo        bool
 	SudoOnlySystem bool
@@ -197,13 +199,13 @@ type BatchConfig struct {
 }
 
 func runBatchInstall(
-	database *db.SQLiteDB, slugs []string, runFlag, sudoFlag, sudoOnlySystemFlag, skipIfBlindFlag, miseEnabled bool,
+	database *db.SQLiteDB, slugs []string, runFlag, sudoFlag, sudoOnlySystemFlag, skipIfBlindFlag bool,
 	reuseConfig string, cfg *config.Config,
 ) error {
 	fmt.Printf("\n🔧 Batch Install: %d tools\n\n", len(slugs))
 
 	batchCfg := promptBatchConfig(
-		sudoFlag, sudoOnlySystemFlag, skipIfBlindFlag, miseEnabled,
+		sudoFlag, sudoOnlySystemFlag, skipIfBlindFlag,
 		reuseConfig, cfg.Install.AlwaysRun,
 	)
 
@@ -311,7 +313,7 @@ func installSingleTool(
 		}
 	}
 
-	execCmd := exec.Command("sh", "-c", cmd)
+	execCmd := exec.Command("sh", "-c", cmd) //nolint:noctx,gosec // G204: user-requested install command
 	execCmd.Stdout = os.Stdout
 	execCmd.Stderr = os.Stderr
 

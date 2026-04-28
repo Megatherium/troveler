@@ -1,3 +1,4 @@
+// Package db provides SQLite-backed storage for tools and install instructions.
 package db
 
 import (
@@ -5,13 +6,15 @@ import (
 	"database/sql"
 	"fmt"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/mattn/go-sqlite3" // sqlite3 driver
 )
 
+// SQLiteDB wraps a *sql.DB for SQLite operations.
 type SQLiteDB struct {
 	db *sql.DB
 }
 
+// New opens (or creates) a SQLite database at dbPath and runs migrations.
 func New(dbPath string) (*SQLiteDB, error) {
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
@@ -40,6 +43,7 @@ func New(dbPath string) (*SQLiteDB, error) {
 	return sqlite, nil
 }
 
+// Close releases the underlying database connection.
 func (s *SQLiteDB) Close() error {
 	return s.db.Close()
 }

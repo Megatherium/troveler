@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// UpsertTool inserts or updates a tool record.
 func (s *SQLiteDB) UpsertTool(ctx context.Context, tool *Tool) error {
 	query := `
 		INSERT INTO tools (id, slug, name, tagline, description, language, license,
@@ -32,6 +33,7 @@ func (s *SQLiteDB) UpsertTool(ctx context.Context, tool *Tool) error {
 	return err
 }
 
+// UpsertInstallInstruction inserts or updates an install instruction.
 func (s *SQLiteDB) UpsertInstallInstruction(ctx context.Context, inst *InstallInstruction) error {
 	query := `
 		INSERT INTO install_instructions (id, tool_id, platform, command)
@@ -47,6 +49,7 @@ func (s *SQLiteDB) UpsertInstallInstruction(ctx context.Context, inst *InstallIn
 	return err
 }
 
+// GetAllTools returns every tool in the database.
 func (s *SQLiteDB) GetAllTools(ctx context.Context) ([]Tool, error) {
 	query := `SELECT id, slug, name, tagline, description, language, license,
 		date_published, code_repository, tool_of_the_week, created_at, updated_at FROM tools`
@@ -73,6 +76,7 @@ func (s *SQLiteDB) GetAllTools(ctx context.Context) ([]Tool, error) {
 	return tools, rows.Err()
 }
 
+// GetToolBySlug returns tools matching the given slug.
 func (s *SQLiteDB) GetToolBySlug(slug string) ([]Tool, error) {
 	query := `SELECT id, slug, name, tagline, description, language, license,
 		date_published, code_repository, tool_of_the_week, created_at, updated_at FROM tools WHERE slug = ?`
@@ -99,6 +103,7 @@ func (s *SQLiteDB) GetToolBySlug(slug string) ([]Tool, error) {
 	return tools, rows.Err()
 }
 
+// GetInstallInstructions returns all install instructions for a tool.
 func (s *SQLiteDB) GetInstallInstructions(toolID string) ([]InstallInstruction, error) {
 	query := `SELECT id, tool_id, platform, command, created_at FROM install_instructions WHERE tool_id = ?`
 	rows, err := s.getDB().QueryContext(context.Background(), query, toolID)
@@ -122,6 +127,7 @@ func (s *SQLiteDB) GetInstallInstructions(toolID string) ([]InstallInstruction, 
 	return insts, rows.Err()
 }
 
+// ToolCount returns the total number of tools.
 func (s *SQLiteDB) ToolCount(ctx context.Context) (int, error) {
 	var count int
 	err := s.getDB().QueryRowContext(ctx, "SELECT COUNT(*) FROM tools").Scan(&count)

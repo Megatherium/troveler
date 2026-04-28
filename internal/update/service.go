@@ -1,3 +1,4 @@
+// Package update provides database update functionality.
 package update
 
 import (
@@ -33,14 +34,14 @@ type ProgressUpdate struct {
 	Error     error  // Error if any
 }
 
-// UpdateOptions configures the update
-type UpdateOptions struct {
+// Options configures the update
+type Options struct {
 	Limit    int                   // Limit number of tools (0 = all)
 	Progress chan<- ProgressUpdate // Channel for progress updates
 }
 
 // FetchAndUpdate fetches all tools and updates the database
-func (s *Service) FetchAndUpdate(ctx context.Context, opts UpdateOptions) error {
+func (s *Service) FetchAndUpdate(ctx context.Context, opts Options) error {
 	// Send start message
 	if opts.Progress != nil {
 		select {

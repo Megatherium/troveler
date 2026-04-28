@@ -13,6 +13,7 @@ import (
 	"troveler/db"
 )
 
+// TagCmd manages user-curated tags on tools.
 var TagCmd = &cobra.Command{
 	Use:   "tag",
 	Short: "Manage user-curated tags on tools",
@@ -31,7 +32,7 @@ var tagAddCmd = &cobra.Command{
 		slug := args[0]
 		tag := args[1]
 
-		return WithDB(cmd, func(ctx context.Context, database *db.SQLiteDB) error {
+		return WithDB(cmd, func(_ context.Context, database *db.SQLiteDB) error {
 			if err := database.AddTag(slug, tag); err != nil {
 				return fmt.Errorf("failed to add tag: %w", err)
 			}
@@ -51,7 +52,7 @@ var tagRemoveCmd = &cobra.Command{
 		slug := args[0]
 		tag := args[1]
 
-		return WithDB(cmd, func(ctx context.Context, database *db.SQLiteDB) error {
+		return WithDB(cmd, func(_ context.Context, database *db.SQLiteDB) error {
 			if err := database.RemoveTag(slug, tag); err != nil {
 				return fmt.Errorf("failed to remove tag: %w", err)
 			}
@@ -70,7 +71,7 @@ var tagListCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		jsonOutput, _ := cmd.Flags().GetBool("json")
 
-		return WithDB(cmd, func(ctx context.Context, database *db.SQLiteDB) error {
+		return WithDB(cmd, func(_ context.Context, database *db.SQLiteDB) error {
 			if len(args) == 0 {
 				return listAllTags(database, jsonOutput)
 			}
@@ -88,7 +89,7 @@ var tagClearCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		slug := args[0]
 
-		return WithDB(cmd, func(ctx context.Context, database *db.SQLiteDB) error {
+		return WithDB(cmd, func(_ context.Context, database *db.SQLiteDB) error {
 			if err := database.ClearTags(slug); err != nil {
 				return fmt.Errorf("failed to clear tags: %w", err)
 			}

@@ -1,3 +1,4 @@
+// Package styles defines theme colors and styles for the TUI.
 package styles
 
 import (

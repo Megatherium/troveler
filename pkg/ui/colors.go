@@ -1,6 +1,7 @@
 // Package ui provides UI utilities for rendering.
 package ui
 
+// GradientColors holds the default gradient palette.
 var GradientColors = []string{
 	"#90EE90", "#8BE88C", "#86E288", "#81DC88", "#7CD688",
 	"#77D088", "#72CA88", "#6DC488", "#68BE88", "#63B888",
@@ -10,10 +11,12 @@ var GradientColors = []string{
 	"#135888", "#0E5288", "#094C88", "#044688", "#004088",
 }
 
+// GetGradientColorSimple returns a gradient color by modular index.
 func GetGradientColorSimple(index int) string {
 	return GradientColors[index%len(GradientColors)]
 }
 
+// GetGradientColor returns a gradient color proportional to pos/total.
 func GetGradientColor(pos int, total int) string {
 	if total == 0 {
 		return GradientColors[0]

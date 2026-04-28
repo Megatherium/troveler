@@ -9,6 +9,7 @@ import (
 	"troveler/tui"
 )
 
+// TUICmd launches the Terminal User Interface.
 var TUICmd = &cobra.Command{
 	Use:   "tui",
 	Short: "Launch the Terminal User Interface",
@@ -22,7 +23,7 @@ The TUI provides a rich interface with:
 - Database update with progress animation
 
 Use Alt+Q to quit, ? for help.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		return WithDB(cmd, func(ctx context.Context, database *db.SQLiteDB) error {
 			cfg := GetConfig(ctx)
 

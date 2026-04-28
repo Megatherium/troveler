@@ -8,6 +8,7 @@ import (
 
 	"troveler/db"
 	"troveler/internal/install"
+	"troveler/internal/platform"
 	"troveler/pkg/ui"
 )
 
@@ -56,7 +57,7 @@ func showAllInstalls(name string, installs []db.InstallInstruction) error {
 	return nil
 }
 
-func displayInstallCommands(platformID string, matched []db.InstallInstruction, miseEnabled bool) {
+func displayInstallCommands(platformID string, matched []db.InstallInstruction) {
 	fmt.Println()
 	fmt.Println(lipgloss.NewStyle().
 		Bold(true).
@@ -66,7 +67,7 @@ func displayInstallCommands(platformID string, matched []db.InstallInstruction, 
 
 	for _, inst := range matched {
 		cmd := inst.Command
-		if miseEnabled {
+		if platform.IsMiseLangPlatform(platformID) {
 			cmd = install.TransformToMise(cmd)
 		}
 		fmt.Println(lipgloss.NewStyle().Bold(true).Render(cmd))
@@ -82,10 +83,10 @@ func displayLanguageFallback(toolLanguage string, langMatched []db.InstallInstru
 	fmt.Println()
 }
 
-func displayNoInstallMethod(toolName string, platformID string, installs []db.InstallInstruction, miseEnabled bool) {
+func displayNoInstallMethod(_ string, platformID string, installs []db.InstallInstruction) {
 	virtuals := install.GenerateVirtualInstallInstructions(installs)
 
-	if miseEnabled && len(virtuals) > 0 {
+	if platform.IsMiseLangPlatform(platformID) && len(virtuals) > 0 {
 		fmt.Println(lipgloss.NewStyle().
 			Bold(true).
 			Foreground(lipgloss.Color("#FFFF00")).
