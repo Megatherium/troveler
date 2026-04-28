@@ -4,8 +4,6 @@
 This project uses **bd (beads)** for issue tracking.
 Run `bd prime` for workflow context (MANDATORY!), or install hooks (`bd hooks install`) for auto-injection.
 
-This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
-
 If there's any contradiction: `bd prime` is right. AGENTS.md is not 100% up to date.
 
 ## Landing the Plane (Session Completion)
@@ -36,9 +34,17 @@ State B (after SOMEONE ELSE has reviewed it):
 **CRITICAL RULES:**
 - Work is NOT complete until `git push` succeeds
 - Pushing is not allowed until the work is successfully reviewed
-- If push fails, resolve and retry until it succeeds
-- Failure to follow this order creates double commits (one for code, one for .beads/issues.jsonl)
-- MODIFY ticket, git STAGE/PUSH - else you will be creating extra commits
+- If there's only beads/dolt data that needs pushing: amend it to the last commit unless specified
+
+## Modern tooling
+
+All kinds of modern replacements for standard shell tools are available: rg, fd, sd, choose, hck
+The interface is nicer for humans. You pick whatever feels right for you.
+
+## Commit Messages
+
+- **Beads extra**: Add a line like "Affected ticket(s): bb-foo", can be multiple with e.g. review tickets
+- **WARNING**: Forgetting the ticket reference line is a commit message format violation. Double-check before committing.
 
 ## Lessons learned
 
@@ -59,18 +65,6 @@ State B (after SOMEONE ELSE has reviewed it):
 
 All kinds of modern replacements for standard shell tools are available: rg, fd, sd, choose, hck
 The interface is nicer for humans. You pick whatever feels right for you.
-
-### Vibe MCP
-
-If the `vibe_run` tool is available to you think of it as a not so bright but fast agent. Use it for low effort but content intensive tasks like tracing flow, finding code, etc.
-- Run it with agent=auto-approve so it uses all its tools
-- max_turns = 5 by default, so give it more if the request has length to it
-
-## File Editing Strategy
-
-- **Use the Right Tool for the Job**: For any non-trivial file modifications, you **must** use the advanced editing tools provided by the MCP server.
-  - **Simple Edits**: Use `sed` or `write_file` only for simple, unambiguous, single-line changes or whole-file creation.
-  - **Complex Edits**: For multi-line changes, refactoring, or context-aware modifications, use `edit_file` (or equivalent diff-based tool) to minimize regression risks.
 
 ## Commit Messages
 

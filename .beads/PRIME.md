@@ -151,27 +151,3 @@ bd automatically syncs via Dolt:
 - ❌ Do NOT duplicate tracking systems
 
 For more details, see README.md and docs/QUICKSTART.md.
-
-## Common Workflows
-
-**Starting work:**
-```bash
-bd ready           # Find available work
-bd show <id>       # Review issue details
-bd update <id> --status=in_progress  # Claim it
-```
-
-**Completing work:**
-```bash
-bd close <id1> <id2> ...    # Close all completed issues at once
-git add . && git commit -m "..."  # Commit code changes
-git push                    # Push to remote
-```
-
-**Create new issues:**
-
-```bash
-bd create "Issue title" --description="Detailed context" -t bug|feature|task|review|refinement -p 0-4 --json
-bd create "Issue title" --description="What this issue is about" -p 1 --deps discovered-from:bd-123 --json
-bd create --title="Implement feature X" --description="Why this issue exists and what needs to be done" --type=feature
-```
