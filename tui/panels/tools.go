@@ -66,9 +66,9 @@ func (p *ToolsPanel) SetTools(tools []db.SearchResult) {
 }
 
 // Update handles messages
-func (p *ToolsPanel) Update(msg tea.Msg) tea.Cmd {
+func (p *ToolsPanel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if !p.focused {
-		return nil
+		return p, nil
 	}
 
 	switch msg := msg.(type) {
@@ -80,13 +80,13 @@ func (p *ToolsPanel) Update(msg tea.Msg) tea.Cmd {
 				p.adjustScroll()
 				// Notify that cursor changed
 				if p.cursor < len(p.tools) {
-					return func() tea.Msg {
+					return p, func() tea.Msg {
 						return ToolCursorChangedMsg{Tool: p.tools[p.cursor]}
 					}
 				}
 			}
 
-			return nil
+			return p, nil
 
 		case key.Matches(msg, key.NewBinding(key.WithKeys("up", "k"))):
 			if p.cursor > 0 {
@@ -94,27 +94,27 @@ func (p *ToolsPanel) Update(msg tea.Msg) tea.Cmd {
 				p.adjustScroll()
 				// Notify that cursor changed
 				if p.cursor < len(p.tools) {
-					return func() tea.Msg {
+					return p, func() tea.Msg {
 						return ToolCursorChangedMsg{Tool: p.tools[p.cursor]}
 					}
 				}
 			}
 
-			return nil
+			return p, nil
 
 		case key.Matches(msg, key.NewBinding(key.WithKeys("left", "h"))):
 			if p.selectedCol > 0 {
 				p.selectedCol--
 			}
 
-			return nil
+			return p, nil
 
 		case key.Matches(msg, key.NewBinding(key.WithKeys("right", "l"))):
 			if p.selectedCol < 3 {
 				p.selectedCol++
 			}
 
-			return nil
+			return p, nil
 
 		case msg.Alt && (msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 's'):
 			// Toggle sort
@@ -126,17 +126,17 @@ func (p *ToolsPanel) Update(msg tea.Msg) tea.Cmd {
 			}
 			p.sortTools()
 
-			return nil
+			return p, nil
 
 		case key.Matches(msg, key.NewBinding(key.WithKeys("enter"))):
 			// Select tool
 			if p.cursor < len(p.tools) {
-				return func() tea.Msg {
+				return p, func() tea.Msg {
 					return ToolSelectedMsg{Tool: p.tools[p.cursor]}
 				}
 			}
 
-			return nil
+			return p, nil
 
 		case key.Matches(msg, key.NewBinding(key.WithKeys("m"))):
 			// Toggle mark for batch install
@@ -149,15 +149,26 @@ func (p *ToolsPanel) Update(msg tea.Msg) tea.Cmd {
 					p.markedTools[tool.ID] = true
 				}
 
-				return func() tea.Msg {
+				return p, func() tea.Msg {
 					return ToolMarkedMsg{Tool: tool, IsMarked: !isMarked}
 				}
 			}
 
-			return nil
+			return p, nil
 		}
 	}
 
+	return p, nil
+}
+
+// SetSize stores the panel dimensions for use in View()
+func (p *ToolsPanel) SetSize(width, height int) {
+	p.width = width
+	p.height = height
+}
+
+// Init satisfies tea.Model
+func (p *ToolsPanel) Init() tea.Cmd {
 	return nil
 }
 
@@ -210,25 +221,22 @@ func (p *ToolsPanel) sortTools() {
 }
 
 // View renders the tools table
-func (p *ToolsPanel) View(width, height int) string {
-	p.width = width
-	p.height = height
-
+func (p *ToolsPanel) View() string {
 	if len(p.tools) == 0 {
 		return styles.MutedStyle.Render("No tools found")
 	}
 
 	// Minimum width needed to render table safely
 	minWidth := 60
-	if width < minWidth {
-		return fmt.Sprintf("Terminal too narrow (%d columns).\nMinimum %d columns required.", width, minWidth)
+	if p.width < minWidth {
+		return fmt.Sprintf("Terminal too narrow (%d columns).\nMinimum %d columns required.", p.width, minWidth)
 	}
 
 	var b strings.Builder
 
 	installedWidth := 9
 	nameWidth := 25
-	taglineWidth := width - nameWidth - installedWidth - 15 - 10
+	taglineWidth := p.width - nameWidth - installedWidth - 15 - 10
 	langWidth := 10
 
 	// Ensure taglineWidth doesn't become negative or too small
@@ -245,11 +253,11 @@ func (p *ToolsPanel) View(width, height int) string {
 	}
 	b.WriteString(strings.Join(headers, " │ "))
 	b.WriteString("\n")
-	b.WriteString(strings.Repeat("─", width-4))
+	b.WriteString(strings.Repeat("─", p.width-4))
 	b.WriteString("\n")
 
 	// Render rows
-	visibleRows := height - 4
+	visibleRows := p.height - 4
 	if visibleRows < 1 {
 		visibleRows = 1
 	}

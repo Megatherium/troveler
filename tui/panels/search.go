@@ -16,6 +16,8 @@ type SearchPanel struct {
 	lastQuery    string
 	searchTimer  *time.Timer
 	debounceTime time.Duration
+	width        int
+	height       int
 }
 
 // SearchTriggeredMsg is sent when search should be executed
@@ -37,8 +39,13 @@ func NewSearchPanel() *SearchPanel {
 	}
 }
 
+// Init satisfies tea.Model
+func (p *SearchPanel) Init() tea.Cmd {
+	return nil
+}
+
 // Update handles messages
-func (p *SearchPanel) Update(msg tea.Msg) (tea.Cmd, *SearchPanel) {
+func (p *SearchPanel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
@@ -49,14 +56,14 @@ func (p *SearchPanel) Update(msg tea.Msg) (tea.Cmd, *SearchPanel) {
 			p.textInput.SetValue("")
 			p.lastQuery = ""
 
-			return p.triggerSearch(""), p
+			return p, p.triggerSearch("")
 
 		case tea.KeyEnter:
 			// Immediate search on Enter
 			query := p.textInput.Value()
 			p.lastQuery = query
 
-			return p.triggerSearch(query), p
+			return p, p.triggerSearch(query)
 		}
 	}
 
@@ -76,13 +83,13 @@ func (p *SearchPanel) Update(msg tea.Msg) (tea.Cmd, *SearchPanel) {
 		// Start new debounce timer
 		query := currentQuery
 
-		return tea.Batch(
+		return p, tea.Batch(
 			cmd,
 			p.debounceSearchCmd(query),
-		), p
+		)
 	}
 
-	return cmd, p
+	return p, cmd
 }
 
 // debounceSearchCmd creates a command that triggers search after debounce
@@ -102,15 +109,21 @@ func (p *SearchPanel) triggerSearch(query string) tea.Cmd {
 }
 
 // View renders the search panel
-func (p *SearchPanel) View(width, _ int) string {
+func (p *SearchPanel) View() string {
 	// Adjust input width to fit panel, ensuring it's at least 10 columns
-	inputWidth := width - 4
+	inputWidth := p.width - 4
 	if inputWidth < 10 {
 		inputWidth = 10
 	}
 	p.textInput.Width = inputWidth
 
 	return p.textInput.View()
+}
+
+// SetSize stores the panel dimensions for use in View()
+func (p *SearchPanel) SetSize(width, height int) {
+	p.width = width
+	p.height = height
 }
 
 // Focus focuses the search panel

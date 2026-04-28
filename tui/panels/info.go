@@ -18,6 +18,8 @@ type InfoPanel struct {
 	tool     *info.ToolInfo
 	focused  bool
 	ready    bool
+	width    int
+	height   int
 }
 
 // NewInfoPanel creates a new info panel
@@ -86,27 +88,38 @@ func (p *InfoPanel) updateContent() {
 }
 
 // Update handles messages
-func (p *InfoPanel) Update(msg tea.Msg) tea.Cmd {
+func (p *InfoPanel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if !p.focused || !p.ready {
-		return nil
+		return p, nil
 	}
 
 	var cmd tea.Cmd
 	p.viewport, cmd = p.viewport.Update(msg)
 
-	return cmd
+	return p, cmd
 }
 
 // View renders the info panel
-func (p *InfoPanel) View(width, height int) string {
-	if !p.ready || p.viewport.Width != width || p.viewport.Height != height {
-		p.viewport.Width = width
-		p.viewport.Height = height
+func (p *InfoPanel) View() string {
+	if !p.ready || p.viewport.Width != p.width || p.viewport.Height != p.height {
+		p.viewport.Width = p.width
+		p.viewport.Height = p.height
 		p.ready = true
 		p.updateContent()
 	}
 
 	return p.viewport.View()
+}
+
+// SetSize stores the panel dimensions for use in View()
+func (p *InfoPanel) SetSize(width, height int) {
+	p.width = width
+	p.height = height
+}
+
+// Init satisfies tea.Model
+func (p *InfoPanel) Init() tea.Cmd {
+	return nil
 }
 
 // Focus focuses the panel

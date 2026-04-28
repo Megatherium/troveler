@@ -24,7 +24,8 @@ func (m *Model) renderSearchPanel(width, height int) string {
 		title += styles.MutedStyle.Render(" [searching...]")
 	}
 
-	content := m.searchPanel.View(width-4, height-4)
+	m.searchPanel.SetSize(width-4, height-4)
+	content := m.searchPanel.View()
 
 	return borderStyle.
 		Width(width - 1).
@@ -48,7 +49,8 @@ func (m *Model) renderToolsPanel(width, height int) string {
 		title = titleStyle.Render(fmt.Sprintf(" Tools (%d) ", len(m.tools)))
 	}
 
-	content := m.toolsPanel.View(width-4, height-4)
+	m.toolsPanel.SetSize(width-4, height-4)
+	content := m.toolsPanel.View()
 
 	return borderStyle.
 		Width(width-1).
@@ -72,7 +74,8 @@ func (m *Model) renderInfoPanel(width, height int) string {
 	}
 	titleRendered := titleStyle.Render(title)
 
-	content := m.infoPanel.View(width-4, height-4)
+	m.infoPanel.SetSize(width-4, height-4)
+	content := m.infoPanel.View()
 
 	return borderStyle.
 		Width(width-1).
@@ -92,7 +95,8 @@ func (m *Model) renderInstallPanel(width, height int) string {
 
 	title := titleStyle.Render(" Install ")
 
-	content := m.installPanel.View(width-4, height-4)
+	m.installPanel.SetSize(width-4, height-4)
+	content := m.installPanel.View()
 
 	return borderStyle.
 		Width(width-1).

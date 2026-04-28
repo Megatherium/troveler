@@ -5,6 +5,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"troveler/internal/update"
+	"troveler/tui/panels"
 )
 
 func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -28,8 +29,10 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	if m.activePanel == PanelSearch && !msg.Alt && msg.Type == tea.KeyRunes {
-		cmd, updatedPanel := m.searchPanel.Update(msg)
-		m.searchPanel = updatedPanel
+		newModel, cmd := m.searchPanel.Update(msg)
+		if p, ok := newModel.(*panels.SearchPanel); ok {
+			m.searchPanel = p
+		}
 
 		return m, cmd
 	}
@@ -43,19 +46,27 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	if m.activePanel == PanelSearch {
-		cmd, updatedPanel := m.searchPanel.Update(msg)
-		m.searchPanel = updatedPanel
+		newModel, cmd := m.searchPanel.Update(msg)
+		if p, ok := newModel.(*panels.SearchPanel); ok {
+			m.searchPanel = p
+		}
 
 		return m, cmd
 	}
 
 	switch m.activePanel {
 	case PanelTools:
-		cmd := m.toolsPanel.Update(msg)
+		newModel, cmd := m.toolsPanel.Update(msg)
+		if p, ok := newModel.(*panels.ToolsPanel); ok {
+			m.toolsPanel = p
+		}
 
 		return m, cmd
 	case PanelInstall:
-		cmd := m.installPanel.Update(msg)
+		newModel, cmd := m.installPanel.Update(msg)
+		if p, ok := newModel.(*panels.InstallPanel); ok {
+			m.installPanel = p
+		}
 
 		return m, cmd
 	}
@@ -111,8 +122,10 @@ func (m *Model) handleEscapeKey() (tea.Model, tea.Cmd) {
 	}
 
 	if m.activePanel == PanelSearch {
-		cmd, updatedPanel := m.searchPanel.Update(m.keys.Escape)
-		m.searchPanel = updatedPanel
+		newModel, cmd := m.searchPanel.Update(m.keys.Escape)
+		if p, ok := newModel.(*panels.SearchPanel); ok {
+			m.searchPanel = p
+		}
 
 		return m, cmd
 	}

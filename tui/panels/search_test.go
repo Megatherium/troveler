@@ -55,14 +55,15 @@ func TestSearchPanelClear(t *testing.T) {
 
 	// Press ESC to clear
 	msg := tea.KeyMsg{Type: tea.KeyEsc}
-	cmd, updatedPanel := panel.Update(msg)
+	updatedModel, cmd := panel.Update(msg)
+	panel = updatedModel.(*SearchPanel)
 
 	if cmd == nil {
 		t.Error("Expected command to be returned")
 	}
 
-	if updatedPanel.GetQuery() != "" {
-		t.Errorf("Expected query to be cleared, got %q", updatedPanel.GetQuery())
+	if panel.GetQuery() != "" {
+		t.Errorf("Expected query to be cleared, got %q", panel.GetQuery())
 	}
 }
 
@@ -74,7 +75,8 @@ func TestSearchPanelEnterTriggersSearch(t *testing.T) {
 
 	// Press Enter
 	msg := tea.KeyMsg{Type: tea.KeyEnter}
-	cmd, _ := panel.Update(msg)
+	updatedModel, cmd := panel.Update(msg)
+	panel = updatedModel.(*SearchPanel)
 
 	if cmd == nil {
 		t.Error("Expected search command to be triggered on Enter")
@@ -95,8 +97,9 @@ func TestSearchPanelEnterTriggersSearch(t *testing.T) {
 
 func TestSearchPanelView(t *testing.T) {
 	panel := NewSearchPanel()
+	panel.SetSize(50, 5)
 
-	view := panel.View(50, 5)
+	view := panel.View()
 
 	if view == "" {
 		t.Error("Expected view to render content")
@@ -107,7 +110,8 @@ func TestSearchPanelNarrowTerminal(t *testing.T) {
 	panel := NewSearchPanel()
 
 	// Test with very narrow width (less than input width + 4)
-	view := panel.View(5, 5)
+	panel.SetSize(5, 5)
+	view := panel.View()
 
 	if view == "" {
 		t.Error("Expected view to render even with very narrow width")

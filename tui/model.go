@@ -76,15 +76,6 @@ type Model struct {
 	err error
 }
 
-// Panel interface for all panel types
-type Panel interface {
-	Update(msg tea.Msg) (Panel, tea.Cmd)
-	View(width, height int) string
-	Focus()
-	Blur()
-	IsFocused() bool
-}
-
 // NewModel creates a new TUI model
 func NewModel(database *db.SQLiteDB, cfg *config.Config) *Model {
 	searchPanel := panels.NewSearchPanel()

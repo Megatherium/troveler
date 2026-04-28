@@ -186,8 +186,9 @@ func TestToolsPanelView(t *testing.T) {
 		{Tool: db.Tool{Name: "tool1", Tagline: "A test tool", Language: "go"}},
 	}
 	panel.SetTools(tools)
+	panel.SetSize(80, 20)
 
-	view := panel.View(80, 20)
+	view := panel.View()
 
 	if view == "" {
 		t.Error("Expected view to render content")
@@ -212,7 +213,8 @@ func TestToolsPanelNarrowTerminal(t *testing.T) {
 	panel.SetTools(tools)
 
 	// Test with very narrow width (less than minimum)
-	view := panel.View(40, 20)
+	panel.SetSize(40, 20)
+	view := panel.View()
 
 	if view == "" {
 		t.Error("Expected view to render even with narrow width")
@@ -224,7 +226,8 @@ func TestToolsPanelNarrowTerminal(t *testing.T) {
 	}
 
 	// Test with adequate width
-	view = panel.View(80, 20)
+	panel.SetSize(80, 20)
+	view = panel.View()
 
 	if view == "" {
 		t.Error("Expected view to render with adequate width")

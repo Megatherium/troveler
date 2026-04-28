@@ -68,14 +68,22 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch m.activePanel {
 	case PanelSearch:
-		cmd, updatedPanel := m.searchPanel.Update(msg)
-		m.searchPanel = updatedPanel
+		newModel, cmd := m.searchPanel.Update(msg)
+		if p, ok := newModel.(*panels.SearchPanel); ok {
+			m.searchPanel = p
+		}
 		cmds = append(cmds, cmd)
 	case PanelTools:
-		cmd := m.toolsPanel.Update(msg)
+		newModel, cmd := m.toolsPanel.Update(msg)
+		if p, ok := newModel.(*panels.ToolsPanel); ok {
+			m.toolsPanel = p
+		}
 		cmds = append(cmds, cmd)
 	case PanelInstall:
-		cmd := m.installPanel.Update(msg)
+		newModel, cmd := m.installPanel.Update(msg)
+		if p, ok := newModel.(*panels.InstallPanel); ok {
+			m.installPanel = p
+		}
 		cmds = append(cmds, cmd)
 	}
 

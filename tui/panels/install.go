@@ -128,9 +128,9 @@ func (p *InstallPanel) IsFallbackMode() bool {
 }
 
 // Update handles messages
-func (p *InstallPanel) Update(msg tea.Msg) tea.Cmd {
+func (p *InstallPanel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if !p.focused {
-		return nil
+		return p, nil
 	}
 
 	switch msg := msg.(type) {
@@ -141,44 +141,44 @@ func (p *InstallPanel) Update(msg tea.Msg) tea.Cmd {
 				p.cursor++
 			}
 
-			return nil
+			return p, nil
 
 		case key.Matches(msg, key.NewBinding(key.WithKeys("up", "k"))):
 			if p.cursor > 0 {
 				p.cursor--
 			}
 
-			return nil
+			return p, nil
 
 		case msg.Alt && (msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 'i'):
 			if p.cursor >= 0 && p.cursor < len(p.commands) {
 				cmd := p.commands[p.cursor].Command
 
-				return func() tea.Msg {
+				return p, func() tea.Msg {
 					return InstallExecuteMsg{Command: cmd}
 				}
 			}
 
-			return nil
+			return p, nil
 
 		case msg.Alt && (msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 'm'):
 			if p.cursor >= 0 && p.cursor < len(p.commands) {
 				cmd := install.TransformToMise(p.commands[p.cursor].Command)
 
-				return func() tea.Msg {
+				return p, func() tea.Msg {
 					return InstallExecuteMiseMsg{Command: cmd}
 				}
 			}
 
-			return nil
+			return p, nil
 		}
 	}
 
-	return nil
+	return p, nil
 }
 
 // View renders the install panel
-func (p *InstallPanel) View(_ int, _ int) string {
+func (p *InstallPanel) View() string {
 	if len(p.commands) == 0 {
 		return styles.MutedStyle.Render("Select a tool to see install options")
 	}
@@ -210,6 +210,16 @@ func (p *InstallPanel) View(_ int, _ int) string {
 	}
 
 	return b.String()
+}
+
+// SetSize stores the panel dimensions for use in View()
+func (p *InstallPanel) SetSize(width, height int) {
+	// InstallPanel does not use dimensions currently
+}
+
+// Init satisfies tea.Model
+func (p *InstallPanel) Init() tea.Cmd {
+	return nil
 }
 
 // Focus focuses the panel
