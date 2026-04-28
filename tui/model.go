@@ -41,6 +41,9 @@ type Model struct {
 	infoPanel    *panels.InfoPanel
 	installPanel *panels.InstallPanel
 
+	// Modal management
+	modals *ModalManager
+
 	// Keybindings
 	keys KeyMap
 
@@ -49,13 +52,6 @@ type Model struct {
 	selectedTool *db.Tool
 	installs     []db.InstallInstruction
 	searching    bool
-
-	// Modal states
-	showHelp             bool
-	showInfoModal        bool
-	showUpdateModal      bool
-	showInstallModal     bool
-	showBatchConfigModal bool
 
 	// Install execution state
 	executing     bool
@@ -93,6 +89,7 @@ func NewModel(database *db.SQLiteDB, cfg *config.Config) *Model {
 		db:            database,
 		config:        cfg,
 		searchService: search.NewService(database),
+		modals:        NewModalManager(),
 		keys:          DefaultKeyMap(),
 		activePanel:   PanelSearch,
 		searchPanel:   searchPanel,

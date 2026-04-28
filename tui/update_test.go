@@ -59,12 +59,12 @@ func newTestModelWithDB(t *testing.T) *Model {
 
 func TestEscapeChain_HelpModal(t *testing.T) {
 	m := newTestModel(t)
-	m.showHelp = true
+	m.modals.ShowHelp()
 
 	updatedModel, cmd := m.handleEscapeKey()
 	m2 := updatedModel.(*Model)
 
-	if m2.showHelp {
+	if m2.modals.IsHelpShown() {
 		t.Error("Expected showHelp to be false after escape")
 	}
 	if cmd != nil {
@@ -74,25 +74,25 @@ func TestEscapeChain_HelpModal(t *testing.T) {
 
 func TestEscapeChain_InfoModal(t *testing.T) {
 	m := newTestModel(t)
-	m.showInfoModal = true
+	m.modals.ShowInfo()
 
 	updatedModel, _ := m.handleEscapeKey()
 	m2 := updatedModel.(*Model)
 
-	if m2.showInfoModal {
+	if m2.modals.IsInfoShown() {
 		t.Error("Expected showInfoModal to be false after escape")
 	}
 }
 
 func TestEscapeChain_UpdateModal(t *testing.T) {
 	m := newTestModel(t)
-	m.showUpdateModal = true
+	m.modals.ShowUpdate()
 	m.updating = false // not running — should close
 
 	updatedModel, _ := m.handleEscapeKey()
 	m2 := updatedModel.(*Model)
 
-	if m2.showUpdateModal {
+	if m2.modals.IsUpdateShown() {
 		t.Error("Expected showUpdateModal to be false after escape")
 	}
 	if m2.updating {
@@ -102,39 +102,39 @@ func TestEscapeChain_UpdateModal(t *testing.T) {
 
 func TestEscapeChain_InstallModalWithoutExecuting(t *testing.T) {
 	m := newTestModel(t)
-	m.showInstallModal = true
+	m.modals.ShowInstall()
 	m.executing = false
 
 	updatedModel, _ := m.handleEscapeKey()
 	m2 := updatedModel.(*Model)
 
-	if m2.showInstallModal {
+	if m2.modals.IsInstallShown() {
 		t.Error("Expected showInstallModal to be false when not executing")
 	}
 }
 
 func TestEscapeChain_InstallModalWhileExecuting(t *testing.T) {
 	m := newTestModel(t)
-	m.showInstallModal = true
+	m.modals.ShowInstall()
 	m.executing = true
 
 	updatedModel, _ := m.handleEscapeKey()
 	m2 := updatedModel.(*Model)
 
-	if !m2.showInstallModal {
+	if !m2.modals.IsInstallShown() {
 		t.Error("Expected showInstallModal to stay open while executing")
 	}
 }
 
 func TestEscapeChain_BatchConfigModal(t *testing.T) {
 	m := newTestModel(t)
-	m.showBatchConfigModal = true
+	m.modals.ShowBatchConfig()
 	m.batchConfig = &BatchInstallConfig{} // non-nil
 
 	updatedModel, _ := m.handleEscapeKey()
 	m2 := updatedModel.(*Model)
 
-	if m2.showBatchConfigModal {
+	if m2.modals.IsBatchConfigShown() {
 		t.Error("Expected showBatchConfigModal to be false after escape")
 	}
 	if m2.batchConfig != nil {
@@ -161,11 +161,7 @@ func TestEscapeChain_ExecuteOutput(t *testing.T) {
 func TestEscapeChain_NothingOpen_SearchPanel(t *testing.T) {
 	m := newTestModel(t)
 	m.activePanel = PanelSearch
-	m.showHelp = false
-	m.showInfoModal = false
-	m.showInstallModal = false
-	m.showBatchConfigModal = false
-	m.executeOutput = ""
+					m.executeOutput = ""
 
 	// Escape while nothing is open should delegate to search panel
 	updatedModel, _ := m.handleEscapeKey()
@@ -274,7 +270,7 @@ func TestUpdate_InstallExecuteMsg_SetsModalState(t *testing.T) {
 
 	_, cmd := m.Update(panels.InstallExecuteMsg{Command: "echo hello"})
 
-	if !m.showInstallModal {
+	if !m.modals.IsInstallShown() {
 		t.Error("Expected showInstallModal to be true after InstallExecuteMsg")
 	}
 	if !m.executing {
@@ -294,7 +290,7 @@ func TestUpdate_InstallExecuteMiseMsg_SetsModalState(t *testing.T) {
 
 	_, cmd := m.Update(panels.InstallExecuteMiseMsg{Command: "echo hello"})
 
-	if !m.showInstallModal {
+	if !m.modals.IsInstallShown() {
 		t.Error("Expected showInstallModal to be true after InstallExecuteMiseMsg")
 	}
 	if !m.executing {
@@ -445,12 +441,11 @@ func TestUpdate_TabKey_CyclesPanels(t *testing.T) {
 
 func TestHandleKeyPress_GlobalKeys_Help(t *testing.T) {
 	m := newTestModel(t)
-	m.showHelp = false
-
+	
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}}
 	updatedModel, _ := m.handleKeyPress(msg)
 
-	if !updatedModel.(*Model).showHelp {
+	if !updatedModel.(*Model).modals.IsHelpShown() {
 		t.Error("Expected showHelp to be true after pressing ?")
 	}
 }
@@ -480,14 +475,14 @@ func TestHandleKeyPress_GlobalKeys_Quit(t *testing.T) {
 
 func TestHandleKeyPress_BatchConfigModal_Option1(t *testing.T) {
 	m := newTestModel(t)
-	m.showBatchConfigModal = true
+	m.modals.ShowBatchConfig()
 	m.batchConfig = NewBatchInstallConfig()
 
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'1'}}
 	updatedModel, _ := m.handleKeyPress(msg)
 	m2 := updatedModel.(*Model)
 
-	if !m2.showBatchConfigModal {
+	if !m2.modals.IsBatchConfigShown() {
 		t.Error("Expected batch config modal to stay open after selecting option (more steps)")
 	}
 	if m2.batchConfig.ConfigStep != 1 {
@@ -497,7 +492,7 @@ func TestHandleKeyPress_BatchConfigModal_Option1(t *testing.T) {
 
 func TestHandleKeyPress_BatchConfigModal_FinalOptionCloses(t *testing.T) {
 	m := newTestModel(t)
-	m.showBatchConfigModal = true
+	m.modals.ShowBatchConfig()
 	// Advance to step 4 (last step) and skip setting it
 	m.batchConfig = NewBatchInstallConfig()
 	m.batchConfig.ConfigStep = 4 // last step: "Use mise?"
@@ -506,7 +501,7 @@ func TestHandleKeyPress_BatchConfigModal_FinalOptionCloses(t *testing.T) {
 	updatedModel, cmd := m.handleKeyPress(msg)
 	m2 := updatedModel.(*Model)
 
-	if m2.showBatchConfigModal {
+	if m2.modals.IsBatchConfigShown() {
 		t.Error("Expected batch config modal to close after final option")
 	}
 	if cmd == nil {
@@ -517,7 +512,7 @@ func TestHandleKeyPress_BatchConfigModal_FinalOptionCloses(t *testing.T) {
 
 func TestHandleKeyPress_BatchConfigModal_Option2(t *testing.T) {
 	m := newTestModel(t)
-	m.showBatchConfigModal = true
+	m.modals.ShowBatchConfig()
 	m.batchConfig = NewBatchInstallConfig()
 
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'2'}}
@@ -535,7 +530,7 @@ func TestHandleKeyPress_BatchConfigModal_Option2(t *testing.T) {
 
 func TestHandleKeyPress_BatchConfigModal_InvalidKey(t *testing.T) {
 	m := newTestModel(t)
-	m.showBatchConfigModal = true
+	m.modals.ShowBatchConfig()
 	m.batchConfig = NewBatchInstallConfig()
 
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'9'}}
@@ -600,7 +595,7 @@ func TestHandleKeyPress_InfoModalKey_WithSelection(t *testing.T) {
 	if !handled {
 		t.Error("Expected 'i' key to be handled as info modal action")
 	}
-	if !updatedModel.(*Model).showInfoModal {
+	if !updatedModel.(*Model).modals.IsInfoShown() {
 		t.Error("Expected showInfoModal to be true after info modal key")
 	}
 }
@@ -617,7 +612,7 @@ func TestHandleKeyPress_InfoModalKey_FromSearchPanel(t *testing.T) {
 		t.Error("Expected 'i' key to be handled by action keys even from Search")
 	}
 	// But showInfoModal should remain false because activePanel == PanelSearch
-	if m.showInfoModal {
+	if m.modals.IsInfoShown() {
 		t.Error("Expected showInfoModal to stay false when on Search panel")
 	}
 }
@@ -650,11 +645,7 @@ func TestHandleKeyPress_SearchPanel_RuneDelegation(t *testing.T) {
 func TestHandleKeyPress_SearchPanel_EscapeDelegation(t *testing.T) {
 	m := newTestModel(t)
 	m.activePanel = PanelSearch
-	m.showHelp = false
-	m.showInfoModal = false
-	m.showInstallModal = false
-	m.showBatchConfigModal = false
-	m.executeOutput = ""
+					m.executeOutput = ""
 
 	msg := tea.KeyMsg{Type: tea.KeyEscape}
 	updatedModel, _ := m.handleKeyPress(msg)

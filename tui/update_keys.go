@@ -15,7 +15,7 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Layer 2: Batch config modal input
-	if m.showBatchConfigModal && m.batchConfig != nil {
+	if m.modals.IsBatchConfigShown() && m.batchConfig != nil {
 		return m.handleBatchConfigInput(msg)
 	}
 
@@ -43,7 +43,7 @@ func (m *Model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	case key.Matches(msg, m.keys.Quit):
 		return m, tea.Quit, true
 	case key.Matches(msg, m.keys.Help):
-		m.showHelp = !m.showHelp
+		m.modals.ToggleHelp()
 
 		return m, nil, true
 	case key.Matches(msg, m.keys.Tab):
@@ -56,28 +56,23 @@ func (m *Model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 }
 
 func (m *Model) handleEscapeKey() (tea.Model, tea.Cmd) {
-	if m.showHelp {
-		m.showHelp = false
+	// Delegate modal escape handling to ModalManager.
+	closed, cmd := m.modals.HandleEscape(func() {
+		if m.updateCancel != nil {
+			m.updateCancel()
+			m.updateCancel = nil
+		}
+		m.updating = false
+		m.updateProgress = nil
+	}, m.executing)
+	if closed != ModalNone {
+		if closed == ModalBatchConfig {
+			m.batchConfig = nil
+		}
+		return m, cmd
+	}
 
-		return m, nil
-	}
-	if m.showInfoModal {
-		m.showInfoModal = false
-
-		return m, nil
-	}
-	if m.showUpdateModal {
-		return m.closeUpdateModal()
-	}
-	if m.showInstallModal {
-		return m.closeInstallModal()
-	}
-	if m.showBatchConfigModal {
-		m.showBatchConfigModal = false
-		m.batchConfig = nil
-
-		return m, nil
-	}
+	// Non-modal escape handling.
 	if m.executeOutput != "" {
 		m.executeOutput = ""
 		m.err = nil
@@ -115,7 +110,7 @@ func (m *Model) handleActionKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 }
 
 func (m *Model) handleUpdateKey() (tea.Model, tea.Cmd, bool) {
-	m.showUpdateModal = true
+	m.modals.ShowUpdate()
 	m.updating = true
 	m.updateProgress = make(chan update.ProgressUpdate, 100)
 
@@ -127,7 +122,8 @@ func (m *Model) handleUpdateKey() (tea.Model, tea.Cmd, bool) {
 
 func (m *Model) handleInfoModalKey() (tea.Model, tea.Cmd, bool) {
 	if m.selectedTool != nil && m.activePanel != PanelSearch {
-		m.showInfoModal = true
+		m.modals.ShowInfo()
+		return m, nil, true
 	}
 
 	return m, nil, true
@@ -181,7 +177,7 @@ func (m *Model) handleBatchConfigInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	optionIndex := int(r - '1')
 	m.batchConfig.SetCurrentStepValue(optionIndex)
 	if !m.batchConfig.NextStep() {
-		m.showBatchConfigModal = false
+		m.modals.CloseBatchConfig()
 
 		return m, m.startBatchInstall()
 	}

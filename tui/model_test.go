@@ -94,7 +94,7 @@ func TestHelpToggle(t *testing.T) {
 	m := NewModel(nil, &config.Config{})
 
 	// Help should be hidden initially
-	if m.showHelp {
+	if m.modals.IsHelpShown() {
 		t.Error("Expected help to be hidden initially")
 	}
 
@@ -103,7 +103,7 @@ func TestHelpToggle(t *testing.T) {
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(*Model)
 
-	if !m.showHelp {
+	if !m.modals.IsHelpShown() {
 		t.Error("Expected help to be shown after pressing ?")
 	}
 
@@ -111,7 +111,7 @@ func TestHelpToggle(t *testing.T) {
 	updatedModel, _ = m.Update(msg)
 	m = updatedModel.(*Model)
 
-	if m.showHelp {
+	if m.modals.IsHelpShown() {
 		t.Error("Expected help to be hidden after pressing ? again")
 	}
 }

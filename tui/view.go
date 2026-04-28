@@ -20,24 +20,19 @@ func (m *Model) View() string {
 		return fmt.Sprintf("Terminal too short (%d rows).\nPlease resize to at least %d rows.\n", m.height, minHeight)
 	}
 
-	if m.showHelp {
-		return m.renderHelpModal()
-	}
-
-	if m.showInfoModal {
-		return m.renderInfoModal()
-	}
-
-	if m.showUpdateModal {
-		return m.renderUpdateModal()
-	}
-
-	if m.showInstallModal {
-		return m.renderInstallModal()
-	}
-
-	if m.showBatchConfigModal {
-		return m.renderBatchConfigModal()
+	switch m.modals.ActiveModalType() {
+	case ModalNone:
+		// No modal active — render main layout
+	case ModalHelp:
+		return m.modals.ViewHelp(m.width, m.height)
+	case ModalInfo:
+		return m.modals.ViewInfo(m.width, m.height, m.selectedTool, m.installs)
+	case ModalUpdate:
+		return m.modals.ViewUpdate(m.width, m.height, m.updating, m.updateSlugWave)
+	case ModalInstall:
+		return m.modals.ViewInstall(m.width, m.height, m.executing, m.executeOutput, m.err, m.batchProgress)
+	case ModalBatchConfig:
+		return m.modals.ViewBatchConfig(m.width, m.height, m.batchConfig, m.toolsPanel.GetMarkedCount())
 	}
 
 	return m.renderMainLayout()

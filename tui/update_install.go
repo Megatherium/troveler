@@ -47,30 +47,6 @@ func (m *Model) openRepositoryURL() tea.Cmd {
 	}
 }
 
-func (m *Model) closeUpdateModal() (tea.Model, tea.Cmd) {
-	m.showUpdateModal = false
-	m.updating = false
-	if m.updateCancel != nil {
-		m.updateCancel()
-		m.updateCancel = nil
-	}
-	m.updateProgress = nil
-
-	return m, nil
-}
-
-func (m *Model) closeInstallModal() (tea.Model, tea.Cmd) {
-	if !m.executing {
-		m.showInstallModal = false
-		m.executeOutput = ""
-		m.err = nil
-		m.batchProgress = nil
-		m.batchConfig = nil
-	}
-
-	return m, nil
-}
-
 func (m *Model) startUpdate() tea.Cmd {
 	ctx, cancel := context.WithCancel(context.Background())
 	m.updateCancel = cancel

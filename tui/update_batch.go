@@ -32,7 +32,7 @@ func (m *Model) startBatchInstall() tea.Cmd {
 	}
 
 	m.batchProgress = NewBatchInstallProgress(markedTools)
-	m.showInstallModal = true
+	m.modals.ShowInstall()
 	m.executing = true
 
 	return func() tea.Msg {
@@ -43,7 +43,7 @@ func (m *Model) startBatchInstall() tea.Cmd {
 func (m *Model) handleAltIKey() (tea.Model, tea.Cmd, bool) {
 	if m.toolsPanel.GetMarkedCount() > 0 {
 		m.batchConfig = NewBatchInstallConfig()
-		m.showBatchConfigModal = true
+		m.modals.ShowBatchConfig()
 
 		return m, nil, true
 	}
@@ -63,7 +63,7 @@ func (m *Model) handleAltMKey() (tea.Model, tea.Cmd, bool) {
 	if m.toolsPanel.GetMarkedCount() > 0 {
 		m.batchConfig = NewBatchInstallConfig()
 		m.batchConfig.UseMise = true
-		m.showBatchConfigModal = true
+		m.modals.ShowBatchConfig()
 
 		return m, nil, true
 	}

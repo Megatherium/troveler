@@ -68,7 +68,7 @@ func (m *Model) handleToolSelected() (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) handleInstallExecute(msg panels.InstallExecuteMsg) (tea.Model, tea.Cmd) {
-	m.showInstallModal = true
+	m.modals.ShowInstall()
 	m.executing = true
 	m.executeOutput = ""
 
@@ -76,7 +76,7 @@ func (m *Model) handleInstallExecute(msg panels.InstallExecuteMsg) (tea.Model, t
 }
 
 func (m *Model) handleInstallExecuteMise(msg panels.InstallExecuteMiseMsg) (tea.Model, tea.Cmd) {
-	m.showInstallModal = true
+	m.modals.ShowInstall()
 	m.executing = true
 	m.executeOutput = ""
 
