@@ -170,3 +170,74 @@ func TestDetailPageWithNestedInstallData(t *testing.T) {
 func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
+
+func TestParseDetailPageLanguageFallback(t *testing.T) {
+	tests := []struct {
+		name         string
+		html         string
+		wantLanguage string
+		wantErr      bool
+	}{
+		{
+			name: "language from JSON-LD only",
+			html: `<!DOCTYPE html>
+<html>
+<head>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","@id":"https://terminaltrove.com/testtool/","name":"Test Tool","programmingLanguage":"rust"}]}</script>
+</head>
+<body>
+<p id="tagline">Test tagline</p>
+<div id="install" data-install='{"brew": "brew install test"}'></div>
+</body>
+</html>`,
+			wantLanguage: "rust",
+			wantErr:      false,
+		},
+		{
+			name: "language from HTML fallback when JSON-LD missing",
+			html: `<!DOCTYPE html>
+<html>
+<head>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","@id":"https://terminaltrove.com/testtool/","name":"Test Tool"}]}</script>
+</head>
+<body>
+<a href="/language/rust/">Rust</a>
+<p id="tagline">Test tagline</p>
+<div id="install" data-install='{"brew": "brew install test"}'></div>
+</body>
+</html>`,
+			wantLanguage: "rust",
+			wantErr:      false,
+		},
+		{
+			name: "cpp slug mapped to c++",
+			html: `<!DOCTYPE html>
+<html>
+<head>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"SoftwareApplication","@id":"https://terminaltrove.com/testtool/","name":"Test Tool"}]}</script>
+</head>
+<body>
+<a href="/language/cpp/">C++</a>
+<p id="tagline">Test tagline</p>
+<div id="install" data-install='{"brew": "brew install test"}'></div>
+</body>
+</html>`,
+			wantLanguage: "c++",
+			wantErr:      false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			page, err := ParseDetailPage([]byte(tt.html))
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseDetailPage() error = %v, wantErr %v", err, tt.wantErr)
+
+				return
+			}
+			if err == nil && page.Tool.Language != tt.wantLanguage {
+				t.Errorf("ParseDetailPage() language = %q, want %q", page.Tool.Language, tt.wantLanguage)
+			}
+		})
+	}
+}

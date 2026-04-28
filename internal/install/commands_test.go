@@ -172,3 +172,126 @@ func TestResolvePlatform_EmptyDetectedOS(t *testing.T) {
 		t.Errorf("Expected platformID=brew, got %s", result.PlatformID)
 	}
 }
+
+func TestResolvePlatform_MiseLangEmptyLanguageReturnsFallback(t *testing.T) {
+	// Simulates tr-fo7: a tool (like see-tui) with empty Language field,
+	// where platform_override = "mise_lang" cannot match any install
+	// by language and returns usedFallback=true.
+	installs := []db.InstallInstruction{
+		{ID: "1", Platform: "linux", Command: "cargo install some-crate"},
+		{ID: "2", Platform: "linux", Command: "apt install tool"},
+	}
+
+	selector := NewPlatformSelector("", "mise_lang", "", "")
+	result := ResolvePlatform(selector, installs, "ubuntu", "")
+
+	if !result.UsedFallback {
+		t.Error("Expected usedFallback=true when mise_lang cannot match by empty language")
+	}
+
+	if result.PlatformID != "mise_lang" {
+		t.Errorf("Expected platformID=mise_lang, got %s", result.PlatformID)
+	}
+
+	if len(result.Installs) != 2 {
+		t.Errorf("Expected all 2 installs returned as fallback, got %d", len(result.Installs))
+	}
+
+	// Verify that virtual installs can still be generated from the fallback
+	virtuals := GenerateVirtualInstallInstructions(result.Installs)
+	if len(virtuals) == 0 {
+		t.Error("Expected virtual installs (e.g., mise:cargo) from fallback result")
+	}
+
+	hasCargo := false
+	for _, v := range virtuals {
+		if v.Platform == "mise:cargo" {
+			hasCargo = true
+
+			break
+		}
+	}
+	if !hasCargo {
+		t.Errorf("Expected mise:cargo virtual, got %v", virtuals)
+	}
+}
+
+func TestTryResolveLangFallback(t *testing.T) {
+	cargoInstalls := []db.InstallInstruction{
+		{ID: "1", Platform: "linux", Command: "cargo install some-crate"},
+		{ID: "2", Platform: "linux", Command: "apt install tool"},
+	}
+	noLangInstalls := []db.InstallInstruction{
+		{ID: "1", Platform: "linux", Command: "apt install tool"},
+		{ID: "2", Platform: "linux", Command: "brew install tool"},
+	}
+
+	tests := []struct {
+		name       string
+		installs   []db.InstallInstruction
+		platformID string
+		wantNil    bool
+		wantCmd    string
+		wantPlat   string
+	}{
+		{
+			name:       "mise_lang with virtualizable installs",
+			installs:   cargoInstalls,
+			platformID: "mise_lang",
+			wantNil:    false,
+			wantCmd:    "mise use --global cargo:some-crate",
+			wantPlat:   "mise_lang",
+		},
+		{
+			name:       "lang with virtualizable installs",
+			installs:   cargoInstalls,
+			platformID: "lang",
+			wantNil:    false,
+			wantCmd:    "cargo install some-crate",
+			wantPlat:   "linux",
+		},
+		{
+			name:       "mise_lang with no lang installs returns nil",
+			installs:   noLangInstalls,
+			platformID: "mise_lang",
+			wantNil:    true,
+		},
+		{
+			name:       "lang with no lang installs returns nil",
+			installs:   noLangInstalls,
+			platformID: "lang",
+			wantNil:    true,
+		},
+		{
+			name:       "non-lang platform returns nil",
+			installs:   cargoInstalls,
+			platformID: "brew",
+			wantNil:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			matched, platform := TryResolveLangFallback(tt.installs, tt.platformID)
+			if tt.wantNil {
+				if matched != nil {
+					t.Errorf("Expected nil, got %v (platform=%q)", matched, platform)
+				}
+				if platform != "" {
+					t.Errorf("Expected empty platform, got %q", platform)
+				}
+
+				return
+			}
+			if len(matched) != 1 {
+				t.Fatalf("Expected 1 matched install, got %d", len(matched))
+			}
+			if matched[0].Command != tt.wantCmd {
+				t.Errorf("Command = %q, want %q", matched[0].Command, tt.wantCmd)
+			}
+			if platform != tt.wantPlat {
+				t.Errorf("Returned platform = %q, want %q", platform, tt.wantPlat)
+			}
+		})
+	}
+}

@@ -115,16 +115,21 @@ func (m *Model) processBatchTool(index int) tea.Cmd {
 		result := install.ResolvePlatform(selector, installs, detectedOS, tool.Language)
 		filtered := result.Installs
 		if result.UsedFallback || len(filtered) == 0 {
-			if config != nil && config.SkipIfBlind {
-				return batchInstallProgressMsg{
-					toolID:  tool.ID,
-					skipped: true,
+			synthMatched, _ := install.TryResolveLangFallback(installs, result.PlatformID)
+			if len(synthMatched) > 0 {
+				filtered = synthMatched
+			} else {
+				if config != nil && config.SkipIfBlind {
+					return batchInstallProgressMsg{
+						toolID:  tool.ID,
+						skipped: true,
+					}
 				}
-			}
 
-			return batchInstallProgressMsg{
-				toolID: tool.ID,
-				err:    fmt.Errorf("no compatible install method"),
+				return batchInstallProgressMsg{
+					toolID: tool.ID,
+					err:    fmt.Errorf("no compatible install method"),
+				}
 			}
 		}
 

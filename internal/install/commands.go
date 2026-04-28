@@ -121,3 +121,43 @@ func GenerateVirtualInstallInstructions(installs []db.InstallInstruction) []Virt
 
 	return result
 }
+
+// TryResolveLangFallback attempts to produce a usable install command when
+// the platform is "lang" or "mise_lang" and strict language matching returned
+// usedFallback=true (typically because the tool has an empty Language field).
+//
+// For mise_lang: returns the first generated virtual instruction (mise command).
+// For lang: returns the first original install whose command can be transformed
+// to mise form (i.e., a language-package-manager command like cargo/go/npm).
+//
+// Returns nil if no resolution is possible.
+func TryResolveLangFallback(
+	installs []db.InstallInstruction, platformID string,
+) ([]db.InstallInstruction, string) {
+	if !platform.IsLangPlatform(platformID) {
+		return nil, ""
+	}
+
+	if platform.IsMiseLangPlatform(platformID) {
+		virtuals := GenerateVirtualInstallInstructions(installs)
+		if len(virtuals) > 0 {
+			return []db.InstallInstruction{
+				{Platform: virtuals[0].Platform, Command: virtuals[0].Command},
+			}, platformID
+		}
+
+		return nil, ""
+	}
+
+	// For "lang": find the first original install whose command can be
+	// transformed to mise form, and return its raw command unchanged.
+	for _, inst := range installs {
+		if platform.TransformToMise(inst.Command) != inst.Command {
+			return []db.InstallInstruction{
+				{Platform: inst.Platform, Command: inst.Command},
+			}, inst.Platform
+		}
+	}
+
+	return nil, ""
+}

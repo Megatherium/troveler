@@ -70,6 +70,7 @@ var (
 	toolSlugRegex = regexp.MustCompile(`data-tool-slug="([^"]+)"`)
 	titleRegex    = regexp.MustCompile(`<title>([^<]+)`)
 	taglineRegex  = regexp.MustCompile(`id="tagline">([^<]+)`)
+	languageRegex = regexp.MustCompile(`href="/language/([^/]+)/"`)
 )
 
 // JSONLD represents the structured data from a page's JSON-LD script.
@@ -137,6 +138,13 @@ func ParseDetailPage(data []byte) (*DetailPage, error) {
 
 	if lang, ok := softwareApp["programmingLanguage"].(string); ok {
 		page.Tool.Language = lang
+	}
+
+	if page.Tool.Language == "" {
+		if langMatch := languageRegex.FindStringSubmatch(string(data)); len(langMatch) >= 2 {
+			lang := strings.TrimSpace(langMatch[1])
+			page.Tool.Language = mapLanguageSlug(lang)
+		}
 	}
 
 	if repo, ok := softwareApp["codeRepository"].(string); ok {
@@ -221,6 +229,17 @@ func (p *DetailPage) ToInstallInstructions() []db.InstallInstruction {
 // ToTool returns the parsed tool as a database record.
 func (p *DetailPage) ToTool() *db.Tool {
 	return &p.Tool
+}
+
+// mapLanguageSlug maps language slugs from Terminal Trove URLs to internal values.
+// Handles special cases (e.g., 'cpp' → 'c++'); returns the slug unchanged for known matching values.
+func mapLanguageSlug(slug string) string {
+	switch slug {
+	case "cpp":
+		return "c++"
+	default:
+		return slug
+	}
 }
 
 // ParseError wraps a parsing error with context.

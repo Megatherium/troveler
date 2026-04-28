@@ -154,13 +154,21 @@ func runInstall(
 	result := install.ResolvePlatform(selector, installs, detectedOS, tool.Language)
 	resolvedID := platform.ResolveVirtual(result.PlatformID)
 
+	var matched []db.InstallInstruction
+
 	if result.UsedFallback && resolvedID == platformID {
-		displayNoInstallMethod(tool.Name, platformID, installs)
+		synthMatched, synthPlatform := install.TryResolveLangFallback(installs, platformID)
+		if len(synthMatched) > 0 {
+			matched = synthMatched
+			resolvedID = platform.ResolveVirtual(synthPlatform)
+		} else {
+			displayNoInstallMethod(tool.Name, platformID, installs)
 
-		return nil
+			return nil
+		}
+	} else {
+		matched = result.Installs
 	}
-
-	matched := result.Installs
 
 	if len(matched) == 0 {
 		fmt.Printf("No install command found for %s.\n\n", platformID)
@@ -184,11 +192,17 @@ func runInstall(
 
 	if runFlag {
 		cmd := matched[0].Command
+		effectiveUseSudo := useSudo
 		if platform.IsMiseLangPlatform(resolvedID) {
 			cmd = install.TransformToMise(cmd)
+			// Mise commands don't need sudo; don't prompt unless --sudo is explicit
+			if !sudoFlag {
+				effectiveUseSudo = ""
+			}
 		}
 
-		return executeInstall(cmd, sudoFlag, useSudo, alwaysRun)
+		// --run flag implies execute without confirmation
+		return executeInstall(cmd, sudoFlag, effectiveUseSudo, true)
 	}
 
 	return nil
