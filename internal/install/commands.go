@@ -58,6 +58,48 @@ func SelectDefaultCommand(
 	return platform.SelectDefaultDBInstalls(commands, usedFallback, detectedOS)
 }
 
+// PlatformResult holds the outcome of platform resolution with optional fallback retry.
+type PlatformResult struct {
+	PlatformID   string
+	Installs     []db.InstallInstruction
+	UsedFallback bool
+}
+
+// ResolvePlatform selects the platform, filters installs, and retries with the
+// configured fallback_platform when the detected OS yields no matching instructions.
+//
+// Resolution order:
+//  1. Selector picks platformID via normal priority (CLI > config > OS > fallback)
+//  2. Filter installs against platformID
+//  3. If no matches AND the platform came from OS detection (not override) AND
+//     a fallback_platform is configured, retry filtering with the fallback
+func ResolvePlatform(
+	selector *Selector, installs []db.InstallInstruction, detectedOS string, toolLanguage string,
+) PlatformResult {
+	platformID := selector.Select(detectedOS)
+	filtered, usedFallback := platform.FilterDBInstalls(installs, platformID, toolLanguage)
+
+	// If OS detection was used but yielded no matches, try the configured fallback_platform.
+	if usedFallback && platformID == detectedOS && detectedOS != "" {
+		if fb := selector.Fallback(); fb != "" {
+			fbFiltered, fbUsedFallback := platform.FilterDBInstalls(installs, fb, toolLanguage)
+			if !fbUsedFallback && len(fbFiltered) > 0 {
+				return PlatformResult{
+					PlatformID:   fb,
+					Installs:     fbFiltered,
+					UsedFallback: false,
+				}
+			}
+		}
+	}
+
+	return PlatformResult{
+		PlatformID:   platformID,
+		Installs:     filtered,
+		UsedFallback: usedFallback,
+	}
+}
+
 // TransformToMise rewrites a command into mise use format.
 func TransformToMise(command string) string {
 	return platform.TransformToMise(command)

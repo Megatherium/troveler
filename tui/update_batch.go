@@ -111,10 +111,10 @@ func (m *Model) processBatchTool(index int) tea.Cmd {
 		if osInfo != nil {
 			detectedOS = osInfo.ID
 		}
-		platform := selector.SelectPlatform(detectedOS)
 
-		filtered, _ := install.FilterCommands(installs, platform, tool.Language)
-		if len(filtered) == 0 {
+		result := install.ResolvePlatform(selector, installs, detectedOS, tool.Language)
+		filtered := result.Installs
+		if result.UsedFallback || len(filtered) == 0 {
 			if config != nil && config.SkipIfBlind {
 				return batchInstallProgressMsg{
 					toolID:  tool.ID,
@@ -128,7 +128,7 @@ func (m *Model) processBatchTool(index int) tea.Cmd {
 			}
 		}
 
-		defaultCmd := install.SelectDefaultCommand(filtered, false, detectedOS)
+		defaultCmd := install.SelectDefaultCommand(filtered, result.UsedFallback, detectedOS)
 		cmd := filtered[0].Command
 		if defaultCmd != nil {
 			cmd = defaultCmd.Command

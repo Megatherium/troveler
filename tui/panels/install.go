@@ -88,18 +88,17 @@ func (p *InstallPanel) SetTool(tool *db.Tool, installs []db.InstallInstruction) 
 	// Resolve virtual platforms (mise:* → source platform)
 	cliOverride := p.resolveCLIOverride()
 	selector := install.NewPlatformSelector(cliOverride, p.configOverride, p.fallback, tool.Language)
-	platformID := selector.SelectPlatform(detectedOS)
 
-	// Filter commands based on platform
-	filtered, usedFallback := install.FilterCommands(installs, platformID, tool.Language)
-	defaultCmd := install.SelectDefaultCommand(filtered, usedFallback, detectedOS)
+	// Use ResolvePlatform to try fallback_platform when detected OS yields no matches
+	result := install.ResolvePlatform(selector, installs, detectedOS, tool.Language)
+	defaultCmd := install.SelectDefaultCommand(result.Installs, result.UsedFallback, detectedOS)
 
-	p.commands = install.FormatCommands(filtered, defaultCmd)
+	p.commands = install.FormatCommands(result.Installs, defaultCmd)
 	p.appendVirtualCommands(installs)
 	if p.isMiseLangResolved() {
 		p.transformCommandsToMise()
 	}
-	p.usedFallback = usedFallback
+	p.usedFallback = result.UsedFallback
 	p.cursor = 0
 }
 

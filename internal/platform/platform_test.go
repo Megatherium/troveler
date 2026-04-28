@@ -160,6 +160,19 @@ func TestSelectorPriority(t *testing.T) {
 	}
 }
 
+func TestSelectorFallback(t *testing.T) {
+	s := NewSelector("", "", "brew", "go")
+
+	if s.Fallback() != "brew" {
+		t.Errorf("Expected Fallback()=brew, got %s", s.Fallback())
+	}
+
+	s2 := NewSelector("", "", "", "go")
+	if s2.Fallback() != "" {
+		t.Errorf("Expected empty Fallback(), got %s", s2.Fallback())
+	}
+}
+
 func TestFilterInstallsLang(t *testing.T) {
 	installs := []db.InstallInstruction{
 		{Platform: "go", Command: "go install"},

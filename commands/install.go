@@ -149,13 +149,18 @@ func runInstall(
 	}
 
 	platformID = platform.ResolveVirtual(platformID)
-	matched, usedFallback := platform.FilterDBInstalls(installs, platformID, tool.Language)
 
-	if usedFallback {
+	// Use ResolvePlatform to try fallback_platform when detected OS yields no matches
+	result := install.ResolvePlatform(selector, installs, detectedOS, tool.Language)
+	resolvedID := platform.ResolveVirtual(result.PlatformID)
+
+	if result.UsedFallback && resolvedID == platformID {
 		displayNoInstallMethod(tool.Name, platformID, installs)
 
 		return nil
 	}
+
+	matched := result.Installs
 
 	if len(matched) == 0 {
 		fmt.Printf("No install command found for %s.\n\n", platformID)
@@ -175,11 +180,11 @@ func runInstall(
 		return showAllInstalls(tool.Name, installs)
 	}
 
-	displayInstallCommands(platformID, matched)
+	displayInstallCommands(resolvedID, matched)
 
 	if runFlag {
 		cmd := matched[0].Command
-		if platform.IsMiseLangPlatform(platformID) {
+		if platform.IsMiseLangPlatform(resolvedID) {
 			cmd = install.TransformToMise(cmd)
 		}
 
@@ -270,16 +275,16 @@ func installSingleTool(
 	}
 
 	selector := platform.NewSelector("", cfg.Install.PlatformOverride, cfg.Install.FallbackPlatform, tool.Language)
-	platformID := selector.Select(detectedOS)
 
-	matched, usedFallback := platform.FilterDBInstalls(installs, platformID, tool.Language)
+	result := install.ResolvePlatform(selector, installs, detectedOS, tool.Language)
+	matched := result.Installs
 
-	if usedFallback || len(matched) == 0 {
+	if result.UsedFallback || len(matched) == 0 {
 		if batchCfg != nil && batchCfg.SkipIfBlind {
 			return fmt.Errorf("skipped: no compatible install method")
 		}
 
-		return fmt.Errorf("no compatible install method for %s", platformID)
+		return fmt.Errorf("no compatible install method for %s", result.PlatformID)
 	}
 
 	cmd := matched[0].Command

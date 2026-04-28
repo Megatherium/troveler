@@ -43,6 +43,11 @@ func (s *Selector) Select(detectedOS string) string {
 	return s.fallback
 }
 
+// Fallback returns the configured fallback platform value.
+func (s *Selector) Fallback() string {
+	return s.fallback
+}
+
 // SelectPlatform returns the platform ID to use. Alias for Select method.
 func (s *Selector) SelectPlatform(detectedOS string) string {
 	return s.Select(detectedOS)
