@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
 )
 
@@ -100,9 +101,9 @@ func (f *Fetcher) Fetch(ctx context.Context, url string) ([]byte, error) {
 
 			return nil, fmt.Errorf("fetch failed after %d attempts: %w", maxRetries, fetchErr)
 		}
-		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
+			_ = resp.Body.Close()
 			if attempt < maxRetries {
 				delay := time.Duration(attempt*attempt) * 100 * time.Millisecond
 				select {
@@ -117,6 +118,7 @@ func (f *Fetcher) Fetch(ctx context.Context, url string) ([]byte, error) {
 		}
 
 		body, err = io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
 		if err != nil {
 			if attempt < maxRetries {
 				delay := time.Duration(attempt*attempt) * 100 * time.Millisecond
@@ -145,50 +147,40 @@ func (f *Fetcher) Fetch(ctx context.Context, url string) ([]byte, error) {
 func (f *Fetcher) FetchSearchPagesConcurrently(ctx context.Context, totalPages int) (map[int][]byte, error) {
 	results := make(map[int][]byte)
 	var mu sync.Mutex
-	var wg sync.WaitGroup
-	errChan := make(chan error, totalPages)
 
 	pageChan := make(chan int, totalPages)
-
 	for i := 1; i <= totalPages; i++ {
 		pageChan <- i
 	}
 	close(pageChan)
 
+	g, gctx := errgroup.WithContext(ctx)
 	workerCount := 5
+
 	for range workerCount {
-		wg.Go(func() {
+		g.Go(func() error {
 			for page := range pageChan {
 				select {
-				case <-ctx.Done():
-					return
+				case <-gctx.Done():
+					return gctx.Err()
 				default:
 				}
 
-				data, err := f.FetchSearchPage(ctx, page)
+				data, err := f.FetchSearchPage(gctx, page)
 				if err != nil {
-					errChan <- fmt.Errorf("page %d: %w", page, err)
-
-					continue
+					return fmt.Errorf("page %d: %w", page, err)
 				}
 
 				mu.Lock()
 				results[page] = data
 				mu.Unlock()
 			}
+			return nil
 		})
 	}
 
-	wg.Wait()
-	close(errChan)
-
-	var errors []error
-	for err := range errChan {
-		errors = append(errors, err)
-	}
-
-	if len(errors) > 0 {
-		return results, fmt.Errorf("fetch errors: %v", errors)
+	if err := g.Wait(); err != nil {
+		return results, err
 	}
 
 	return results, nil
