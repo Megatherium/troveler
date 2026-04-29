@@ -58,8 +58,7 @@ type Model struct {
 	executeOutput string
 
 	// Batch install state
-	batchConfig   *BatchInstallConfig
-	batchProgress *BatchInstallProgress
+	batch *BatchInstallModel
 
 	// Update state
 	updating       bool
@@ -91,6 +90,7 @@ func NewModel(database *db.SQLiteDB, cfg *config.Config) *Model {
 		searchService: search.NewService(database),
 		modals:        NewModalManager(),
 		keys:          DefaultKeyMap(),
+		batch:         NewBatchInstallModel(database),
 		activePanel:   PanelSearch,
 		searchPanel:   searchPanel,
 		toolsPanel:    toolsPanel,

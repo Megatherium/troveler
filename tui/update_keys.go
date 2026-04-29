@@ -15,7 +15,7 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Layer 2: Batch config modal input
-	if m.modals.IsBatchConfigShown() && m.batchConfig != nil {
+	if m.modals.IsBatchConfigShown() && m.batch.IsConfigActive() {
 		return m.handleBatchConfigInput(msg)
 	}
 
@@ -67,7 +67,7 @@ func (m *Model) handleEscapeKey() (tea.Model, tea.Cmd) {
 	}, m.executing)
 	if closed != ModalNone {
 		if closed == ModalBatchConfig {
-			m.batchConfig = nil
+			m.batch.ClearConfig()
 		}
 		return m, cmd
 	}
@@ -175,8 +175,8 @@ func (m *Model) handleBatchConfigInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	optionIndex := int(r - '1')
-	m.batchConfig.SetCurrentStepValue(optionIndex)
-	if !m.batchConfig.NextStep() {
+	m.batch.SetStepValue(optionIndex)
+	if !m.batch.AdvanceStep() {
 		m.modals.CloseBatchConfig()
 
 		return m, m.startBatchInstall()

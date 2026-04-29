@@ -49,7 +49,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleInstallComplete(msg)
 
 	case batchInstallStartMsg:
-		return m, m.processBatchTool(0)
+		return m, m.batch.ProcessTool(0)
 
 	case batchInstallProgressMsg:
 		return m.handleBatchInstallProgress(msg)

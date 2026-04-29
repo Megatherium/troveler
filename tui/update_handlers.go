@@ -94,36 +94,19 @@ func (m *Model) handleInstallComplete(msg installCompleteMsg) (tea.Model, tea.Cm
 }
 
 func (m *Model) handleBatchInstallProgress(msg batchInstallProgressMsg) (tea.Model, tea.Cmd) {
-	if m.batchProgress == nil {
+	finished, nextIndex := m.batch.HandleProgress(msg)
+	if finished {
+		m.executing = false
+		m.toolsPanel.ClearMarks()
 		return m, nil
 	}
-
-	if msg.skipped {
-		m.batchProgress.Skipped = append(m.batchProgress.Skipped, msg.toolID)
-	} else if msg.err != nil {
-		m.batchProgress.Failed = append(m.batchProgress.Failed, msg.toolID)
-	} else {
-		m.batchProgress.Completed = append(m.batchProgress.Completed, msg.toolID)
-	}
-	m.batchProgress.CurrentOutput = msg.output
-	m.batchProgress.CurrentError = msg.err
-	m.batchProgress.CurrentIndex++
-
-	if m.batchProgress.CurrentIndex < len(m.batchProgress.Tools) {
-		return m, m.processBatchTool(m.batchProgress.CurrentIndex)
-	}
-	m.batchProgress.IsComplete = true
-	m.executing = false
-	m.toolsPanel.ClearMarks()
-
-	return m, nil
+	return m, m.batch.ProcessTool(nextIndex)
 }
 
 func (m *Model) handleBatchInstallComplete() (tea.Model, tea.Cmd) {
 	m.executing = false
-	if m.batchProgress != nil {
-		m.batchProgress.IsComplete = true
-	}
+	m.toolsPanel.ClearMarks()
+	m.batch.HandleComplete()
 
 	return m, nil
 }

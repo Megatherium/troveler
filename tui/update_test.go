@@ -129,7 +129,7 @@ func TestEscapeChain_InstallModalWhileExecuting(t *testing.T) {
 func TestEscapeChain_BatchConfigModal(t *testing.T) {
 	m := newTestModel(t)
 	m.modals.ShowBatchConfig()
-	m.batchConfig = &BatchInstallConfig{} // non-nil
+	m.batch.StartBatchConfig(false) // non-nil
 
 	updatedModel, _ := m.handleEscapeKey()
 	m2 := updatedModel.(*Model)
@@ -137,8 +137,8 @@ func TestEscapeChain_BatchConfigModal(t *testing.T) {
 	if m2.modals.IsBatchConfigShown() {
 		t.Error("Expected showBatchConfigModal to be false after escape")
 	}
-	if m2.batchConfig != nil {
-		t.Error("Expected batchConfig to be nil after escape from batch config modal")
+	if m2.batch.IsConfigActive() {
+		t.Error("Expected IsConfigActive() to be false after escape from batch config modal")
 	}
 }
 
@@ -476,7 +476,7 @@ func TestHandleKeyPress_GlobalKeys_Quit(t *testing.T) {
 func TestHandleKeyPress_BatchConfigModal_Option1(t *testing.T) {
 	m := newTestModel(t)
 	m.modals.ShowBatchConfig()
-	m.batchConfig = NewBatchInstallConfig()
+	m.batch.StartBatchConfig(false)
 
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'1'}}
 	updatedModel, _ := m.handleKeyPress(msg)
@@ -485,8 +485,8 @@ func TestHandleKeyPress_BatchConfigModal_Option1(t *testing.T) {
 	if !m2.modals.IsBatchConfigShown() {
 		t.Error("Expected batch config modal to stay open after selecting option (more steps)")
 	}
-	if m2.batchConfig.ConfigStep != 1 {
-		t.Errorf("Expected to advance to step 1, got %d", m2.batchConfig.ConfigStep)
+	if m2.batch.Config().ConfigStep != 1 {
+		t.Errorf("Expected to advance to step 1, got %d", m2.batch.Config().ConfigStep)
 	}
 }
 
@@ -494,8 +494,8 @@ func TestHandleKeyPress_BatchConfigModal_FinalOptionCloses(t *testing.T) {
 	m := newTestModel(t)
 	m.modals.ShowBatchConfig()
 	// Advance to step 4 (last step) and skip setting it
-	m.batchConfig = NewBatchInstallConfig()
-	m.batchConfig.ConfigStep = 4 // last step: "Use mise?"
+	m.batch.StartBatchConfig(false)
+	m.batch.SetStep(4) // last step: "Use mise?"
 
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'1'}}
 	updatedModel, cmd := m.handleKeyPress(msg)
@@ -513,17 +513,17 @@ func TestHandleKeyPress_BatchConfigModal_FinalOptionCloses(t *testing.T) {
 func TestHandleKeyPress_BatchConfigModal_Option2(t *testing.T) {
 	m := newTestModel(t)
 	m.modals.ShowBatchConfig()
-	m.batchConfig = NewBatchInstallConfig()
+	m.batch.StartBatchConfig(false)
 
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'2'}}
 	updatedModel, _ := m.handleKeyPress(msg)
 	m2 := updatedModel.(*Model)
 
-	if m2.batchConfig.ConfigStep != 1 {
-		t.Errorf("Expected to advance to step 1, got %d", m2.batchConfig.ConfigStep)
+	if m2.batch.Config().ConfigStep != 1 {
+		t.Errorf("Expected to advance to step 1, got %d", m2.batch.Config().ConfigStep)
 	}
 	// Option 2 on step 0 sets ReuseConfig = false
-	if m2.batchConfig.ReuseConfig {
+	if m2.batch.Config().ReuseConfig {
 		t.Error("Expected ReuseConfig to be false after selecting option 2")
 	}
 }
@@ -531,13 +531,13 @@ func TestHandleKeyPress_BatchConfigModal_Option2(t *testing.T) {
 func TestHandleKeyPress_BatchConfigModal_InvalidKey(t *testing.T) {
 	m := newTestModel(t)
 	m.modals.ShowBatchConfig()
-	m.batchConfig = NewBatchInstallConfig()
+	m.batch.StartBatchConfig(false)
 
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'9'}}
 	updatedModel, _ := m.handleKeyPress(msg)
 	m2 := updatedModel.(*Model)
 
-	if m2.batchConfig.ConfigStep != 0 {
+	if m2.batch.Config().ConfigStep != 0 {
 		t.Error("Expected step to not advance on invalid option key")
 	}
 }

@@ -114,7 +114,7 @@ func (mm *ModalManager) HandleEscape(
 }
 
 // CloseBatchConfig marks the batch config as done and clears its reference
-// (the caller is responsible for clearing m.batchConfig).
+// (the caller is responsible for clearing m.batch via ClearConfig).
 func (mm *ModalManager) CloseBatchConfig() {
 	mm.showBatchConfigModal = false
 }

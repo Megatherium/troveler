@@ -1,29 +1,11 @@
 package tui
 
 import (
-	"fmt"
-	"os/exec"
-
 	tea "github.com/charmbracelet/bubbletea"
 
-	"troveler/db"
 	"troveler/internal/install"
-	"troveler/internal/platform"
 	"troveler/tui/panels"
 )
-
-type batchInstallStartMsg struct {
-	tools []db.SearchResult
-}
-
-type batchInstallProgressMsg struct {
-	toolID  string
-	output  string
-	err     error
-	skipped bool
-}
-
-type batchInstallCompleteMsg struct{}
 
 func (m *Model) startBatchInstall() tea.Cmd {
 	markedTools := m.toolsPanel.GetMarkedTools()
@@ -31,18 +13,14 @@ func (m *Model) startBatchInstall() tea.Cmd {
 		return nil
 	}
 
-	m.batchProgress = NewBatchInstallProgress(markedTools)
-	m.modals.ShowInstall()
 	m.executing = true
-
-	return func() tea.Msg {
-		return batchInstallStartMsg{tools: markedTools}
-	}
+	m.modals.ShowInstall()
+	return m.batch.StartInstall(markedTools)
 }
 
 func (m *Model) handleAltIKey() (tea.Model, tea.Cmd, bool) {
 	if m.toolsPanel.GetMarkedCount() > 0 {
-		m.batchConfig = NewBatchInstallConfig()
+		m.batch.StartBatchConfig(false)
 		m.modals.ShowBatchConfig()
 
 		return m, nil, true
@@ -61,8 +39,7 @@ func (m *Model) handleAltIKey() (tea.Model, tea.Cmd, bool) {
 
 func (m *Model) handleAltMKey() (tea.Model, tea.Cmd, bool) {
 	if m.toolsPanel.GetMarkedCount() > 0 {
-		m.batchConfig = NewBatchInstallConfig()
-		m.batchConfig.UseMise = true
+		m.batch.StartBatchConfig(true)
 		m.modals.ShowBatchConfig()
 
 		return m, nil, true
@@ -79,86 +56,6 @@ func (m *Model) handleAltMKey() (tea.Model, tea.Cmd, bool) {
 	}
 
 	return m, nil, true
-}
-
-func (m *Model) processBatchTool(index int) tea.Cmd {
-	if m.batchProgress == nil || index >= len(m.batchProgress.Tools) {
-		return func() tea.Msg { return batchInstallCompleteMsg{} }
-	}
-
-	tool := m.batchProgress.Tools[index]
-	config := m.batchConfig
-
-	return func() tea.Msg {
-		installs, err := m.db.GetInstallInstructions(tool.ID)
-		if err != nil || len(installs) == 0 {
-			if config != nil && config.SkipIfBlind {
-				return batchInstallProgressMsg{
-					toolID:  tool.ID,
-					skipped: true,
-				}
-			}
-
-			return batchInstallProgressMsg{
-				toolID: tool.ID,
-				err:    fmt.Errorf("no install instructions found"),
-			}
-		}
-
-		selector := install.NewPlatformSelector("", "", "", tool.Language)
-		osInfo, _ := platform.DetectOS()
-		detectedOS := ""
-		if osInfo != nil {
-			detectedOS = osInfo.ID
-		}
-
-		result := install.ResolvePlatform(selector, installs, detectedOS, tool.Language)
-		filtered := result.Installs
-		if result.UsedFallback || len(filtered) == 0 {
-			synthMatched, _ := install.TryResolveLangFallback(installs, result.PlatformID)
-			if len(synthMatched) > 0 {
-				filtered = synthMatched
-			} else {
-				if config != nil && config.SkipIfBlind {
-					return batchInstallProgressMsg{
-						toolID:  tool.ID,
-						skipped: true,
-					}
-				}
-
-				return batchInstallProgressMsg{
-					toolID: tool.ID,
-					err:    fmt.Errorf("no compatible install method"),
-				}
-			}
-		}
-
-		defaultCmd := install.SelectDefaultCommand(filtered, result.UsedFallback, detectedOS)
-		cmd := filtered[0].Command
-		if defaultCmd != nil {
-			cmd = defaultCmd.Command
-		}
-
-		if config != nil && config.UseMise {
-			cmd = install.TransformToMise(cmd)
-		}
-
-		if config != nil && config.UseSudo {
-			isSystemPM := isSystemPackageManager(filtered[0].Platform)
-			if !config.SudoOnlySystem || isSystemPM {
-				cmd = "sudo " + cmd
-			}
-		}
-
-		execCmd := exec.Command("sh", "-c", cmd) //nolint:noctx,gosec // G204: user install command
-		output, err := execCmd.CombinedOutput()
-
-		return batchInstallProgressMsg{
-			toolID: tool.ID,
-			output: string(output),
-			err:    err,
-		}
-	}
 }
 
 func isSystemPackageManager(platform string) bool {
