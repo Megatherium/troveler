@@ -2,6 +2,8 @@ package db
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 )
 
@@ -126,6 +128,58 @@ func (s *SQLiteDB) GetInstallInstructions(toolID string) ([]InstallInstruction, 
 	}
 
 	return insts, rows.Err()
+}
+
+const sqliteVarLimit = 500
+
+// GetInstallInstructionsBatch returns install instructions for multiple tools
+// in a single round-trip (chunked to respect SQLite's variable limit).
+// Returns a map keyed by tool_id.
+func (s *SQLiteDB) GetInstallInstructionsBatch(ctx context.Context, toolIDs []string) (map[string][]InstallInstruction, error) {
+	result := make(map[string][]InstallInstruction, len(toolIDs))
+	if len(toolIDs) == 0 {
+		return result, nil
+	}
+
+	query := `SELECT id, tool_id, platform, command, executable_name, created_at FROM install_instructions WHERE tool_id IN (%s)`
+
+	for i := 0; i < len(toolIDs); i += sqliteVarLimit {
+		end := i + sqliteVarLimit
+		if end > len(toolIDs) {
+			end = len(toolIDs)
+		}
+		chunk := toolIDs[i:end]
+
+		placeholders := strings.Repeat("?,", len(chunk))
+		placeholders = placeholders[:len(placeholders)-1]
+
+		args := make([]interface{}, len(chunk))
+		for j, id := range chunk {
+			args[j] = id
+		}
+
+		rows, err := s.getDB().QueryContext(ctx, fmt.Sprintf(query, placeholders), args...)
+		if err != nil {
+			return nil, err
+		}
+
+		for rows.Next() {
+			var inst InstallInstruction
+			if err := rows.Scan(
+				&inst.ID, &inst.ToolID, &inst.Platform, &inst.Command, &inst.ExecutableName, &inst.CreatedAt,
+			); err != nil {
+				_ = rows.Close()
+				return nil, err
+			}
+			result[inst.ToolID] = append(result[inst.ToolID], inst)
+		}
+		_ = rows.Close()
+		if err := rows.Err(); err != nil {
+			return nil, err
+		}
+	}
+
+	return result, nil
 }
 
 // ToolCount returns the total number of tools.

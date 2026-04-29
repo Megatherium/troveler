@@ -43,6 +43,44 @@ func isCommandAvailable(name string) bool {
 	return err == nil
 }
 
+// BuildLookPathCache resolves all unique executable names from install
+// instructions and returns a map of name → available-on-PATH.
+// This collapses N LookPath calls down to the number of distinct names.
+func BuildLookPathCache(installsByTool map[string][]InstallInstruction) map[string]bool {
+	uniqueNames := make(map[string]struct{})
+	for _, installs := range installsByTool {
+		for _, inst := range installs {
+			name := resolveExecutableName(inst)
+			if name != "" {
+				uniqueNames[name] = struct{}{}
+			}
+		}
+	}
+
+	cache := make(map[string]bool, len(uniqueNames))
+	for name := range uniqueNames {
+		cache[name] = isCommandAvailable(name)
+	}
+
+	return cache
+}
+
+// IsInstalledCached checks if a tool is installed using a pre-built LookPath cache.
+func IsInstalledCached(tool *Tool, installs []InstallInstruction, cache map[string]bool) bool {
+	if tool == nil || len(installs) == 0 {
+		return false
+	}
+
+	for _, inst := range installs {
+		name := resolveExecutableName(inst)
+		if name != "" && cache[name] {
+			return true
+		}
+	}
+
+	return false
+}
+
 // resolver defines how to extract an executable name from an install command.
 type resolver struct {
 	pattern *regexp.Regexp

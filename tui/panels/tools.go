@@ -1,6 +1,7 @@
 package panels
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -434,14 +435,25 @@ func (p *ToolsPanel) UpdateToolInstalledStatus(toolID string, isInstalled bool) 
 	}
 }
 
-// UpdateAllInstalledStatus updates the installed status for all tools using their install instructions
-func (p *ToolsPanel) UpdateAllInstalledStatus(getInstalls func(string) ([]db.InstallInstruction, error)) {
+// UpdateAllInstalledStatus updates the installed status for all tools using
+// batch-fetched install instructions and a deduplicated LookPath cache.
+func (p *ToolsPanel) UpdateAllInstalledStatus(database *db.SQLiteDB) {
+	toolIDs := make([]string, len(p.tools))
+	for i, t := range p.tools {
+		toolIDs[i] = t.ID
+	}
+
+	installsByTool, err := database.GetInstallInstructionsBatch(context.Background(), toolIDs)
+	if err != nil {
+		return
+	}
+
+	pathCache := db.BuildLookPathCache(installsByTool)
+
 	for i := range p.tools {
-		installs, err := getInstalls(p.tools[i].ID)
-		if err == nil {
-			p.tools[i].Installed = db.IsInstalled(&p.tools[i].Tool, installs)
-			p.installedMap[p.tools[i].ID] = p.tools[i].Installed
-		}
+		installs := installsByTool[p.tools[i].ID]
+		p.tools[i].Installed = db.IsInstalledCached(&p.tools[i].Tool, installs, pathCache)
+		p.installedMap[p.tools[i].ID] = p.tools[i].Installed
 	}
 }
 

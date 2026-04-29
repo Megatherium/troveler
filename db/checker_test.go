@@ -385,3 +385,94 @@ func TestIsInstalled_FallsBackToParsing(t *testing.T) {
 		t.Error("IsInstalled should return true when parsed command resolves to an available command")
 	}
 }
+
+func TestBuildLookPathCache_DeduplicatesNames(t *testing.T) {
+	installsByTool := map[string][]InstallInstruction{
+		"tool-1": {
+			{Command: "brew install go"},
+			{Command: "cargo install ripgrep"},
+		},
+		"tool-2": {
+			{Command: "brew install go"},        // duplicate name "go"
+			{Command: "npm install -g eslint"},  // unique name "eslint"
+		},
+	}
+
+	cache := BuildLookPathCache(installsByTool)
+
+	// Should have exactly 3 unique names: go, ripgrep, eslint
+	if len(cache) != 3 {
+		t.Errorf("expected 3 unique names, got %d", len(cache))
+	}
+
+	// "go" is available on this system
+	if !cache["go"] {
+		t.Error("expected 'go' to be in cache as available")
+	}
+}
+
+func TestBuildLookPathCache_EmptyInput(t *testing.T) {
+	cache := BuildLookPathCache(nil)
+	if len(cache) != 0 {
+		t.Errorf("expected empty cache for nil input, got %d entries", len(cache))
+	}
+
+	cache = BuildLookPathCache(map[string][]InstallInstruction{})
+	if len(cache) != 0 {
+		t.Errorf("expected empty cache for empty map, got %d entries", len(cache))
+	}
+}
+
+func TestIsInstalledCached_CacheHit(t *testing.T) {
+	tool := &Tool{ID: "test"}
+	installs := []InstallInstruction{
+		{Command: "brew install mytool"},
+	}
+	cache := map[string]bool{"mytool": true}
+
+	if !IsInstalledCached(tool, installs, cache) {
+		t.Error("expected true when cache has executable as available")
+	}
+}
+
+func TestIsInstalledCached_CacheMiss(t *testing.T) {
+	tool := &Tool{ID: "test"}
+	installs := []InstallInstruction{
+		{Command: "brew install absent-tool"},
+	}
+	cache := map[string]bool{"absent-tool": false}
+
+	if IsInstalledCached(tool, installs, cache) {
+		t.Error("expected false when cache has executable as unavailable")
+	}
+}
+
+func TestIsInstalledCached_NilTool(t *testing.T) {
+	cache := map[string]bool{"go": true}
+	if IsInstalledCached(nil, []InstallInstruction{{Command: "brew install go"}}, cache) {
+		t.Error("expected false for nil tool")
+	}
+}
+
+func TestIsInstalledCached_EmptyInstalls(t *testing.T) {
+	tool := &Tool{ID: "test"}
+	cache := map[string]bool{"go": true}
+	if IsInstalledCached(tool, nil, cache) {
+		t.Error("expected false for nil installs")
+	}
+	if IsInstalledCached(tool, []InstallInstruction{}, cache) {
+		t.Error("expected false for empty installs")
+	}
+}
+
+func TestIsInstalledCached_UsesExecutableName(t *testing.T) {
+	tool := &Tool{ID: "test"}
+	installs := []InstallInstruction{
+		{Command: "npm install -g @scope/wrong-name", ExecutableName: "my-real-bin"},
+	}
+	cache := map[string]bool{"my-real-bin": true}
+
+	if !IsInstalledCached(tool, installs, cache) {
+		t.Error("expected true when ExecutableName matches cache")
+	}
+}

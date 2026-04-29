@@ -91,10 +91,23 @@ func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResu
 		return nil, err
 	}
 
+	// Batch-fetch install instructions (1 query instead of N)
+	toolIDs := make([]string, len(tools))
+	for i, t := range tools {
+		toolIDs[i] = t.ID
+	}
+	installsByTool, err := s.GetInstallInstructionsBatch(ctx, toolIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build LookPath cache (deduplicated — one stat per unique executable name)
+	pathCache := BuildLookPathCache(installsByTool)
+
 	var results []SearchResult
 	for _, t := range tools {
-		installs, _ := s.GetInstallInstructions(t.ID)
-		t.Installed = IsInstalled(&t, installs)
+		installs := installsByTool[t.ID]
+		t.Installed = IsInstalledCached(&t, installs, pathCache)
 		results = append(results, SearchResult{Tool: t})
 	}
 

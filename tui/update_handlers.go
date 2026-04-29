@@ -19,7 +19,7 @@ func (m *Model) handleSearchResult(msg searchResultMsg) (tea.Model, tea.Cmd) {
 	m.toolsPanel.SetTools(msg.tools)
 	m.searching = false
 
-	m.toolsPanel.UpdateAllInstalledStatus(m.db.GetInstallInstructions)
+	m.toolsPanel.UpdateAllInstalledStatus(m.db)
 
 	if len(msg.tools) > 0 {
 		firstTool := &msg.tools[0].Tool
