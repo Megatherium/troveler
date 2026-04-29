@@ -28,7 +28,7 @@ func (m *Model) View() string {
 	case ModalInfo:
 		return m.modals.ViewInfo(m.width, m.height, m.selectedTool, m.installs)
 	case ModalUpdate:
-		return m.modals.ViewUpdate(m.width, m.height, m.updating, m.updateSlugWave)
+		return m.modals.ViewUpdate(m.width, m.height, m.update.IsRunning(), m.update.SlugWave())
 	case ModalInstall:
 		return m.modals.ViewInstall(m.width, m.height, m.executing, m.executeOutput, m.err, m.batch.Progress())
 	case ModalBatchConfig:

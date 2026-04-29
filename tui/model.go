@@ -8,7 +8,6 @@ import (
 	"troveler/config"
 	"troveler/db"
 	"troveler/internal/search"
-	"troveler/internal/update"
 	"troveler/tui/panels"
 )
 
@@ -61,11 +60,7 @@ type Model struct {
 	batch *BatchInstallModel
 
 	// Update state
-	updating       bool
-	updateService  *update.Service
-	updateSlugWave *update.SlugWave
-	updateProgress chan update.ProgressUpdate
-	updateCancel   context.CancelFunc
+	update *UpdateModel
 
 	// Error state
 	err error
@@ -91,6 +86,7 @@ func NewModel(database *db.SQLiteDB, cfg *config.Config) *Model {
 		modals:        NewModalManager(),
 		keys:          DefaultKeyMap(),
 		batch:         NewBatchInstallModel(database),
+		update:        NewUpdateModel(database),
 		activePanel:   PanelSearch,
 		searchPanel:   searchPanel,
 		toolsPanel:    toolsPanel,

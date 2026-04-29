@@ -112,39 +112,18 @@ func (m *Model) handleBatchInstallComplete() (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) handleUpdateProgress(msg updateProgressMsg) (tea.Model, tea.Cmd) {
-	upd := update.ProgressUpdate(msg)
+	m.update.HandleProgress(update.ProgressUpdate(msg))
 
-	if upd.Type == "progress" && upd.Total > 0 && m.updateSlugWave == nil {
-		m.updateSlugWave = update.NewSlugWave(upd.Total)
-	}
-
-	if upd.Type == "slug" && m.updateSlugWave != nil {
-		m.updateSlugWave.AddSlug(upd.Slug)
-		m.updateSlugWave.IncProcessed()
-	}
-
-	if upd.Type == "complete" {
-		m.updating = false
-
+	if update.ProgressUpdate(msg).Type == "complete" || update.ProgressUpdate(msg).Type == "error" {
 		return m, nil
 	}
 
-	if upd.Type == "error" {
-		m.updating = false
-		m.err = upd.Error
-
-		return m, nil
-	}
-
-	return m, m.listenForUpdates()
+	return m, m.update.listen()
 }
 
 func (m *Model) handleSlugTick() (tea.Model, tea.Cmd) {
-	if m.updating && m.updateSlugWave != nil {
-		m.updateSlugWave.AdvanceFrame()
-
-		return m, m.tickSlugWave()
+	if cmd := m.update.HandleTick(); cmd != nil {
+		return m, cmd
 	}
-
 	return m, nil
 }

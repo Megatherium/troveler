@@ -87,7 +87,7 @@ func TestEscapeChain_InfoModal(t *testing.T) {
 func TestEscapeChain_UpdateModal(t *testing.T) {
 	m := newTestModel(t)
 	m.modals.ShowUpdate()
-	m.updating = false // not running — should close
+	// update not running — should close
 
 	updatedModel, _ := m.handleEscapeKey()
 	m2 := updatedModel.(*Model)
@@ -95,8 +95,8 @@ func TestEscapeChain_UpdateModal(t *testing.T) {
 	if m2.modals.IsUpdateShown() {
 		t.Error("Expected showUpdateModal to be false after escape")
 	}
-	if m2.updating {
-		t.Error("Expected updating to be false after closing update modal")
+	if m2.update.IsRunning() {
+		t.Error("Expected update.IsRunning to be false after closing update modal")
 	}
 }
 

@@ -1,10 +1,8 @@
 package tui
 
 import (
-	"context"
 	"os/exec"
 	"runtime"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -45,42 +43,6 @@ func (m *Model) openRepositoryURL() tea.Cmd {
 
 		return nil
 	}
-}
-
-func (m *Model) startUpdate() tea.Cmd {
-	ctx, cancel := context.WithCancel(context.Background())
-	m.updateCancel = cancel
-
-	opts := update.Options{
-		Limit:    0,
-		Progress: m.updateProgress,
-	}
-
-	go func() {
-		_ = m.updateService.FetchAndUpdate(ctx, opts)
-	}()
-
-	return m.listenForUpdates()
-}
-
-func (m *Model) listenForUpdates() tea.Cmd {
-	return func() tea.Msg {
-		if m.updateProgress == nil {
-			return nil
-		}
-		upd, ok := <-m.updateProgress
-		if !ok {
-			return updateProgressMsg{Type: "complete"}
-		}
-
-		return updateProgressMsg(upd)
-	}
-}
-
-func (m *Model) tickSlugWave() tea.Cmd {
-	return tea.Tick(time.Millisecond*33, func(_ time.Time) tea.Msg {
-		return slugTickMsg{}
-	})
 }
 
 type updateProgressMsg update.ProgressUpdate

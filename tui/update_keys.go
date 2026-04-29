@@ -4,7 +4,6 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"troveler/internal/update"
 	"troveler/tui/panels"
 )
 
@@ -58,12 +57,7 @@ func (m *Model) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 func (m *Model) handleEscapeKey() (tea.Model, tea.Cmd) {
 	// Delegate modal escape handling to ModalManager.
 	closed, cmd := m.modals.HandleEscape(func() {
-		if m.updateCancel != nil {
-			m.updateCancel()
-			m.updateCancel = nil
-		}
-		m.updating = false
-		m.updateProgress = nil
+		m.update.Close()
 	}, m.executing)
 	if closed != ModalNone {
 		if closed == ModalBatchConfig {
@@ -111,13 +105,8 @@ func (m *Model) handleActionKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 
 func (m *Model) handleUpdateKey() (tea.Model, tea.Cmd, bool) {
 	m.modals.ShowUpdate()
-	m.updating = true
-	m.updateProgress = make(chan update.ProgressUpdate, 100)
 
-	return m, tea.Batch(
-		m.startUpdate(),
-		m.tickSlugWave(),
-	), true
+	return m, m.update.StartProgress(), true
 }
 
 func (m *Model) handleInfoModalKey() (tea.Model, tea.Cmd, bool) {
