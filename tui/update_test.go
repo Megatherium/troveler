@@ -618,12 +618,28 @@ func TestHandleKeyPress_InfoModalKey_FromSearchPanel(t *testing.T) {
 }
 
 // ============================================================================
-// NOTE: Alt+U (update key) routing cannot be tested yet because
-// updateService is nil in NewModel(), causing a nil-pointer dereference
-// in the goroutine spawned by startUpdate(). This will be fixed
-// when UpdateModel is extracted in tr-bb7.
-// See: TestHandleKeyPress_UpdateKey_IsHandled removed due to this bug.
+// Alt+U (update key) routing
 // ============================================================================
+
+func TestHandleKeyPress_UpdateKey_IsHandled(t *testing.T) {
+	m := newTestModelWithDB(t)
+
+	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}, Alt: true}
+	updatedModel, _, handled := m.handleActionKeys(msg)
+
+	if !handled {
+		t.Error("Expected Alt+U to be handled as update action")
+	}
+	if !updatedModel.(*Model).modals.IsUpdateShown() {
+		t.Error("Expected showUpdateModal to be true after pressing Alt+U")
+	}
+	if !updatedModel.(*Model).update.IsRunning() {
+		t.Error("Expected update.IsRunning to be true after pressing Alt+U")
+	}
+
+	// Clean up: close the update to cancel the goroutine and release resources
+	updatedModel.(*Model).update.Close()
+}
 
 // ============================================================================
 // Search panel text input delegation
