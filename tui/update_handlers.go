@@ -112,9 +112,15 @@ func (m *Model) handleBatchInstallComplete() (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) handleUpdateProgress(msg updateProgressMsg) (tea.Model, tea.Cmd) {
-	m.update.HandleProgress(update.ProgressUpdate(msg))
+	upd := update.ProgressUpdate(msg)
+	m.update.HandleProgress(upd)
 
-	if update.ProgressUpdate(msg).Type == "complete" || update.ProgressUpdate(msg).Type == "error" {
+	if upd.Type == "error" {
+		m.err = upd.Error
+		return m, nil
+	}
+
+	if upd.Type == "complete" {
 		return m, nil
 	}
 
