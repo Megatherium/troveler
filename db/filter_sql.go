@@ -8,7 +8,6 @@ import (
 const (
 	filterFieldInstalled = "installed"
 	filterFieldName      = "name"
-	filterValueTrue      = "true"
 )
 
 // BuildWhereClause converts a Filter AST to SQL WHERE clauses
@@ -103,32 +102,6 @@ func buildFieldFilter(field, value string) (string, []interface{}) {
 	}
 }
 
-// filterByInstalled handles the special 'installed' field filter (post-query)
-func filterByInstalled(results []SearchResult, filter *Filter) []SearchResult {
-	if filter == nil {
-		return results
-	}
-
-	if !hasInstalledFilter(filter) {
-		return results
-	}
-
-	value, negated := getInstalledFilterInfo(filter, false)
-
-	var filtered []SearchResult
-	for _, r := range results {
-		wantInstalled := (value == filterValueTrue || value == "1")
-		if negated {
-			wantInstalled = !wantInstalled
-		}
-		if wantInstalled == r.Installed {
-			filtered = append(filtered, r)
-		}
-	}
-
-	return filtered
-}
-
 // hasInstalledFilter checks if the filter AST contains an installed field filter
 func hasInstalledFilter(filter *Filter) bool {
 	if filter == nil {
@@ -147,6 +120,30 @@ func hasInstalledFilter(filter *Filter) bool {
 	}
 
 	return false
+}
+
+// hasInstalledInOrContext checks whether the installed field filter appears
+// inside an OR node. When installed is OR-combined with other conditions
+// (e.g., OR(installed=true, language=go)), the SQL WHERE already handles the
+// non-installed branch (language=go), and a Go-side installed filter would
+// incorrectly exclude those results. In that case the Go-side filter must be
+// skipped entirely.
+func hasInstalledInOrContext(filter *Filter) bool {
+	if filter == nil {
+		return false
+	}
+
+	if filter.Type == FilterOr {
+		if hasInstalledFilter(filter.Left) || hasInstalledFilter(filter.Right) {
+			return true
+		}
+	}
+
+	if hasInstalledInOrContext(filter.Left) {
+		return true
+	}
+
+	return hasInstalledInOrContext(filter.Right)
 }
 
 // getInstalledFilterValue extracts the value from an installed filter

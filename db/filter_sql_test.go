@@ -251,12 +251,7 @@ func TestGetInstalledFilterInfoDoubleNegation(t *testing.T) {
 	}
 }
 
-func TestFilterByInstalledNot(t *testing.T) {
-	results := []SearchResult{
-		{Tool: Tool{ID: "1", Installed: true}},
-		{Tool: Tool{ID: "2", Installed: false}},
-	}
-
+func TestInstalledFilterValueNot(t *testing.T) {
 	filter := &Filter{
 		Type: FilterNot,
 		Left: &Filter{
@@ -266,12 +261,89 @@ func TestFilterByInstalledNot(t *testing.T) {
 		},
 	}
 
-	filtered := filterByInstalled(results, filter)
+	wantInstalled, negated := installedFilterValue(filter)
 
-	if len(filtered) != 1 {
-		t.Fatalf("expected 1 result, got %d", len(filtered))
+	if !wantInstalled {
+		t.Errorf("expected wantInstalled=true, got false")
 	}
-	if filtered[0].ID != "2" {
-		t.Errorf("expected ID '2' (not installed), got '%s'", filtered[0].ID)
+	if !negated {
+		t.Errorf("expected negated=true")
+	}
+}
+
+func TestHasInstalledInOrContextTrue(t *testing.T) {
+	// OR(installed=true, language=go) — installed in OR context
+	filter := &Filter{
+		Type: FilterOr,
+		Left: &Filter{
+			Type:  FilterField,
+			Field: "installed",
+			Value: "true",
+		},
+		Right: &Filter{
+			Type:  FilterField,
+			Field: "language",
+			Value: "go",
+		},
+	}
+
+	if !hasInstalledInOrContext(filter) {
+		t.Errorf("expected hasInstalledInOrContext=true for OR(installed, language)")
+	}
+}
+
+func TestHasInstalledInOrContextFalse(t *testing.T) {
+	// AND(installed=true, language=go) — installed NOT in OR context
+	filter := &Filter{
+		Type: FilterAnd,
+		Left: &Filter{
+			Type:  FilterField,
+			Field: "installed",
+			Value: "true",
+		},
+		Right: &Filter{
+			Type:  FilterField,
+			Field: "language",
+			Value: "go",
+		},
+	}
+
+	if hasInstalledInOrContext(filter) {
+		t.Errorf("expected hasInstalledInOrContext=false for AND(installed, language)")
+	}
+}
+
+func TestHasInstalledInOrContextNil(t *testing.T) {
+	if hasInstalledInOrContext(nil) {
+		t.Errorf("expected hasInstalledInOrContext=false for nil")
+	}
+}
+
+func TestHasInstalledInOrContextNestedOr(t *testing.T) {
+	// AND(OR(installed=true, language=go), tag=cli) — installed in nested OR
+	filter := &Filter{
+		Type: FilterAnd,
+		Left: &Filter{
+			Type: FilterOr,
+			Left: &Filter{
+				Type:  FilterField,
+				Field: "installed",
+				Value: "true",
+			},
+			Right: &Filter{
+				Type:  FilterField,
+				Field: "language",
+				Value: "go",
+			},
+		},
+		Right: &Filter{
+			Type:  FilterField,
+			Field: "tag",
+			Value: "cli",
+		},
+	}
+
+	if !hasInstalledInOrContext(filter) {
+		t.Errorf("expected hasInstalledInOrContext=true for nested OR")
 	}
 }

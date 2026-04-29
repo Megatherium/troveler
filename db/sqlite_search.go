@@ -3,19 +3,36 @@ package db
 import (
 	"context"
 	"fmt"
-	"sort"
-	"strings"
 )
 
 const (
-	defaultUnfilteredLimit = 100000
-	sortOrderDesc          = "DESC"
-	sortOrderDescLower     = "desc"
-	sortOrderAsc           = "ASC"
-	sortFieldName          = "name"
+	sortOrderDesc      = "DESC"
+	sortOrderDescLower = "desc"
+	sortOrderAsc       = "ASC"
+	sortFieldName      = "name"
+
+	// installedOverfetchFactor controls how many extra rows we fetch when
+	// the installed filter is active. Since we can't filter by "installed"
+	// in SQL (it requires a runtime LookPath check), we over-fetch by this
+	// multiplier and then trim in Go. A factor of 4 means we fetch 4x the
+	// requested limit, which is sufficient for most real-world installed ratios.
+	installedOverfetchFactor = 4
+
+	// installedOverfetchMax caps the over-fetch to avoid pulling excessive rows
+	// even with large limits. Only applies when the caller specifies a limit > 0.
+	installedOverfetchMax = 500
+
+	// installedNoLimitFallback is used when the caller requests limit=0 (no limit)
+	// and the installed filter is active. We must fetch all rows since we can't
+	// predict how many will be filtered out.
+	installedNoLimitFallback = 100000
 )
 
 // Search queries tools matching opts, applying filters and sorting.
+// Sorting and limiting are always pushed to SQLite via ORDER BY / LIMIT.
+// The "installed" filter is resolved in Go (requires exec.LookPath) using
+// an over-fetch strategy: we fetch more rows than requested, resolve
+// installed status, filter, and trim to the actual limit.
 func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResult, error) {
 	allowedFields := map[string]string{
 		"name":           "name",
@@ -34,7 +51,9 @@ func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResu
 		sortOrder = sortOrderDesc
 	}
 
-	hasInstalled := hasInstalledFilter(opts.Filter)
+	// COLLATE NOCASE preserves the case-insensitive sort behavior that the old
+	// in-memory compareASC provided via strings.ToLower.
+	orderByClause := sortField + " COLLATE NOCASE " + sortOrder
 
 	whereClause, args := BuildWhereClause(opts.Filter, opts.Query)
 
@@ -44,30 +63,23 @@ func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResu
 		args = []interface{}{likeQuery, likeQuery, likeQuery}
 	}
 
-	limit := opts.Limit
+	// Determine SQL LIMIT: over-fetch when installed filter is active
+	// since we can't filter by installed in SQL.
+	sqlLimit := opts.Limit
+	hasInstalled := hasInstalledFilter(opts.Filter)
 	if hasInstalled {
-		limit = defaultUnfilteredLimit
+		sqlLimit = overfetchLimit(opts.Limit)
 	}
 
-	var sqlQuery string
-	if hasInstalled {
-		sqlQuery = fmt.Sprintf(`
-			SELECT id, slug, name, tagline, description, language, license, date_published, code_repository, tool_of_the_week
-			FROM tools
-			WHERE %s
-			LIMIT ?
-		`, whereClause)
-	} else {
-		sqlQuery = fmt.Sprintf(`
-			SELECT id, slug, name, tagline, description, language, license, date_published, code_repository, tool_of_the_week
-			FROM tools
-			WHERE %s
-			ORDER BY %s %s
-			LIMIT ?
-		`, whereClause, sortField, sortOrder)
-	}
+	sqlQuery := fmt.Sprintf(`
+		SELECT id, slug, name, tagline, description, language, license, date_published, code_repository, tool_of_the_week
+		FROM tools
+		WHERE %s
+		ORDER BY %s
+		LIMIT ?
+	`, whereClause, orderByClause)
 
-	args = append(args, limit)
+	args = append(args, sqlLimit)
 
 	rows, err := s.getDB().QueryContext(ctx, sqlQuery, args...)
 	if err != nil {
@@ -104,67 +116,71 @@ func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResu
 	// Build LookPath cache (deduplicated — one stat per unique executable name)
 	pathCache := BuildLookPathCache(installsByTool)
 
+	// Resolve installed status and apply installed filter in one pass.
+	// Results are already sorted by SQLite, so we just need to filter
+	// by installed status and trim to the requested limit.
+	//
+	// When installed appears in an OR context (e.g., OR(installed=true, language=go)),
+	// the SQL WHERE already handles the non-installed branch. Applying a Go-side
+	// filter would incorrectly exclude those results, so we skip it.
+	skipGoFilter := hasInstalled && hasInstalledInOrContext(opts.Filter)
+	wantInstalled, negated := false, false
+	if hasInstalled && !skipGoFilter {
+		wantInstalled, negated = installedFilterValue(opts.Filter)
+	}
+
 	var results []SearchResult
 	for _, t := range tools {
 		installs := installsByTool[t.ID]
 		t.Installed = IsInstalledCached(&t, installs, pathCache)
-		results = append(results, SearchResult{Tool: t})
-	}
 
-	if hasInstalled {
-		results = filterByInstalled(results, opts.Filter)
-		results = sortAndLimitResults(results, opts.SortField, sortOrder, opts.Limit)
+		if hasInstalled && !skipGoFilter {
+			match := t.Installed == wantInstalled
+			if negated {
+				match = !match
+			}
+			if !match {
+				continue
+			}
+		}
+
+		results = append(results, SearchResult{Tool: t})
+
+		// Early exit: we have enough results after filtering
+		if hasInstalled && !skipGoFilter && opts.Limit > 0 && len(results) >= opts.Limit {
+			break
+		}
 	}
 
 	return results, nil
 }
 
-func sortAndLimitResults(results []SearchResult, sortField, sortOrder string, limit int) []SearchResult {
-	if len(results) == 0 {
-		return results
+// overfetchLimit computes the SQL LIMIT when the installed filter is active.
+// We fetch more rows than requested to compensate for rows that will be
+// filtered out by the Go-side installed check.
+// When requested is 0 (no limit), we fall back to a large cap since we
+// can't predict how many rows the installed filter will discard.
+func overfetchLimit(requested int) int {
+	if requested <= 0 {
+		return installedNoLimitFallback
 	}
-
-	sortField = strings.ToLower(sortField)
-
-	switch sortField {
-	case sortFieldName:
-		sort.Slice(results, func(i, j int) bool {
-			return compareASC(results[i].Name, results[j].Name, sortOrder == sortOrderDesc)
-		})
-	case "tagline":
-		sort.Slice(results, func(i, j int) bool {
-			return compareASC(results[i].Tagline, results[j].Tagline, sortOrder == sortOrderDesc)
-		})
-	case "language":
-		sort.Slice(results, func(i, j int) bool {
-			return compareASC(results[i].Language, results[j].Language, sortOrder == sortOrderDesc)
-		})
-	case "date_published":
-		sort.Slice(results, func(i, j int) bool {
-			return compareASC(results[i].DatePublished, results[j].DatePublished, sortOrder == sortOrderDesc)
-		})
-	default:
-		sort.Slice(results, func(i, j int) bool {
-			return compareASC(results[i].Name, results[j].Name, sortOrder == sortOrderDesc)
-		})
+	limit := requested * installedOverfetchFactor
+	if limit > installedOverfetchMax {
+		limit = installedOverfetchMax
 	}
-
-	if limit > 0 && limit < len(results) {
-		return results[:limit]
+	if limit < requested {
+		limit = requested
 	}
-
-	return results
+	return limit
 }
 
-func compareASC(a, b string, reverse bool) bool {
-	lowA := strings.ToLower(a)
-	lowB := strings.ToLower(b)
-	if lowA < lowB {
-		return !reverse
+// installedFilterValue extracts the desired installed state from the filter AST.
+// Returns (value, negated) where value is true if the filter wants installed=true.
+func installedFilterValue(filter *Filter) (bool, bool) {
+	if filter == nil {
+		return false, false
 	}
-	if lowA > lowB {
-		return reverse
-	}
-
-	return false
+	val, negated := getInstalledFilterInfo(filter, false)
+	wantInstalled := (val == "true" || val == "1")
+	return wantInstalled, negated
 }
