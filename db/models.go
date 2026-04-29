@@ -22,11 +22,12 @@ type Tool struct {
 
 // InstallInstruction represents a single install command for a platform.
 type InstallInstruction struct {
-	ID        string    `json:"id" db:"id"`
-	ToolID    string    `json:"tool_id" db:"tool_id"`
-	Platform  string    `json:"platform" db:"platform"`
-	Command   string    `json:"command" db:"command"`
-	CreatedAt time.Time `json:"created_at" db:"created_at"`
+	ID             string    `json:"id" db:"id"`
+	ToolID         string    `json:"tool_id" db:"tool_id"`
+	Platform       string    `json:"platform" db:"platform"`
+	Command        string    `json:"command" db:"command"`
+	ExecutableName string    `json:"executable_name" db:"executable_name"`
+	CreatedAt      time.Time `json:"created_at" db:"created_at"`
 }
 
 // SearchResult wraps a Tool with its installation map.

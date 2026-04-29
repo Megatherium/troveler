@@ -5,7 +5,11 @@ import (
 )
 
 func (s *SQLiteDB) runMigrations() error {
-	return s.addColumnIfNotExists("tools", "tool_of_the_week", "BOOLEAN DEFAULT false")
+	if err := s.addColumnIfNotExists("tools", "tool_of_the_week", "BOOLEAN DEFAULT false"); err != nil {
+		return err
+	}
+
+	return s.addColumnIfNotExists("install_instructions", "executable_name", "TEXT DEFAULT ''")
 }
 
 func (s *SQLiteDB) addColumnIfNotExists(table, column, definition string) error {

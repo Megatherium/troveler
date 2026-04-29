@@ -36,15 +36,16 @@ func (s *SQLiteDB) UpsertTool(ctx context.Context, tool *Tool) error {
 // UpsertInstallInstruction inserts or updates an install instruction.
 func (s *SQLiteDB) UpsertInstallInstruction(ctx context.Context, inst *InstallInstruction) error {
 	query := `
-		INSERT INTO install_instructions (id, tool_id, platform, command)
-		VALUES (?, ?, ?, ?)
+		INSERT INTO install_instructions (id, tool_id, platform, command, executable_name)
+		VALUES (?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			tool_id = excluded.tool_id,
 			platform = excluded.platform,
-			command = excluded.command
+			command = excluded.command,
+			executable_name = excluded.executable_name
 	`
 
-	_, err := s.getDB().ExecContext(ctx, query, inst.ID, inst.ToolID, inst.Platform, inst.Command)
+	_, err := s.getDB().ExecContext(ctx, query, inst.ID, inst.ToolID, inst.Platform, inst.Command, inst.ExecutableName)
 
 	return err
 }
@@ -105,7 +106,7 @@ func (s *SQLiteDB) GetToolBySlug(slug string) ([]Tool, error) {
 
 // GetInstallInstructions returns all install instructions for a tool.
 func (s *SQLiteDB) GetInstallInstructions(toolID string) ([]InstallInstruction, error) {
-	query := `SELECT id, tool_id, platform, command, created_at FROM install_instructions WHERE tool_id = ?`
+	query := `SELECT id, tool_id, platform, command, executable_name, created_at FROM install_instructions WHERE tool_id = ?`
 	rows, err := s.getDB().QueryContext(context.Background(), query, toolID)
 	if err != nil {
 		return nil, err
@@ -116,7 +117,7 @@ func (s *SQLiteDB) GetInstallInstructions(toolID string) ([]InstallInstruction, 
 	for rows.Next() {
 		var inst InstallInstruction
 		err := rows.Scan(
-			&inst.ID, &inst.ToolID, &inst.Platform, &inst.Command, &inst.CreatedAt,
+			&inst.ID, &inst.ToolID, &inst.Platform, &inst.Command, &inst.ExecutableName, &inst.CreatedAt,
 		)
 		if err != nil {
 			return nil, err
