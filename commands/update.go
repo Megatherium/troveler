@@ -67,10 +67,10 @@ func getTerminalWidth() int {
 var runePalette = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789~!@#$%^&*()_+-=")
 
 type slugEntry struct {
-	slug     string
-	position int
-	age      int
-	row      int
+	slug        string
+	startOffset int // startOffset is a negative offset from the right edge of the terminal (e.g. -1, -2, ...)
+	age         int
+	row         int
 }
 
 // UpdateUI renders an animated progress display for database updates.
@@ -96,10 +96,10 @@ func NewUpdateUI(totalTools int) *UpdateUI {
 func (u *UpdateUI) AddSlug(slug string) {
 	u.bufferMu.Lock()
 	entry := slugEntry{
-		slug:     slug,
-		position: -1 - (len(u.slugBuffer) % 15),
-		age:      0,
-		row:      rand.IntN(streamHeight), //nolint:gosec // G404: weak random is fine for UI animation
+		slug:        slug,
+		startOffset: -1 - (len(u.slugBuffer) % 15),
+		age:         0,
+		row:         rand.IntN(streamHeight), //nolint:gosec // G404: weak random is fine for UI animation
 	}
 	u.slugBuffer = append(u.slugBuffer, entry)
 	if len(u.slugBuffer) > 30 {
@@ -165,7 +165,7 @@ func (u *UpdateUI) renderChaoticStream(streamWidth int) string {
 		for col := 0; col < streamWidth; col++ {
 			found := false
 			for _, entry := range u.slugBuffer {
-				pos := (entry.position - entry.age) % streamWidth
+				pos := (entry.startOffset - entry.age) % streamWidth
 				if pos < 0 {
 					pos += streamWidth
 				}
