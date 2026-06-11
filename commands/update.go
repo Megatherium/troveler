@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"math/rand/v2"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/term"
 	"github.com/spf13/cobra"
 
 	"troveler/crawler"
@@ -49,11 +51,18 @@ func init() {
 }
 
 const (
-	progressBarWidth = 50
-	streamWidth      = 60
-	streamHeight     = 4
-	totalLines       = 1 + streamHeight + 1
+	defaultProgressBarWidth = 50
+	defaultStreamWidth      = 60
+	streamHeight            = 4
 )
+
+func getTerminalWidth() int {
+	w, _, err := term.GetSize(os.Stdout.Fd())
+	if err != nil || w <= 0 {
+		return defaultStreamWidth
+	}
+	return w
+}
 
 var runePalette = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789~!@#$%^&*()_+-=")
 
@@ -88,7 +97,7 @@ func (u *UpdateUI) AddSlug(slug string) {
 	u.bufferMu.Lock()
 	entry := slugEntry{
 		slug:     slug,
-		position: streamWidth - 1 - (len(u.slugBuffer) % 15),
+		position: -1 - (len(u.slugBuffer) % 15),
 		age:      0,
 		row:      rand.IntN(streamHeight), //nolint:gosec // G404: weak random is fine for UI animation
 	}
@@ -112,6 +121,21 @@ func (u *UpdateUI) Render() string {
 		percent = 1
 	}
 
+	elapsed := time.Since(u.startTime)
+	var eta time.Duration
+	if processed > 0 {
+		eta = time.Duration(float64(elapsed) / float64(processed) * float64(u.totalTools-int(processed)))
+	}
+
+	status := fmt.Sprintf(" %d/%d (%.0f%%)", processed, u.totalTools, percent*100)
+	etaStr := fmt.Sprintf(" ETA: %s", eta.Round(time.Second))
+
+	termWidth := getTerminalWidth()
+	progressBarWidth := termWidth - len(status) - len(etaStr) - 5
+	if progressBarWidth < 10 {
+		progressBarWidth = 10
+	}
+
 	filled := int(percent * float64(progressBarWidth))
 
 	var bar strings.Builder
@@ -123,16 +147,7 @@ func (u *UpdateUI) Render() string {
 		bar.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("#333333")).Render("░"))
 	}
 
-	elapsed := time.Since(u.startTime)
-	var eta time.Duration
-	if processed > 0 {
-		eta = time.Duration(float64(elapsed) / float64(processed) * float64(u.totalTools-int(processed)))
-	}
-
-	status := fmt.Sprintf(" %d/%d (%.0f%%)", processed, u.totalTools, percent*100)
-	etaStr := fmt.Sprintf(" ETA: %s", eta.Round(time.Second))
-
-	stream := u.renderChaoticStream()
+	stream := u.renderChaoticStream(termWidth)
 
 	return fmt.Sprintf("\x1b7\x1b[1;1H\x1b[J%s %s %s  %s\n%s\x1b8",
 		lipgloss.NewStyle().Foreground(lipgloss.Color("#00FF00")).Render("▐"),
@@ -143,14 +158,17 @@ func (u *UpdateUI) Render() string {
 	)
 }
 
-func (u *UpdateUI) renderChaoticStream() string {
+func (u *UpdateUI) renderChaoticStream(streamWidth int) string {
 	var lines []string
 	for row := 0; row < streamHeight; row++ {
 		var line strings.Builder
 		for col := 0; col < streamWidth; col++ {
 			found := false
 			for _, entry := range u.slugBuffer {
-				pos := (entry.position - entry.age + streamWidth) % streamWidth
+				pos := (entry.position - entry.age) % streamWidth
+				if pos < 0 {
+					pos += streamWidth
+				}
 				dist := abs(pos - col)
 				if dist < 4 && entry.row == row {
 					charIdx := (col + entry.age + u.step) % len(entry.slug)
