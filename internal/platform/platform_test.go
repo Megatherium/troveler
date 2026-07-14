@@ -547,6 +547,51 @@ func TestTransformToMise(t *testing.T) {
 			expected: "mise use --global cargo:some-crate",
 		},
 		{
+			name:     "cargo_install_locked",
+			input:    "cargo install --locked bacon",
+			expected: "mise use --global cargo:bacon",
+		},
+		{
+			name:     "cargo_install_git",
+			input:    "cargo install --git https://github.com/user/repo",
+			expected: "mise use --global cargo:https://github.com/user/repo",
+		},
+		{
+			name:     "cargo_install_git_with_binary",
+			input:    "cargo install --git https://github.com/boxdot/gurk-rs gurk",
+			expected: "mise use --global cargo:https://github.com/boxdot/gurk-rs",
+		},
+		{
+			name:     "cargo_install_locked_git",
+			input:    "cargo install --locked --git https://github.com/pamburus/hl.git",
+			expected: "mise use --global cargo:https://github.com/pamburus/hl.git",
+		},
+		{
+			name:     "cargo_install_git_equals",
+			input:    "cargo install --git=https://github.com/nate-sys/tuime",
+			expected: "mise use --global cargo:https://github.com/nate-sys/tuime",
+		},
+		{
+			name:     "cargo_install_locked_git_equals",
+			input:    "cargo install --locked --git=https://github.com/user/repo",
+			expected: "mise use --global cargo:https://github.com/user/repo",
+		},
+		{
+			name:     "cargo_install_frozen_git",
+			input:    "cargo install --frozen --git https://github.com/user/repo",
+			expected: "mise use --global cargo:https://github.com/user/repo",
+		},
+		{
+			name:     "cargo_install_frozen_crate",
+			input:    "cargo install --frozen bacon",
+			expected: "mise use --global cargo:bacon",
+		},
+		{
+			name:     "cargo_install_unrecognized_flag_safe_fallback",
+			input:    "cargo install --features foo some-crate",
+			expected: "cargo install --features foo some-crate",
+		},
+		{
 			name:     "npm_install_global",
 			input:    "npm install -g package",
 			expected: "mise use --global npm:package",

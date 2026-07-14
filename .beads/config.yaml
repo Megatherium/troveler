@@ -32,7 +32,9 @@
 # db: ""
 
 # Auto-start daemon if not running (can also use BEADS_AUTO_START_DAEMON)
- auto-start-daemon: false
+auto-start-daemon: false
+export:
+    auto: false
 
 # Debounce interval for auto-flush (can also use BEADS_FLUSH_DEBOUNCE)
 # flush-debounce: "5s"
@@ -65,7 +67,3 @@
 # - linear.api-key
 # - github.org
 # - github.repo
-types:
-  custom: "review,refinement"
-backup:
-  git-push: false
