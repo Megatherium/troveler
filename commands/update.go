@@ -318,35 +318,13 @@ func processDetailsConcurrently(
 	return detailChan, errChan
 }
 
-func handleDatabaseWrites(ctx context.Context, database *db.SQLiteDB, detailChan <-chan crawler.DetailPage) {
-	writeChan := make(chan db.InstallInstruction, 200)
-	var writeWg sync.WaitGroup
-
-	dbWorkerCount := 3
-	for i := 0; i < dbWorkerCount; i++ {
-		writeWg.Add(1)
-		go func() {
-			defer writeWg.Done()
-			for inst := range writeChan {
-				_ = database.UpsertInstallInstruction(ctx, &inst)
-			}
-		}()
-	}
-
+func handleDatabaseWrites(ctx context.Context, database *db.SQLiteDB, detailChan <-chan crawler.DetailPage) error {
 	for detail := range detailChan {
-		_ = database.UpsertTool(ctx, detail.ToTool())
-
-		for _, inst := range detail.ToInstallInstructions() {
-			select {
-			case writeChan <- inst:
-			case <-ctx.Done():
-				return
-			}
+		if err := database.SaveToolSnapshot(ctx, detail.ToTool(), detail.ToInstallInstructions()); err != nil {
+			return err
 		}
 	}
-
-	close(writeChan)
-	writeWg.Wait()
+	return ctx.Err()
 }
 
 func runUpdateUI(ctx context.Context, ui *UpdateUI, detailDone <-chan struct{}, logOutput bool) {
@@ -382,6 +360,9 @@ func runUpdate(
 	ctx context.Context, database *db.SQLiteDB, fetcher *crawler.Fetcher,
 	limit int, logOutput bool, currentCount int,
 ) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	if !logOutput {
 		fmt.Println()
 		fmt.Println(lipgloss.NewStyle().
@@ -429,8 +410,9 @@ func runUpdate(
 	detailChan, errChan := processDetailsConcurrently(ctx, fetcher, slugs, slugToToolOfTheWeek, ui)
 
 	detailDone := make(chan struct{})
+	var writeErr error
 	go func() {
-		handleDatabaseWrites(ctx, database, detailChan)
+		writeErr = handleDatabaseWrites(ctx, database, detailChan)
 		close(detailDone)
 	}()
 
@@ -444,6 +426,9 @@ func runUpdate(
 	case <-ctx.Done():
 		return ctx.Err()
 	case <-detailDone:
+		if writeErr != nil {
+			return fmt.Errorf("save tools: %w", writeErr)
+		}
 		if !logOutput {
 			fmt.Println()
 		}

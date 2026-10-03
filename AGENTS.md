@@ -48,6 +48,7 @@ The interface is nicer for humans. You pick whatever feels right for you.
 
 ## Lessons learned
 
+- Crawl persistence must use `db.SaveToolSnapshot` so tool metadata and install instructions refresh atomically. Existing slugs retain their stored IDs and tags; failed saves must be reported by both CLI and TUI updates.
 - Be aware of Go's pass-by semantics especially with closures.
 - Don't assume you know what a function does by its name alone. The devil is in the details.
 - In Bubble Tea, never mutate application state (like maps or UI models) inside a `tea.Cmd` background goroutine; always return a `tea.Msg` and mutate state safely within the main `Update()` thread.

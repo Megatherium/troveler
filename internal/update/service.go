@@ -13,7 +13,13 @@ import (
 // Service handles database updates
 type Service struct {
 	db      *db.SQLiteDB
-	fetcher *crawler.Fetcher
+	fetcher toolFetcher
+}
+
+type toolFetcher interface {
+	FetchSearchPage(context.Context, int) ([]byte, error)
+	FetchSearchPagesConcurrently(context.Context, int) (map[int][]byte, error)
+	FetchDetailPage(context.Context, string) ([]byte, error)
 }
 
 // NewService creates a new update service
@@ -42,6 +48,9 @@ type Options struct {
 
 // FetchAndUpdate fetches all tools and updates the database
 func (s *Service) FetchAndUpdate(ctx context.Context, opts Options) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	// Send start message
 	if opts.Progress != nil {
 		select {
@@ -88,15 +97,14 @@ func (s *Service) FetchAndUpdate(ctx context.Context, opts Options) error {
 	processed := 0
 	for detail := range detailChan {
 		tool := detail.ToTool()
-		if err := s.db.UpsertTool(ctx, tool); err != nil {
-			continue
-		}
-
-		installs := detail.ToInstallInstructions()
-		for _, inst := range installs {
-			if err := s.db.UpsertInstallInstruction(ctx, &inst); err != nil {
-				continue
+		if err := s.db.SaveToolSnapshot(ctx, tool, detail.ToInstallInstructions()); err != nil {
+			if opts.Progress != nil {
+				select {
+				case opts.Progress <- ProgressUpdate{Type: "error", Error: err}:
+				case <-ctx.Done():
+				}
 			}
+			return err
 		}
 
 		processed++

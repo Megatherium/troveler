@@ -43,6 +43,10 @@ troveler tui
 troveler
 ```
 
+Running `troveler update` again refreshes existing tools and replaces their install
+commands while preserving your tags. Each tool and its commands are saved together;
+if saving fails, its previous data remains available and the update reports an error.
+
 ## 🧪 Testing
 
 ### Integration Tests with Docker

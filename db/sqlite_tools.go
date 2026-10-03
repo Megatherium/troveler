@@ -2,18 +2,17 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 	"time"
 )
 
-// UpsertTool inserts or updates a tool record.
-func (s *SQLiteDB) UpsertTool(ctx context.Context, tool *Tool) error {
-	query := `
+const upsertToolSQL = `
 		INSERT INTO tools (id, slug, name, tagline, description, language, license,
 			date_published, code_repository, tool_of_the_week, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(id) DO UPDATE SET
+		ON CONFLICT DO UPDATE SET
 			slug = excluded.slug,
 			name = excluded.name,
 			tagline = excluded.tagline,
@@ -24,15 +23,25 @@ func (s *SQLiteDB) UpsertTool(ctx context.Context, tool *Tool) error {
 			code_repository = excluded.code_repository,
 			tool_of_the_week = excluded.tool_of_the_week,
 			updated_at = excluded.updated_at
+		RETURNING id
 	`
 
+type toolQuerier interface {
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}
+
+// UpsertTool inserts or updates a tool record, preserving its stored identity
+// when the slug already exists. On success, tool.ID is the stored ID.
+func (s *SQLiteDB) UpsertTool(ctx context.Context, tool *Tool) error {
+	return upsertTool(ctx, s.db, tool)
+}
+
+func upsertTool(ctx context.Context, database toolQuerier, tool *Tool) error {
 	tool.UpdatedAt = time.Now()
-	_, err := s.getDB().ExecContext(ctx, query,
+	return database.QueryRowContext(ctx, upsertToolSQL,
 		tool.ID, tool.Slug, tool.Name, tool.Tagline, tool.Description,
 		tool.Language, tool.License, tool.DatePublished, tool.CodeRepository, tool.ToolOfTheWeek, tool.UpdatedAt,
-	)
-
-	return err
+	).Scan(&tool.ID)
 }
 
 // UpsertInstallInstruction inserts or updates an install instruction.
