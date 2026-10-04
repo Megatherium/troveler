@@ -111,7 +111,16 @@ instructions change before execution begins.
 - **h / ←** - Previous column
 - **l / →** - Next column
 - **Alt+S** - Sort by selected column (▲/▼)
+- **m** - Toggle the selected tool's batch mark
 - **Enter** - Select tool and jump to install panel
+
+Batch installs with **Alt+I** or **Alt+M** use only marked tools in the current
+search results. Nonempty searches preserve hidden marks, but exclude them from
+the displayed count and batch installs. Clearing the filter restores those
+marks when the tools reappear. For example, mark A and B, then search for B:
+the count becomes one and a batch install targets B. A search with no results
+clears all marks. With no visible marks, the install shortcuts use the selected
+tool's command when available.
 
 ### Install Panel
 

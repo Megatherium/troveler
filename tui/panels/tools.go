@@ -59,7 +59,7 @@ func NewToolsPanel() *ToolsPanel {
 	}
 }
 
-// SetTools updates the tools list
+// SetTools updates the tools list, retaining marks for tools outside the results.
 func (p *ToolsPanel) SetTools(tools []db.SearchResult) {
 	p.tools = tools
 	p.cursor = 0
@@ -466,7 +466,7 @@ func (p *ToolsPanel) GetTool(idx int) *db.SearchResult {
 	return nil
 }
 
-// GetMarkedTools returns all marked tools for batch install
+// GetMarkedTools returns marked tools in the current results for batch install.
 func (p *ToolsPanel) GetMarkedTools() []db.SearchResult {
 	var marked []db.SearchResult
 	for _, tool := range p.tools {
@@ -478,9 +478,16 @@ func (p *ToolsPanel) GetMarkedTools() []db.SearchResult {
 	return marked
 }
 
-// GetMarkedCount returns the number of marked tools
+// GetMarkedCount counts marked tools in the current results, matching GetMarkedTools.
 func (p *ToolsPanel) GetMarkedCount() int {
-	return len(p.markedTools)
+	count := 0
+	for _, tool := range p.tools {
+		if p.markedTools[tool.ID] {
+			count++
+		}
+	}
+
+	return count
 }
 
 // ClearMarks clears all marked tools
