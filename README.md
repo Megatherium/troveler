@@ -381,6 +381,22 @@ troveler/
 
 ## 🤝 Contributing
 
+The lint configuration requires golangci-lint v2. Validate it before running
+the configured checks (including test files):
+
+```sh
+golangci-lint config verify
+golangci-lint run ./...
+```
+
+The v2 configuration retains the intended linter settings and exclusions.
+Lint findings return a failing exit status; configuration validation alone
+does not mean the code passes lint. The restored checks currently expose
+findings tracked through Bean `tr-75b` and its follow-up work. Resolve them in
+separate reviewed changes without disabling checks to obtain a passing gate.
+See the [golangci-lint migration guide](https://golangci-lint.run/docs/product/migration-guide/)
+for the v2 settings structure and removed legacy options.
+
 Contributions welcome! Please:
 
 1. Fork the repo
