@@ -48,6 +48,7 @@ The interface is nicer for humans. You pick whatever feels right for you.
 
 ## Lessons learned
 
+- Default config and database paths must honor absolute XDG_CONFIG_HOME and XDG_DATA_HOME independently, falling back to HOME/.config and HOME/.local/share for unset, empty or relative values. Valid XDG roots work without HOME. Explicit config paths and configured DSNs retain precedence, with TROVELER_DSN highest; do not additionally load HOME config when a selected XDG config is missing.
 - CLI update animation rendering must copy slug entries and the frame step together under bufferMu, then render from that snapshot after unlocking. AddSlug and the ticker mutate shared animation state under the same mutex; processed counts remain atomic.
 - Every TUI search command, including startup, must capture a unique request generation, the search-panel input generation and the service before background work. Accept success/error messages only for the current pending request and unchanged input, before any state mutation. Successful retries clear only search-owned errors; fixture completions must obtain real request origins so guards do not make tests vacuous.
 - Search debounce timers must snapshot query and generation, return expiry messages, and validate them on the Update thread even when another panel is focused. Input changes, Enter and Escape invalidate older timers and queued triggers before database dispatch; forward Escape as a tea.KeyMsg, not a keybinding object. In-flight result/error ordering is a separate concern.

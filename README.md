@@ -238,7 +238,17 @@ troveler search installed=true --limit 20
 
 ## ⚙️ Configuration
 
-Config file: `~/.config/troveler/config.toml`
+Default locations use the XDG directory settings:
+
+- Config file: `"${XDG_CONFIG_HOME:-$HOME/.config}/troveler/config.toml"`
+- SQLite database: `"${XDG_DATA_HOME:-$HOME/.local/share}/troveler/troveler.db"`
+
+Unset, empty or relative XDG values use the HOME fallbacks, following the
+[XDG Base Directory Specification](https://specifications.freedesktop.org/basedir/latest/).
+An explicit `--config` file takes precedence over the default config lookup.
+The config's `dsn` value overrides the default database location, and
+`TROVELER_DSN` overrides both. A missing config at the selected XDG location
+uses defaults; it does not also load a config from the HOME fallback.
 
 ```toml
 # Database settings

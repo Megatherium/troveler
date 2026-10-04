@@ -77,20 +77,28 @@ func Load(configPath string) (*Config, error) {
 }
 
 func defaultConfigPath() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "config.toml"
+	configHome := os.Getenv("XDG_CONFIG_HOME")
+	if !filepath.IsAbs(configHome) {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "config.toml"
+		}
+		configHome = filepath.Join(home, ".config")
 	}
 
-	return filepath.Join(home, ".config", "troveler", "config.toml")
+	return filepath.Join(configHome, "troveler", "config.toml")
 }
 
 func defaultDSN() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "file:troveler.db?cache=shared&mode=rwc"
+	dataHome := os.Getenv("XDG_DATA_HOME")
+	if !filepath.IsAbs(dataHome) {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "file:troveler.db?cache=shared&mode=rwc"
+		}
+		dataHome = filepath.Join(home, ".local", "share")
 	}
-	dbPath := filepath.Join(home, ".local", "share", "troveler", "troveler.db")
+	dbPath := filepath.Join(dataHome, "troveler", "troveler.db")
 
 	return "file:" + dbPath + "?cache=shared&mode=rwc"
 }
