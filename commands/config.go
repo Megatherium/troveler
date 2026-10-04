@@ -38,6 +38,9 @@ func WithDB(cmd *cobra.Command, fn func(ctx context.Context, database *db.SQLite
 	if cfg == nil {
 		return fmt.Errorf("config not loaded")
 	}
+	if err := cfg.EnsureDatabaseDir(); err != nil {
+		return fmt.Errorf("db init: %w", err)
+	}
 
 	database, err := db.New(cfg.DSN)
 	if err != nil {

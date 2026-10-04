@@ -250,6 +250,13 @@ The config's `dsn` value overrides the default database location, and
 `TROVELER_DSN` overrides both. A missing config at the selected XDG location
 uses defaults; it does not also load a config from the HOME fallback.
 
+When a CLI command or the TUI opens the default database, Troveler creates any
+missing parent directories with permissions `0700`. Existing directory
+permissions are preserved. Config loading alone does not create directories.
+For an explicit config `dsn` or `TROVELER_DSN`, create any required parent
+directories yourself; SQLite DSN options and in-memory databases work as given.
+Directory creation failures report the default data path and the filesystem error.
+
 ```toml
 # Database settings
 db_path = "~/.local/share/troveler/troveler.db"

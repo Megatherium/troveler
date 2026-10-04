@@ -16,6 +16,9 @@ type Config struct {
 	Install      InstallConfig `toml:"install"`
 	Search       SearchConfig  `toml:"search"`
 	TUI          TUIConfig     `toml:"tui"`
+
+	defaultDatabaseDSN string
+	defaultDatabaseDir string
 }
 
 // InstallConfig holds install-related settings.
@@ -53,11 +56,14 @@ func Load(configPath string) (*Config, error) {
 	}
 
 	if cfg.DSN == "" {
-		cfg.DSN = defaultDSN()
+		cfg.DSN, cfg.defaultDatabaseDir = defaultDSN()
+		cfg.defaultDatabaseDSN = cfg.DSN
 	}
 
 	if dsn := os.Getenv("TROVELER_DSN"); dsn != "" {
 		cfg.DSN = dsn
+		cfg.defaultDatabaseDir = ""
+		cfg.defaultDatabaseDSN = ""
 	}
 
 	if cfg.Search.TaglineWidth == 0 {
@@ -76,6 +82,18 @@ func Load(configPath string) (*Config, error) {
 	return cfg, nil
 }
 
+// EnsureDatabaseDir prepares the data directory only for the loaded default DSN.
+// Explicit DSNs, including overrides made after Load, remain caller-managed.
+func (c *Config) EnsureDatabaseDir() error {
+	if c.defaultDatabaseDir == "" || c.DSN != c.defaultDatabaseDSN {
+		return nil
+	}
+	if err := os.MkdirAll(c.defaultDatabaseDir, 0700); err != nil {
+		return fmt.Errorf("create default database directory %q: %w", c.defaultDatabaseDir, err)
+	}
+	return nil
+}
+
 func defaultConfigPath() string {
 	configHome := os.Getenv("XDG_CONFIG_HOME")
 	if !filepath.IsAbs(configHome) {
@@ -89,16 +107,17 @@ func defaultConfigPath() string {
 	return filepath.Join(configHome, "troveler", "config.toml")
 }
 
-func defaultDSN() string {
+func defaultDSN() (string, string) {
 	dataHome := os.Getenv("XDG_DATA_HOME")
 	if !filepath.IsAbs(dataHome) {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			return "file:troveler.db?cache=shared&mode=rwc"
+			return "file:troveler.db?cache=shared&mode=rwc", ""
 		}
 		dataHome = filepath.Join(home, ".local", "share")
 	}
-	dbPath := filepath.Join(dataHome, "troveler", "troveler.db")
+	dir := filepath.Join(dataHome, "troveler")
+	dbPath := filepath.Join(dir, "troveler.db")
 
-	return "file:" + dbPath + "?cache=shared&mode=rwc"
+	return "file:" + dbPath + "?cache=shared&mode=rwc", dir
 }
