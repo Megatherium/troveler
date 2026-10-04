@@ -38,7 +38,8 @@ type SearchResult struct {
 
 // SearchOptions controls search query parameters.
 type SearchOptions struct {
-	Query     string
+	Query string
+	// Limit caps matching results; nonpositive values return all matches.
 	Limit     int
 	SortField string
 	SortOrder string

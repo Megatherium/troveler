@@ -170,6 +170,9 @@ AND, OR, and NOT operations. For example, `installed=true|language=go` matches
 installed tools and any Go tools; `!(installed=true|language=go)` matches only
 uninstalled tools written in other languages.
 
+`--limit` counts results after all filters have been applied, including installed
+status. A value of `0` (the default) uses the CLI's default limit of 50 results.
+
 **Examples**:
 ```bash
 # Simple field filter

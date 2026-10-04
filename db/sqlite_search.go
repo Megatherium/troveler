@@ -11,28 +11,22 @@ const (
 	sortOrderAsc       = "ASC"
 	sortFieldName      = "name"
 
-	// installedOverfetchFactor controls how many extra rows we fetch when
-	// the installed filter is active. Since we can't filter by "installed"
-	// in SQL (it requires a runtime LookPath check), we over-fetch by this
-	// multiplier and then trim in Go. A factor of 4 means we fetch 4x the
-	// requested limit, which is sufficient for most real-world installed ratios.
-	installedOverfetchFactor = 4
-
-	// installedOverfetchMax caps the over-fetch to avoid pulling excessive rows
-	// even with large limits. Only applies when the caller specifies a limit > 0.
-	installedOverfetchMax = 500
-
-	// installedNoLimitFallback is used when the caller requests limit=0 (no limit)
-	// and the installed filter is active. We must fetch all rows since we can't
-	// predict how many will be filtered out.
-	installedNoLimitFallback = 100000
+	// Bound each installed-filter candidate batch to one install-instruction
+	// query. This is a batch size, never a cap on the candidates searched.
+	installedSearchBatchSize = sqliteVarLimit
 )
 
+type searchCandidate struct {
+	tool               Tool
+	matchesInstalled   bool
+	matchesUninstalled bool
+	sortValue          string
+}
+
 // Search queries tools matching opts, applying filters and sorting.
-// Sorting and limiting are always pushed to SQLite via ORDER BY / LIMIT.
-// The "installed" filter is resolved in Go (requires exec.LookPath) using
-// an over-fetch strategy: we fetch more rows than requested, resolve
-// installed status, filter, and trim to the actual limit.
+// SQLite sorts candidates; installed filters are resolved in bounded batches
+// until opts.Limit matches are found or all candidates have been examined.
+// A nonpositive limit returns all matching results.
 func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResult, error) {
 	allowedFields := map[string]string{
 		"name":           "name",
@@ -53,11 +47,13 @@ func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResu
 
 	// COLLATE NOCASE preserves the case-insensitive sort behavior that the old
 	// in-memory compareASC provided via strings.ToLower.
-	orderByClause := sortField + " COLLATE NOCASE " + sortOrder
+	// IDs break ties so successive batches never skip equal sort keys.
+	orderByClause := "search_sort_value COLLATE NOCASE " + sortOrder + ", id ASC"
 
-	// Determine SQL LIMIT: over-fetch when installed filter is active
-	// since we can't filter by installed in SQL.
 	sqlLimit := opts.Limit
+	if sqlLimit <= 0 {
+		sqlLimit = -1 // SQLite's unlimited LIMIT; CLI defaults are applied upstream.
+	}
 	hasInstalled := hasInstalledFilter(opts.Filter)
 	sqlFilter := opts.Filter
 	if hasInstalled {
@@ -67,7 +63,7 @@ func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResu
 	whereClause, args := BuildWhereClause(sqlFilter, opts.Query)
 	installedClause, uninstalledClause := "1=1", "1=1"
 	if hasInstalled {
-		sqlLimit = overfetchLimit(opts.Limit)
+		sqlLimit = installedSearchBatchSize
 		// Compute a match flag for each possible installed state. The outer
 		// query keeps their union, and Go selects the flag for the actual state.
 		// All text/tag comparisons remain in SQLite, including LIKE wildcards.
@@ -77,105 +73,115 @@ func (s *SQLiteDB) Search(ctx context.Context, opts SearchOptions) ([]SearchResu
 		args = append(append(installedArgs, uninstalledArgs...), args...)
 	}
 
-	sqlQuery := fmt.Sprintf(`
+	queryTemplate := `
 		SELECT * FROM (
 			SELECT id, slug, name, tagline, description, language, license, date_published, code_repository, tool_of_the_week,
 				CASE WHEN %s THEN 1 ELSE 0 END AS matches_installed,
-				CASE WHEN %s THEN 1 ELSE 0 END AS matches_uninstalled
+				CASE WHEN %s THEN 1 ELSE 0 END AS matches_uninstalled,
+				%s AS search_sort_value
 			FROM tools
 			WHERE %s
 		)
-		WHERE matches_installed OR matches_uninstalled
+		WHERE (matches_installed OR matches_uninstalled) AND (%s)
 		ORDER BY %s
 		LIMIT ?
-	`, installedClause, uninstalledClause, whereClause, orderByClause)
+	`
 
-	args = append(args, sqlLimit)
+	// Cache PATH checks across batches, not just within each batch.
+	pathCache := make(map[string]bool)
+	var results []SearchResult
+	var last *searchCandidate
+	for {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		cursorClause := "1=1"
+		pageArgs := append([]interface{}{}, args...)
+		if last != nil {
+			comparison := ">"
+			if sortOrder == sortOrderDesc {
+				comparison = "<"
+			}
+			cursorClause = fmt.Sprintf(`search_sort_value COLLATE NOCASE %s ? OR
+				(search_sort_value COLLATE NOCASE = ? AND id > ?)`, comparison)
+			pageArgs = append(pageArgs, last.sortValue, last.sortValue, last.tool.ID)
+		}
+		pageArgs = append(pageArgs, sqlLimit)
+		sqlQuery := fmt.Sprintf(queryTemplate, installedClause, uninstalledClause,
+			sortField, whereClause, cursorClause, orderByClause)
+		candidates, err := s.querySearchCandidates(ctx, sqlQuery, pageArgs)
+		if err != nil {
+			return nil, err
+		}
+		if len(candidates) == 0 {
+			return results, nil
+		}
 
-	rows, err := s.getDB().QueryContext(ctx, sqlQuery, args...)
+		// Candidate rows are closed before querying installs: SQLiteDB has a
+		// single connection, so keeping that cursor open would deadlock.
+		toolIDs := make([]string, len(candidates))
+		for i, c := range candidates {
+			toolIDs[i] = c.tool.ID
+		}
+		installsByTool, err := s.GetInstallInstructionsBatch(ctx, toolIDs)
+		if err != nil {
+			return nil, err
+		}
+		for _, installs := range installsByTool {
+			for _, inst := range installs {
+				name := resolveExecutableName(inst)
+				if _, cached := pathCache[name]; !cached && name != "" {
+					pathCache[name] = isCommandAvailable(name)
+				}
+			}
+		}
+
+		// Select the full expression's match flag for the actual installed state.
+		for _, c := range candidates {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+			t := c.tool
+			t.Installed = IsInstalledCached(&t, installsByTool[t.ID], pathCache)
+			match := c.matchesUninstalled
+			if t.Installed {
+				match = c.matchesInstalled
+			}
+			if !match {
+				continue
+			}
+			results = append(results, SearchResult{Tool: t})
+			if opts.Limit > 0 && len(results) >= opts.Limit {
+				return results, nil
+			}
+		}
+
+		if !hasInstalled || len(candidates) < sqlLimit {
+			return results, nil
+		}
+		last = &candidates[len(candidates)-1]
+	}
+}
+
+// querySearchCandidates releases its rows before the caller queries installs.
+func (s *SQLiteDB) querySearchCandidates(ctx context.Context, query string, args []interface{}) ([]searchCandidate, error) {
+	rows, err := s.getDB().QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
-
-	type candidate struct {
-		tool               Tool
-		matchesInstalled   bool
-		matchesUninstalled bool
-	}
-	var tools []candidate
+	var candidates []searchCandidate
 	for rows.Next() {
-		var c candidate
+		var c searchCandidate
 		t := &c.tool
-		err := rows.Scan(
+		if err := rows.Scan(
 			&t.ID, &t.Slug, &t.Name, &t.Tagline, &t.Description,
 			&t.Language, &t.License, &t.DatePublished, &t.CodeRepository, &t.ToolOfTheWeek,
-			&c.matchesInstalled, &c.matchesUninstalled,
-		)
-		if err != nil {
+			&c.matchesInstalled, &c.matchesUninstalled, &c.sortValue,
+		); err != nil {
 			return nil, err
 		}
-		tools = append(tools, c)
+		candidates = append(candidates, c)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	// Batch-fetch install instructions (1 query instead of N)
-	toolIDs := make([]string, len(tools))
-	for i, t := range tools {
-		toolIDs[i] = t.tool.ID
-	}
-	installsByTool, err := s.GetInstallInstructionsBatch(ctx, toolIDs)
-	if err != nil {
-		return nil, err
-	}
-
-	// Build LookPath cache (deduplicated — one stat per unique executable name)
-	pathCache := BuildLookPathCache(installsByTool)
-
-	// Select the complete expression's match flag for the actual installed state.
-	// Candidates are already sorted by SQLite.
-	var results []SearchResult
-	for _, c := range tools {
-		t := c.tool
-		installs := installsByTool[t.ID]
-		t.Installed = IsInstalledCached(&t, installs, pathCache)
-
-		match := c.matchesUninstalled
-		if t.Installed {
-			match = c.matchesInstalled
-		}
-		if !match {
-			continue
-		}
-
-		results = append(results, SearchResult{Tool: t})
-
-		// Early exit: we have enough results after filtering
-		if hasInstalled && opts.Limit > 0 && len(results) >= opts.Limit {
-			break
-		}
-	}
-
-	return results, nil
-}
-
-// overfetchLimit computes the SQL LIMIT when the installed filter is active.
-// We fetch more rows than requested to compensate for rows that will be
-// filtered out by the Go-side installed check.
-// When requested is 0 (no limit), we fall back to a large cap since we
-// can't predict how many rows the installed filter will discard.
-func overfetchLimit(requested int) int {
-	if requested <= 0 {
-		return installedNoLimitFallback
-	}
-	limit := requested * installedOverfetchFactor
-	if limit > installedOverfetchMax {
-		limit = installedOverfetchMax
-	}
-	if limit < requested {
-		limit = requested
-	}
-	return limit
+	return candidates, rows.Err()
 }
