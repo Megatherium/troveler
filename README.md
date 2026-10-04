@@ -254,6 +254,19 @@ The config's `dsn` value overrides the default database location, and
 `TROVELER_DSN` overrides both. A missing config at the selected XDG location
 uses defaults; it does not also load a config from the HOME fallback.
 
+Set a custom SQLite database with `dsn`. The legacy `db_path` key is ignored;
+replace it with `dsn`. Omit `dsn` (or leave it empty) to use the XDG default.
+Database paths in TOML are literal: `~`, `$HOME`, and other environment variables
+are not expanded. Relative file DSNs resolve from the command's working directory;
+use an absolute path such as `file:/path/to/troveler.db?cache=shared&mode=rwc`
+for a fixed location.
+
+Override the database for a single command (the shell expands `$PWD` here):
+
+```sh
+TROVELER_DSN="file:$PWD/alternate.db?cache=shared&mode=rwc" troveler search git
+```
+
 When a CLI command or the TUI opens the default database, Troveler creates any
 missing parent directories with permissions `0700`. Existing directory
 permissions are preserved. Config loading alone does not create directories.
@@ -287,8 +300,9 @@ gradient_colors = ["#90EE90", "#00FFFF"]
 Full configuration example:
 
 ```toml
-# Database settings
-db_path = "~/.local/share/troveler/troveler.db"
+# Database settings: this example uses the working directory.
+# Omit dsn to use the XDG default database location.
+dsn = "file:troveler.db?cache=shared&mode=rwc"
 default_to_tui = false  # Launch TUI when running 'troveler' with no args
 
 # Install behavior
