@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"troveler/db"
@@ -22,16 +24,10 @@ func (m *Model) handleSearchResult(msg searchResultMsg) (tea.Model, tea.Cmd) {
 	m.toolsPanel.UpdateAllInstalledStatus(m.db)
 
 	if len(msg.tools) > 0 {
-		firstTool := &msg.tools[0].Tool
-		m.selectedTool = firstTool
-		m.infoPanel.SetTool(firstTool, []db.InstallInstruction{})
-
-		installs, err := m.db.GetInstallInstructions(firstTool.ID)
-		if err == nil {
-			m.installs = installs
-			m.infoPanel.SetTool(firstTool, installs)
-			m.installPanel.SetTool(firstTool, installs)
-		}
+		m.setSelectedTool(&msg.tools[0].Tool)
+	} else {
+		m.setSelectedTool(nil)
+		m.toolsPanel.ClearMarks()
 	}
 
 	return m, nil
@@ -45,18 +41,33 @@ func (m *Model) handleSearchError(msg searchErrorMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) handleToolCursorChanged(msg panels.ToolCursorChangedMsg) (tea.Model, tea.Cmd) {
-	m.selectedTool = &msg.Tool.Tool
-
-	m.infoPanel.SetTool(m.selectedTool, []db.InstallInstruction{})
-
-	installs, err := m.db.GetInstallInstructions(m.selectedTool.ID)
-	if err == nil {
-		m.installs = installs
-		m.infoPanel.SetTool(m.selectedTool, installs)
-		m.installPanel.SetTool(m.selectedTool, installs)
-	}
+	m.setSelectedTool(&msg.Tool.Tool)
 
 	return m, nil
+}
+
+// setSelectedTool clears dependent state before loading the current tool's
+// instructions, so an empty result or lookup failure cannot retain old actions.
+func (m *Model) setSelectedTool(tool *db.Tool) {
+	m.selectedTool = tool
+	m.installs = nil
+	m.installPanel.Clear()
+	if tool == nil {
+		m.infoPanel.Clear()
+		return
+	}
+
+	m.infoPanel.SetTool(tool, nil)
+	installs, err := m.db.GetInstallInstructions(tool.ID)
+	if err != nil {
+		m.err = fmt.Errorf("load install instructions for %q: %w", tool.Name, err)
+		return
+	}
+	m.installs = installs
+	m.infoPanel.SetTool(tool, installs)
+	if len(installs) > 0 {
+		m.installPanel.SetTool(tool, installs)
+	}
 }
 
 func (m *Model) handleToolSelected() (tea.Model, tea.Cmd) {
@@ -68,6 +79,9 @@ func (m *Model) handleToolSelected() (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) handleInstallExecute(msg panels.InstallExecuteMsg) (tea.Model, tea.Cmd) {
+	if m.selectedTool == nil || !m.installPanel.HasCommands() {
+		return m, nil
+	}
 	m.modals.ShowInstall()
 	m.executing = true
 	m.executeOutput = ""
@@ -76,6 +90,9 @@ func (m *Model) handleInstallExecute(msg panels.InstallExecuteMsg) (tea.Model, t
 }
 
 func (m *Model) handleInstallExecuteMise(msg panels.InstallExecuteMiseMsg) (tea.Model, tea.Cmd) {
+	if m.selectedTool == nil || !m.installPanel.HasCommands() {
+		return m, nil
+	}
 	m.modals.ShowInstall()
 	m.executing = true
 	m.executeOutput = ""

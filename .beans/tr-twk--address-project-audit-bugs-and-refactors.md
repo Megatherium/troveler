@@ -5,7 +5,7 @@ status: in-progress
 type: epic
 priority: high
 created_at: 2026-10-03T20:21:54Z
-updated_at: 2026-10-03T20:28:50Z
+updated_at: 2026-10-04T05:11:04Z
 ---
 
 Address findings from the project audit, keeping each bugfix and each refactor in a separate commit. Stop after each fix for user review; do not begin the next fix or commit/push unreviewed work. Track implementation, regression coverage, documentation, review, and the eventual commit in each child bean.
@@ -29,3 +29,8 @@ Address findings from the project audit, keeping each bugfix and each refactor i
 - tr-nzs: Make integration checks validate actual success (bug)
 - tr-519: Consolidate CLI and TUI database update pipelines (task)
 - tr-799: Centralize installation planning across CLI and TUI flows (task)
+
+## Additional findings while fixing TUI selection
+
+- tr-t9s: Reject queued install commands from superseded tool selections (bug)
+- tr-9qe: Keep batch-mark counts consistent with nonempty filtered searches (bug)

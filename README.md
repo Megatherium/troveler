@@ -97,6 +97,11 @@ Dockerfile features:
 - **Enter** - Trigger immediate search
 - **ESC** - Clear search
 
+When a search finds no tools, the TUI clears tool details, install commands, and
+batch marks. Install actions remain disabled until a tool with commands is
+selected. If loading a tool's install instructions fails, its details stay
+visible and the TUI reports the error while keeping install actions disabled.
+
 ### Tools Panel
 
 - **k / ↑** - Move up

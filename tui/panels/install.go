@@ -106,6 +106,8 @@ func (p *InstallPanel) SetTool(tool *db.Tool, installs []db.InstallInstruction) 
 func (p *InstallPanel) Clear() {
 	p.commands = []install.CommandInfo{}
 	p.cursor = 0
+	p.toolLanguage = ""
+	p.usedFallback = false
 }
 
 // GetSelectedCommand returns the currently selected install command
