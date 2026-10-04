@@ -268,7 +268,7 @@ func TestUpdate_InstallExecuteMsg_SetsModalState(t *testing.T) {
 	m, _, _ := populatedSelectionModel(t)
 	m.executeOutput = "previous output"
 
-	_, cmd := m.Update(panels.InstallExecuteMsg{Command: selectionFixtureCommand})
+	_, cmd := m.Update(m.installPanel.InstallRequest(false)())
 
 	if !m.modals.IsInstallShown() {
 		t.Error("Expected showInstallModal to be true after InstallExecuteMsg")
@@ -287,7 +287,7 @@ func TestUpdate_InstallExecuteMsg_SetsModalState(t *testing.T) {
 func TestUpdate_InstallExecuteMiseMsg_SetsModalState(t *testing.T) {
 	m, _, _ := populatedSelectionModel(t)
 
-	_, cmd := m.Update(panels.InstallExecuteMiseMsg{Command: "mise use --global go:example.invalid/previous-fixture@latest"})
+	_, cmd := m.Update(m.installPanel.InstallRequest(true)())
 
 	if !m.modals.IsInstallShown() {
 		t.Error("Expected showInstallModal to be true after InstallExecuteMiseMsg")

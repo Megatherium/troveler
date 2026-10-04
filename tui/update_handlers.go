@@ -79,7 +79,7 @@ func (m *Model) handleToolSelected() (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) handleInstallExecute(msg panels.InstallExecuteMsg) (tea.Model, tea.Cmd) {
-	if m.selectedTool == nil || !m.installPanel.HasCommands() {
+	if m.selectedTool == nil || !m.installPanel.MatchesSelection(msg.SelectionGeneration) {
 		return m, nil
 	}
 	m.modals.ShowInstall()
@@ -90,7 +90,7 @@ func (m *Model) handleInstallExecute(msg panels.InstallExecuteMsg) (tea.Model, t
 }
 
 func (m *Model) handleInstallExecuteMise(msg panels.InstallExecuteMiseMsg) (tea.Model, tea.Cmd) {
-	if m.selectedTool == nil || !m.installPanel.HasCommands() {
+	if m.selectedTool == nil || !m.installPanel.MatchesSelection(msg.SelectionGeneration) {
 		return m, nil
 	}
 	m.modals.ShowInstall()

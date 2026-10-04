@@ -2,9 +2,6 @@ package tui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-
-	"troveler/internal/install"
-	"troveler/tui/panels"
 )
 
 func (m *Model) startBatchInstall() tea.Cmd {
@@ -26,12 +23,7 @@ func (m *Model) handleAltIKey() (tea.Model, tea.Cmd, bool) {
 		return m, nil, true
 	}
 	if m.installPanel.HasCommands() {
-		cmd := m.installPanel.GetSelectedCommand()
-		if cmd != "" {
-			return m, func() tea.Msg {
-				return panels.InstallExecuteMsg{Command: cmd}
-			}, true
-		}
+		return m, m.installPanel.InstallRequest(false), true
 	}
 
 	return m, nil, true
@@ -45,14 +37,7 @@ func (m *Model) handleAltMKey() (tea.Model, tea.Cmd, bool) {
 		return m, nil, true
 	}
 	if m.installPanel.HasCommands() {
-		cmd := m.installPanel.GetSelectedCommand()
-		if cmd != "" {
-			transformedCmd := install.TransformToMise(cmd)
-
-			return m, func() tea.Msg {
-				return panels.InstallExecuteMiseMsg{Command: transformedCmd}
-			}, true
-		}
+		return m, m.installPanel.InstallRequest(true), true
 	}
 
 	return m, nil, true

@@ -48,6 +48,8 @@ The interface is nicer for humans. You pick whatever feels right for you.
 
 ## Lessons learned
 
+- Every single-tool install request must snapshot its command and install-panel selection generation on the Update thread. Advance that generation when commands are cleared or reloaded, and reject requests from earlier generations in both normal and mise execution handlers, including switches back to the same tool.
+
 - TUI selection changes must clear stored install instructions and both dependent panels before loading the next tool. Empty results also clear batch marks; instruction lookup failures retain only the new tool's metadata and report the error. Cleared commands must disable both install hotkeys and queued install messages.
 - Installed-filter searches must examine ordered candidate batches until the requested number of matches is found or candidates are exhausted. Use the same case-insensitive sort and ID tie-breaker for ordering and continuation, close candidate rows before querying installs, and retain the PATH cache across batches. Direct database searches use nonpositive limits for all matches; the search service applies its own default of 50.
 - Installed-status search filters must preserve the full AND/OR/NOT expression. Evaluate SQL predicates for both possible installed states, then select the matching flag after the runtime PATH check; never replace installed leaves with unconditional true or skip filtering under OR.

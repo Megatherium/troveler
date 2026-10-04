@@ -15,24 +15,27 @@ import (
 
 // InstallPanel displays install options
 type InstallPanel struct {
-	commands       []install.CommandInfo
-	cursor         int
-	focused        bool
-	cliOverride    string
-	configOverride string
-	fallback       string
-	toolLanguage   string
-	usedFallback   bool
+	commands            []install.CommandInfo
+	cursor              int
+	focused             bool
+	cliOverride         string
+	configOverride      string
+	fallback            string
+	toolLanguage        string
+	usedFallback        bool
+	selectionGeneration uint64
 }
 
 // InstallExecuteMsg is sent when user wants to execute install
 type InstallExecuteMsg struct {
-	Command string
+	Command             string
+	SelectionGeneration uint64
 }
 
 // InstallExecuteMiseMsg is sent when user wants to execute install via mise
 type InstallExecuteMiseMsg struct {
-	Command string
+	Command             string
+	SelectionGeneration uint64
 }
 
 // NewInstallPanel creates a new install panel
@@ -76,6 +79,7 @@ func (p *InstallPanel) transformCommandsToMise() {
 
 // SetTool updates the install commands for a tool
 func (p *InstallPanel) SetTool(tool *db.Tool, installs []db.InstallInstruction) {
+	p.selectionGeneration++
 	p.toolLanguage = tool.Language
 
 	// Determine platform using priority logic
@@ -104,6 +108,7 @@ func (p *InstallPanel) SetTool(tool *db.Tool, installs []db.InstallInstruction) 
 
 // Clear clears the install commands
 func (p *InstallPanel) Clear() {
+	p.selectionGeneration++
 	p.commands = []install.CommandInfo{}
 	p.cursor = 0
 	p.toolLanguage = ""
@@ -122,6 +127,29 @@ func (p *InstallPanel) GetSelectedCommand() string {
 // HasCommands returns true if there are install commands available
 func (p *InstallPanel) HasCommands() bool {
 	return len(p.commands) > 0
+}
+
+// MatchesSelection reports whether a request belongs to the current commands.
+func (p *InstallPanel) MatchesSelection(generation uint64) bool {
+	return generation != 0 && generation == p.selectionGeneration && p.HasCommands()
+}
+
+// InstallRequest snapshots the selected command and its origin on the Update
+// thread. The returned command only emits immutable message data.
+func (p *InstallPanel) InstallRequest(useMise bool) tea.Cmd {
+	command := p.GetSelectedCommand()
+	if command == "" {
+		return nil
+	}
+	generation := p.selectionGeneration
+	if useMise {
+		msg := InstallExecuteMiseMsg{
+			Command: install.TransformToMise(command), SelectionGeneration: generation,
+		}
+		return func() tea.Msg { return msg }
+	}
+	msg := InstallExecuteMsg{Command: command, SelectionGeneration: generation}
+	return func() tea.Msg { return msg }
 }
 
 // IsFallbackMode returns true if showing all install entries due to platform detection failure
@@ -153,26 +181,10 @@ func (p *InstallPanel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return p, nil
 
 		case msg.Alt && (msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 'i'):
-			if p.cursor >= 0 && p.cursor < len(p.commands) {
-				cmd := p.commands[p.cursor].Command
-
-				return p, func() tea.Msg {
-					return InstallExecuteMsg{Command: cmd}
-				}
-			}
-
-			return p, nil
+			return p, p.InstallRequest(false)
 
 		case msg.Alt && (msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 'm'):
-			if p.cursor >= 0 && p.cursor < len(p.commands) {
-				cmd := install.TransformToMise(p.commands[p.cursor].Command)
-
-				return p, func() tea.Msg {
-					return InstallExecuteMiseMsg{Command: cmd}
-				}
-			}
-
-			return p, nil
+			return p, p.InstallRequest(true)
 		}
 	}
 

@@ -17,6 +17,7 @@ func TestEmptySearchClearsSelectionAndInstallActions(t *testing.T) {
 		for _, marked := range []bool{false, true} {
 			t.Run(fmt.Sprintf("allocated=%v/marked=%v", allocated, marked), func(t *testing.T) {
 				m, previous, _ := populatedSelectionModel(t)
+				queued := queuedSelectionInstalls(m)
 				if marked {
 					m.activePanel = PanelTools
 					m.toolsPanel.Focus()
@@ -52,7 +53,7 @@ func TestEmptySearchClearsSelectionAndInstallActions(t *testing.T) {
 				if !strings.Contains(m.installPanel.View(), "Select a tool to see install options") {
 					t.Errorf("stale install panel: %q", m.installPanel.View())
 				}
-				assertNoSelectionInstallActions(t, m)
+				assertNoSelectionInstallActions(t, m, queued...)
 				m.activePanel = PanelTools
 				_, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'i'}})
 				if m.modals.IsInfoShown() {
@@ -74,11 +75,12 @@ func TestSelectionLookupFailureClearsPreviousCommands(t *testing.T) {
 	for _, fromSearch := range []bool{false, true} {
 		t.Run(fmt.Sprintf("fromSearch=%v", fromSearch), func(t *testing.T) {
 			m, previous, current := populatedSelectionModel(t)
+			queued := queuedSelectionInstalls(m)
 			if err := m.db.Close(); err != nil {
 				t.Fatal(err)
 			}
 			updateSelectionForTest(m, current, fromSearch)
-			assertCurrentSelectionWithoutCommands(t, m, previous, current)
+			assertCurrentSelectionWithoutCommands(t, m, previous, current, queued...)
 			if m.err == nil || !strings.Contains(m.err.Error(), "install instructions") {
 				t.Errorf("expected instruction lookup error to be reported, got %v", m.err)
 			}
@@ -90,8 +92,9 @@ func TestSelectionWithoutInstructionsClearsPreviousCommands(t *testing.T) {
 	for _, fromSearch := range []bool{false, true} {
 		t.Run(fmt.Sprintf("fromSearch=%v", fromSearch), func(t *testing.T) {
 			m, previous, current := populatedSelectionModel(t)
+			queued := queuedSelectionInstalls(m)
 			updateSelectionForTest(m, current, fromSearch)
-			assertCurrentSelectionWithoutCommands(t, m, previous, current)
+			assertCurrentSelectionWithoutCommands(t, m, previous, current, queued...)
 			if m.err != nil {
 				t.Errorf("empty install instructions should not report a lookup error: %v", m.err)
 			}
@@ -142,7 +145,11 @@ func updateSelectionForTest(m *Model, current db.Tool, fromSearch bool) {
 	}
 }
 
-func assertCurrentSelectionWithoutCommands(t *testing.T, m *Model, previous, current db.Tool) {
+func queuedSelectionInstalls(m *Model) []tea.Msg {
+	return []tea.Msg{m.installPanel.InstallRequest(false)(), m.installPanel.InstallRequest(true)()}
+}
+
+func assertCurrentSelectionWithoutCommands(t *testing.T, m *Model, previous, current db.Tool, queued ...tea.Msg) {
 	t.Helper()
 	if m.selectedTool == nil || m.selectedTool.ID != current.ID || len(m.installs) != 0 {
 		t.Errorf("current selection retained old instructions: tool=%v, installs=%v", m.selectedTool, m.installs)
@@ -151,10 +158,10 @@ func assertCurrentSelectionWithoutCommands(t *testing.T, m *Model, previous, cur
 	if !strings.Contains(infoView, current.Name) || strings.Contains(infoView, previous.Name) {
 		t.Errorf("wrong info panel after selection changed: %q", infoView)
 	}
-	assertNoSelectionInstallActions(t, m)
+	assertNoSelectionInstallActions(t, m, queued...)
 }
 
-func assertNoSelectionInstallActions(t *testing.T, m *Model) {
+func assertNoSelectionInstallActions(t *testing.T, m *Model, queued ...tea.Msg) {
 	t.Helper()
 	if m.installPanel.HasCommands() || m.installPanel.GetSelectedCommand() != "" || m.installPanel.IsFallbackMode() {
 		t.Error("install panel retained previous commands or fallback state")
@@ -176,10 +183,7 @@ func assertNoSelectionInstallActions(t *testing.T, m *Model) {
 		}
 	}
 	// A command message queued before the selection changed must also be inert.
-	for _, msg := range []tea.Msg{
-		panels.InstallExecuteMsg{Command: selectionFixtureCommand},
-		panels.InstallExecuteMiseMsg{Command: "mise use --global go:example.invalid/previous-fixture@latest"},
-	} {
+	for _, msg := range queued {
 		_, cmd := m.Update(msg)
 		if cmd != nil || m.executing || m.modals.IsInstallShown() {
 			t.Errorf("queued %T still starts an install after commands were cleared", msg)
