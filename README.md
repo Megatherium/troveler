@@ -104,6 +104,12 @@ uses the normal debounce interval. Superseded timers and queued search triggers
 are discarded, including when you edit back to the same query. Switching panels
 still allows the latest pending search to run.
 
+Only the latest search request can update results or report a search error.
+Editing or clearing the input invalidates older responses immediately, including
+before the next debounce interval ends. Repeating the same query still creates
+a new request. A successful retry clears the earlier search error while
+preserving errors from other actions.
+
 When a search finds no tools, the TUI clears tool details, install commands, and
 batch marks. Install actions remain disabled until a tool with commands is
 selected. If loading a tool's install instructions fails, its details stay

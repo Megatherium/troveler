@@ -126,6 +126,11 @@ func (p *SearchPanel) MatchesSearch(msg SearchTriggeredMsg) bool {
 	return msg.generation != 0 && msg.generation == p.searchGeneration
 }
 
+// Generation identifies input and immediate-search changes for in-flight work.
+func (p *SearchPanel) Generation() uint64 {
+	return p.searchGeneration
+}
+
 // View renders the search panel
 func (p *SearchPanel) View() string {
 	// Adjust input width to fit panel, ensuring it's at least 10 columns

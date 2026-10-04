@@ -27,7 +27,7 @@ func TestFilteredBatchMarksDispatch(t *testing.T) {
 						t.Fatal(err)
 					}
 				}
-				_, _ = m.Update(searchResultMsg{tools: []db.SearchResult{{Tool: current}}})
+				_, _ = m.Update(searchResultWithOriginForTest(m, searchResultMsg{tools: []db.SearchResult{{Tool: current}}}))
 				if !m.toolsPanel.IsMarked(previous.ID) {
 					t.Fatal("nonempty search discarded the previous mark")
 				}
@@ -36,7 +36,7 @@ func TestFilteredBatchMarksDispatch(t *testing.T) {
 					markSelectionForTest(t, m)
 					wantBatchID = current.ID
 				} else if scenario == "restored filter" {
-					_, _ = m.Update(searchResultMsg{tools: []db.SearchResult{{Tool: previous}, {Tool: current}}})
+					_, _ = m.Update(searchResultWithOriginForTest(m, searchResultMsg{tools: []db.SearchResult{{Tool: previous}, {Tool: current}}}))
 					wantBatchID = previous.ID
 				}
 
@@ -92,12 +92,12 @@ func TestFilteredBatchMarksDispatch(t *testing.T) {
 func TestEmptySearchClearsHiddenBatchMarks(t *testing.T) {
 	m, previous, current := populatedSelectionModel(t)
 	markSelectionForTest(t, m)
-	_, _ = m.Update(searchResultMsg{tools: []db.SearchResult{{Tool: current}}})
+	_, _ = m.Update(searchResultWithOriginForTest(m, searchResultMsg{tools: []db.SearchResult{{Tool: current}}}))
 	if !m.toolsPanel.IsMarked(previous.ID) {
 		t.Fatal("test requires a retained hidden mark before the empty search")
 	}
-	_, _ = m.Update(searchResultMsg{})
-	_, _ = m.Update(searchResultMsg{tools: []db.SearchResult{{Tool: previous}, {Tool: current}}})
+	_, _ = m.Update(searchResultWithOriginForTest(m, searchResultMsg{}))
+	_, _ = m.Update(searchResultWithOriginForTest(m, searchResultMsg{tools: []db.SearchResult{{Tool: previous}, {Tool: current}}}))
 	if m.toolsPanel.IsMarked(previous.ID) || m.toolsPanel.GetMarkedCount() != 0 ||
 		len(m.toolsPanel.GetMarkedTools()) != 0 {
 		t.Fatal("empty search allowed hidden marks to reappear when results returned")

@@ -197,7 +197,7 @@ func TestUpdate_SearchResultMsg_PopulatesTools(t *testing.T) {
 		{Tool: db.Tool{ID: "tool-2", Slug: "test2", Name: "Test Tool 2"}},
 	}
 
-	_, _ = m.Update(searchResultMsg{tools: tools, query: "test"})
+	_, _ = m.Update(searchResultWithOriginForTest(m, searchResultMsg{tools: tools, query: "test"}))
 
 	if m.searching {
 		t.Error("Expected searching to be false after searchResultMsg")
@@ -217,7 +217,7 @@ func TestUpdate_SearchResultMsg_EmptyResults(t *testing.T) {
 	m := newTestModelWithDB(t)
 	m.searching = true
 
-	_, _ = m.Update(searchResultMsg{tools: []db.SearchResult{}, query: "nonexistent"})
+	_, _ = m.Update(searchResultWithOriginForTest(m, searchResultMsg{tools: []db.SearchResult{}, query: "nonexistent"}))
 
 	if m.searching {
 		t.Error("Expected searching to be false after empty searchResultMsg")
@@ -231,7 +231,7 @@ func TestUpdate_SearchErrorMsg(t *testing.T) {
 	m := newTestModelWithDB(t)
 	m.searching = true
 
-	_, _ = m.Update(searchErrorMsg{err: errors.New("tool not found: missing")})
+	_, _ = m.Update(failedSearchForTest(t, m, "missing"))
 
 	if m.searching {
 		t.Error("Expected searching to be false after searchErrorMsg")

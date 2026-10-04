@@ -47,10 +47,11 @@ type Model struct {
 	keys KeyMap
 
 	// Data state
-	tools        []db.SearchResult
-	selectedTool *db.Tool
-	installs     []db.InstallInstruction
-	searching    bool
+	tools            []db.SearchResult
+	selectedTool     *db.Tool
+	installs         []db.InstallInstruction
+	searching        bool
+	searchGeneration uint64
 
 	// Install execution state
 	executing     bool
@@ -110,8 +111,15 @@ func (m *Model) SetSize(width, height int) {
 	m.height = height
 }
 
-// performSearch executes a search query
+// performSearch registers a request on the Update thread before background work.
 func (m *Model) performSearch(query string) tea.Cmd {
+	m.searchGeneration++
+	m.searching = true
+	request := searchRequest{
+		generation: m.searchGeneration, inputGeneration: m.searchPanel.Generation(),
+	}
+	service := m.searchService
+
 	return func() tea.Msg {
 		opts := search.Options{
 			Query:     query,
@@ -120,27 +128,40 @@ func (m *Model) performSearch(query string) tea.Cmd {
 			SortOrder: "ASC",
 		}
 
-		result, err := m.searchService.Search(context.Background(), opts)
+		result, err := service.Search(context.Background(), opts)
 		if err != nil {
-			return searchErrorMsg{err: err}
+			return searchErrorMsg{err: err, request: request}
 		}
 
 		return searchResultMsg{
-			tools: result.Tools,
-			query: query,
+			tools:   result.Tools,
+			query:   query,
+			request: request,
 		}
 	}
 }
 
 // searchResultMsg contains search results
 type searchResultMsg struct {
-	tools []db.SearchResult
-	query string
+	tools   []db.SearchResult
+	query   string
+	request searchRequest
 }
 
 // searchErrorMsg contains search errors
 type searchErrorMsg struct {
-	err error
+	err     error
+	request searchRequest
+}
+
+type searchRequest struct {
+	generation      uint64
+	inputGeneration uint64
+}
+
+func (m *Model) matchesSearchRequest(request searchRequest) bool {
+	return m.searching && request.generation != 0 && request.generation == m.searchGeneration &&
+		request.inputGeneration == m.searchPanel.Generation()
 }
 
 // NextPanel cycles to the next panel

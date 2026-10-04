@@ -35,7 +35,7 @@ func TestEmptySearchClearsSelectionAndInstallActions(t *testing.T) {
 					empty = []db.SearchResult{}
 				}
 				m.searching = true
-				_, _ = m.Update(searchResultMsg{tools: empty, query: "no-matching-fixture"})
+				_, _ = m.Update(searchResultWithOriginForTest(m, searchResultMsg{tools: empty, query: "no-matching-fixture"}))
 
 				if m.searching || len(m.tools) != 0 || m.toolsPanel.GetSelectedTool() != nil {
 					t.Error("empty search should finish with an empty tools list")
@@ -61,7 +61,7 @@ func TestEmptySearchClearsSelectionAndInstallActions(t *testing.T) {
 				}
 
 				// A later populated search must rebuild the cleared selection.
-				_, _ = m.Update(searchResultMsg{tools: []db.SearchResult{{Tool: previous}}})
+				_, _ = m.Update(searchResultWithOriginForTest(m, searchResultMsg{tools: []db.SearchResult{{Tool: previous}}}))
 				if m.selectedTool == nil || m.selectedTool.ID != previous.ID || len(m.installs) != 1 ||
 					m.installPanel.GetSelectedCommand() != selectionFixtureCommand {
 					t.Fatal("selection and commands did not recover after an empty search")
@@ -120,7 +120,7 @@ func populatedSelectionModel(t *testing.T) (*Model, db.Tool, db.Tool) {
 	// Force a deterministic fallback selection, independent of the host OS.
 	m.installPanel = panels.NewInstallPanel("unmatched-fixture-platform", "", "")
 	m.infoPanel.SetSize(80, 20)
-	_, _ = m.Update(searchResultMsg{tools: []db.SearchResult{{Tool: previous}}})
+	_, _ = m.Update(searchResultWithOriginForTest(m, searchResultMsg{tools: []db.SearchResult{{Tool: previous}}}))
 	if m.selectedTool == nil || m.selectedTool.ID != previous.ID || len(m.installs) != 1 ||
 		m.installPanel.GetSelectedCommand() != selectionFixtureCommand || !m.installPanel.IsFallbackMode() ||
 		!strings.Contains(m.infoPanel.View(), previous.Name) {
@@ -139,7 +139,7 @@ func populatedSelectionModel(t *testing.T) (*Model, db.Tool, db.Tool) {
 
 func updateSelectionForTest(m *Model, current db.Tool, fromSearch bool) {
 	if fromSearch {
-		_, _ = m.Update(searchResultMsg{tools: []db.SearchResult{{Tool: current}}})
+		_, _ = m.Update(searchResultWithOriginForTest(m, searchResultMsg{tools: []db.SearchResult{{Tool: current}}}))
 	} else {
 		_, _ = m.Update(panels.ToolCursorChangedMsg{Tool: db.SearchResult{Tool: current}})
 	}

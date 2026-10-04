@@ -14,15 +14,19 @@ func (m *Model) handleSearchTriggered(msg panels.SearchTriggeredMsg) (tea.Model,
 	if !m.searchPanel.MatchesSearch(msg) {
 		return m, nil
 	}
-	m.searching = true
-
 	return m, m.performSearch(msg.Query)
 }
 
 func (m *Model) handleSearchResult(msg searchResultMsg) (tea.Model, tea.Cmd) {
+	if !m.matchesSearchRequest(msg.request) {
+		return m, nil
+	}
 	m.tools = msg.tools
 	m.toolsPanel.SetTools(msg.tools)
 	m.searching = false
+	if _, ownedBySearch := m.err.(searchFailure); ownedBySearch {
+		m.err = nil
+	}
 
 	m.toolsPanel.UpdateAllInstalledStatus(m.db)
 
@@ -37,11 +41,20 @@ func (m *Model) handleSearchResult(msg searchResultMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) handleSearchError(msg searchErrorMsg) (tea.Model, tea.Cmd) {
-	m.err = msg.err
+	if !m.matchesSearchRequest(msg.request) {
+		return m, nil
+	}
+	m.err = searchFailure{msg.err}
 	m.searching = false
 
 	return m, nil
 }
+
+// searchFailure identifies displayed search errors so successful retries clear
+// them without erasing errors reported by install, update or selection actions.
+type searchFailure struct{ error }
+
+func (e searchFailure) Unwrap() error { return e.error }
 
 func (m *Model) handleToolCursorChanged(msg panels.ToolCursorChangedMsg) (tea.Model, tea.Cmd) {
 	m.setSelectedTool(&msg.Tool.Tool)

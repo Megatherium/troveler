@@ -48,6 +48,7 @@ The interface is nicer for humans. You pick whatever feels right for you.
 
 ## Lessons learned
 
+- Every TUI search command, including startup, must capture a unique request generation, the search-panel input generation and the service before background work. Accept success/error messages only for the current pending request and unchanged input, before any state mutation. Successful retries clear only search-owned errors; fixture completions must obtain real request origins so guards do not make tests vacuous.
 - Search debounce timers must snapshot query and generation, return expiry messages, and validate them on the Update thread even when another panel is focused. Input changes, Enter and Escape invalidate older timers and queued triggers before database dispatch; forward Escape as a tea.KeyMsg, not a keybinding object. In-flight result/error ordering is a separate concern.
 - Batch mark counts and batch targets must both use marked tools in the current search results. Nonempty searches retain hidden marks so they reappear when the filter is cleared; empty searches clear all marks. Hidden marks must not open batch configuration or block a selected tool's single install.
 - Every single-tool install request must snapshot its command and install-panel selection generation on the Update thread. Advance that generation when commands are cleared or reloaded, and reject requests from earlier generations in both normal and mise execution handlers, including switches back to the same tool.
