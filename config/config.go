@@ -2,6 +2,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -42,17 +43,22 @@ type TUIConfig struct {
 }
 
 // Load reads configuration from the given path, applying defaults.
+// Only a missing implicit default file is optional; explicit paths must be readable.
 func Load(configPath string) (*Config, error) {
-	if configPath == "" {
+	optional := configPath == ""
+	if optional {
 		configPath = defaultConfigPath()
 	}
 
 	cfg := &Config{}
 
-	if _, err := os.Stat(configPath); err == nil {
-		if _, err := toml.DecodeFile(configPath, cfg); err != nil {
-			return nil, fmt.Errorf("failed to parse config file: %w", err)
+	contents, err := os.ReadFile(configPath)
+	if err != nil {
+		if !optional || !errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("failed to read config file %q: %w", configPath, err)
 		}
+	} else if _, err := toml.Decode(string(contents), cfg); err != nil {
+		return nil, fmt.Errorf("failed to parse config file %q: %w", configPath, err)
 	}
 
 	if cfg.DSN == "" {

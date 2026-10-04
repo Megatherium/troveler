@@ -246,6 +246,10 @@ Default locations use the XDG directory settings:
 Unset, empty or relative XDG values use the HOME fallbacks, following the
 [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir/latest/).
 An explicit `--config` file takes precedence over the default config lookup.
+The default config file is optional when absent. An explicitly selected config
+must exist and be readable; a missing or invalid `--config` path stops startup.
+Unreadable or malformed config files stop startup at either location, with the
+selected path included in the error.
 The config's `dsn` value overrides the default database location, and
 `TROVELER_DSN` overrides both. A missing config at the selected XDG location
 uses defaults; it does not also load a config from the HOME fallback.
