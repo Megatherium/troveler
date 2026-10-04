@@ -75,7 +75,7 @@ func (m *Model) handleEscapeKey() (tea.Model, tea.Cmd) {
 	}
 
 	if m.activePanel == PanelSearch {
-		newModel, cmd := m.searchPanel.Update(m.keys.Escape)
+		newModel, cmd := m.searchPanel.Update(tea.KeyMsg{Type: tea.KeyEsc})
 		if p, ok := newModel.(*panels.SearchPanel); ok {
 			m.searchPanel = p
 		}

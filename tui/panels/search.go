@@ -11,18 +11,25 @@ import (
 
 // SearchPanel handles the search input
 type SearchPanel struct {
-	textInput    textinput.Model
-	focused      bool
-	lastQuery    string
-	searchTimer  *time.Timer
-	debounceTime time.Duration
-	width        int
-	height       int
+	textInput        textinput.Model
+	focused          bool
+	lastQuery        string
+	searchGeneration uint64
+	debounceTime     time.Duration
+	width            int
+	height           int
 }
 
 // SearchTriggeredMsg is sent when search should be executed
 type SearchTriggeredMsg struct {
-	Query string
+	Query      string
+	generation uint64
+}
+
+// SearchDebounceMsg returns a timer expiry to the search panel's Update thread.
+type SearchDebounceMsg struct {
+	query      string
+	generation uint64
 }
 
 // NewSearchPanel creates a new search panel
@@ -49,12 +56,22 @@ func (p *SearchPanel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+	case SearchDebounceMsg:
+		if msg.generation == 0 || msg.generation != p.searchGeneration {
+			return p, nil
+		}
+		// Consume this timer once, invalidating duplicate deliveries.
+		p.searchGeneration++
+
+		return p, p.triggerSearch(msg.query)
+
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEsc:
 			// Clear search
 			p.textInput.SetValue("")
 			p.lastQuery = ""
+			p.searchGeneration++
 
 			return p, p.triggerSearch("")
 
@@ -62,6 +79,7 @@ func (p *SearchPanel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Immediate search on Enter
 			query := p.textInput.Value()
 			p.lastQuery = query
+			p.searchGeneration++
 
 			return p, p.triggerSearch(query)
 		}
@@ -74,38 +92,38 @@ func (p *SearchPanel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	currentQuery := p.textInput.Value()
 	if currentQuery != p.lastQuery {
 		p.lastQuery = currentQuery
-
-		// Cancel existing timer
-		if p.searchTimer != nil {
-			p.searchTimer.Stop()
-		}
-
-		// Start new debounce timer
-		query := currentQuery
+		p.searchGeneration++
 
 		return p, tea.Batch(
 			cmd,
-			p.debounceSearchCmd(query),
+			p.debounceSearchCmd(currentQuery),
 		)
 	}
 
 	return p, cmd
 }
 
-// debounceSearchCmd creates a command that triggers search after debounce
+// debounceSearchCmd snapshots a timer's query and generation before it runs.
 func (p *SearchPanel) debounceSearchCmd(query string) tea.Cmd {
-	return func() tea.Msg {
-		time.Sleep(p.debounceTime)
+	generation := p.searchGeneration
 
-		return SearchTriggeredMsg{Query: query}
-	}
+	return tea.Tick(p.debounceTime, func(time.Time) tea.Msg {
+		return SearchDebounceMsg{query: query, generation: generation}
+	})
 }
 
 // triggerSearch immediately triggers a search
 func (p *SearchPanel) triggerSearch(query string) tea.Cmd {
+	msg := SearchTriggeredMsg{Query: query, generation: p.searchGeneration}
+
 	return func() tea.Msg {
-		return SearchTriggeredMsg{Query: query}
+		return msg
 	}
+}
+
+// MatchesSearch rejects queued triggers superseded before database dispatch.
+func (p *SearchPanel) MatchesSearch(msg SearchTriggeredMsg) bool {
+	return msg.generation != 0 && msg.generation == p.searchGeneration
 }
 
 // View renders the search panel

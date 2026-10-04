@@ -11,6 +11,9 @@ import (
 )
 
 func (m *Model) handleSearchTriggered(msg panels.SearchTriggeredMsg) (tea.Model, tea.Cmd) {
+	if !m.searchPanel.MatchesSearch(msg) {
+		return m, nil
+	}
 	m.searching = true
 
 	return m, m.performSearch(msg.Query)

@@ -180,7 +180,8 @@ func TestUpdate_SearchTriggeredMsg_SetsSearching(t *testing.T) {
 	m := newTestModelWithDB(t)
 	m.searching = false
 
-	_, _ = m.Update(panels.SearchTriggeredMsg{Query: "fzf"})
+	_, trigger := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	_, _ = m.Update(trigger())
 
 	if !m.searching {
 		t.Error("Expected searching to be true after SearchTriggeredMsg")

@@ -24,6 +24,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case panels.SearchTriggeredMsg:
 		return m.handleSearchTriggered(msg)
 
+	case panels.SearchDebounceMsg:
+		return m.delegateToSearchPanel(msg)
+
 	case searchResultMsg:
 		return m.handleSearchResult(msg)
 
