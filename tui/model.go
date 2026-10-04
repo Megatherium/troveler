@@ -73,6 +73,7 @@ func NewModel(database *db.SQLiteDB, cfg *config.Config) *Model {
 	searchPanel.Focus() // Start with search focused
 
 	toolsPanel := panels.NewToolsPanel()
+	appearanceErr := toolsPanel.ConfigureAppearance(cfg.TUI)
 	infoPanel := panels.NewInfoPanel()
 	installPanel := panels.NewInstallPanel(
 		"", // CLI override (will be set from command line later)
@@ -94,6 +95,7 @@ func NewModel(database *db.SQLiteDB, cfg *config.Config) *Model {
 		infoPanel:     infoPanel,
 		installPanel:  installPanel,
 		tools:         []db.SearchResult{},
+		err:           appearanceErr,
 	}
 
 	return m

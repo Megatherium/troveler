@@ -9,24 +9,28 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 
+	"troveler/config"
 	"troveler/db"
 	"troveler/tui/styles"
 )
 
 // ToolsPanel displays the tools list in a table
 type ToolsPanel struct {
-	tools         []db.SearchResult
-	cursor        int
-	selectedCol   int // 0=slug, 1=tagline, 2=language, 3=installed
-	sortCol       int
-	sortAscending bool
-	focused       bool
-	width         int
-	height        int
-	scrollOffset  int
-	installedMap  map[string]bool // Cache of installed status by tool ID
-	markedTools   map[string]bool // Set of marked tool IDs for batch install
+	tools           []db.SearchResult
+	cursor          int
+	selectedCol     int // 0=slug, 1=tagline, 2=language, 3=installed
+	sortCol         int
+	sortAscending   bool
+	focused         bool
+	width           int
+	height          int
+	scrollOffset    int
+	installedMap    map[string]bool // Cache of installed status by tool ID
+	markedTools     map[string]bool // Set of marked tool IDs for batch install
+	taglineMaxWidth int
+	rowColors       []string
 }
 
 // ToolSelectedMsg is sent when a tool is selected (Enter pressed)
@@ -48,15 +52,38 @@ type ToolCursorChangedMsg struct {
 // NewToolsPanel creates a new tools panel
 func NewToolsPanel() *ToolsPanel {
 	return &ToolsPanel{
-		tools:         []db.SearchResult{},
-		cursor:        0,
-		selectedCol:   0,
-		sortCol:       0,
-		sortAscending: true,
-		focused:       false,
-		installedMap:  make(map[string]bool),
-		markedTools:   make(map[string]bool),
+		tools:           []db.SearchResult{},
+		cursor:          0,
+		selectedCol:     0,
+		sortCol:         0,
+		sortAscending:   true,
+		focused:         false,
+		installedMap:    make(map[string]bool),
+		markedTools:     make(map[string]bool),
+		taglineMaxWidth: 40,
+		rowColors:       append([]string(nil), styles.GradientColors...),
 	}
+}
+
+// ConfigureAppearance validates settings and snapshots a panel-local palette.
+func (p *ToolsPanel) ConfigureAppearance(settings config.TUIConfig) error {
+	appearance, err := settings.Resolve()
+	if err != nil {
+		return err
+	}
+	colors := appearance.GradientColors
+	if appearance.Theme == "default" {
+		if len(colors) == 0 {
+			colors = []string{"#FFFFFF"}
+		} else {
+			colors = colors[:1]
+		}
+	} else if len(colors) == 0 {
+		colors = styles.GradientColors
+	}
+	p.rowColors = append([]string(nil), colors...)
+	p.taglineMaxWidth = appearance.TaglineMaxWidth
+	return nil
 }
 
 // SetTools updates the tools list, retaining marks for tools outside the results.
@@ -244,6 +271,7 @@ func (p *ToolsPanel) View() string {
 	if taglineWidth < 10 {
 		taglineWidth = 10
 	}
+	taglineWidth = min(taglineWidth, p.taglineMaxWidth)
 
 	// Render header
 	headers := []string{
@@ -302,9 +330,7 @@ func (p *ToolsPanel) renderHeader(title string, col int, width int) string {
 	}
 
 	text := fmt.Sprintf("%s %s", title, indicator)
-	if len(text) > width {
-		text = text[:width]
-	}
+	text = ansi.Truncate(text, width, "")
 
 	return style.Render(lipgloss.NewStyle().Width(width).Render(text))
 }
@@ -319,10 +345,11 @@ func (p *ToolsPanel) renderRow(
 		name = name[:nameWidth-3] + "..."
 	}
 
-	tagline := tool.Tagline
-	if len(tagline) > taglineWidth {
-		tagline = tagline[:taglineWidth-3] + "..."
+	tail := "..."
+	if taglineWidth < len(tail) {
+		tail = strings.Repeat(".", taglineWidth)
 	}
+	tagline := ansi.Truncate(tool.Tagline, taglineWidth, tail)
 
 	lang := tool.Language
 	if len(lang) > langWidth {
@@ -342,7 +369,7 @@ func (p *ToolsPanel) renderRow(
 	}
 
 	// Apply gradient color
-	gradient := styles.GetGradientColor(idx)
+	gradient := lipgloss.Color(p.rowColors[idx%len(p.rowColors)])
 
 	// Highlight if selected (cursor on this row)
 	if idx == p.cursor && p.focused {

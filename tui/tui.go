@@ -13,6 +13,9 @@ import (
 func Run(database *db.SQLiteDB, cfg *config.Config) error {
 	// Create model
 	m := NewModel(database, cfg)
+	if m.err != nil {
+		return fmt.Errorf("invalid TUI config: %w", m.err)
+	}
 
 	// Create program with alt screen
 	p := tea.NewProgram(

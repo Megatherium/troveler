@@ -76,13 +76,9 @@ func Load(configPath string) (*Config, error) {
 		cfg.Search.TaglineWidth = 50
 	}
 
-	// TUI defaults
-	if cfg.TUI.Theme == "" {
-		cfg.TUI.Theme = "gradient"
-	}
-
-	if cfg.TUI.TaglineMaxWidth == 0 {
-		cfg.TUI.TaglineMaxWidth = 40
+	cfg.TUI, err = cfg.TUI.Resolve()
+	if err != nil {
+		return nil, fmt.Errorf("invalid config file %q: %w", configPath, err)
 	}
 
 	return cfg, nil

@@ -261,6 +261,31 @@ For an explicit config `dsn` or `TROVELER_DSN`, create any required parent
 directories yourself; SQLite DSN options and in-memory databases work as given.
 Directory creation failures report the default data path and the filesystem error.
 
+TUI appearance settings apply to the tools table:
+
+- `theme = "gradient"` (the default) cycles row colors through the built-in
+  palette, or through `gradient_colors` when supplied.
+- `theme = "custom"` cycles through `gradient_colors` and requires at least
+  one color. A single color is supported. Colors must use `#RRGGBB` notation.
+- `theme = "default"` uses one row color: white, or the first configured color.
+  Selection and mark backgrounds remain visible in every theme.
+- `tagline_max_width` caps the tagline column in terminal columns (default
+  `40`; `0` uses that default). The column also shrinks to fit the panel.
+  Truncation preserves Unicode characters and adds dots; full taglines remain
+  available in the Info panel. Negative widths and invalid themes or colors
+  stop startup with a config error. Terminal color support still applies.
+
+For example, to use a custom alternating palette and shorter taglines:
+
+```toml
+[tui]
+theme = "custom"
+tagline_max_width = 24
+gradient_colors = ["#90EE90", "#00FFFF"]
+```
+
+Full configuration example:
+
 ```toml
 # Database settings
 db_path = "~/.local/share/troveler/troveler.db"
