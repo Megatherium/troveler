@@ -4,6 +4,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	_ "github.com/mattn/go-sqlite3" // sqlite3 driver
@@ -21,6 +22,18 @@ func New(dbPath string) (*SQLiteDB, error) {
 		return nil, fmt.Errorf("failed to open db: %w", err)
 	}
 
+	return initializeSQLite(db)
+}
+
+// initializeSQLite takes ownership of db, closing it if setup fails.
+func initializeSQLite(db *sql.DB) (sqlite *SQLiteDB, err error) {
+	defer func() {
+		if err != nil {
+			// Keep the initialization cause even if releasing the handle also fails.
+			err = errors.Join(err, db.Close())
+		}
+	}()
+
 	db.SetMaxOpenConns(1)
 
 	if err := db.PingContext(context.Background()); err != nil {
@@ -31,7 +44,7 @@ func New(dbPath string) (*SQLiteDB, error) {
 		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
 	}
 
-	sqlite := &SQLiteDB{db: db}
+	sqlite = &SQLiteDB{db: db}
 	if err := sqlite.createTables(); err != nil {
 		return nil, fmt.Errorf("failed to create tables: %w", err)
 	}

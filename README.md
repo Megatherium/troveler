@@ -294,6 +294,9 @@ permissions are preserved. Config loading alone does not create directories.
 For an explicit config `dsn` or `TROVELER_DSN`, create any required parent
 directories yourself; SQLite DSN options and in-memory databases work as given.
 Directory creation failures report the default data path and the filesystem error.
+If opening, schema setup or migration fails, Troveler closes the database handle
+and reports the initialization error. A successful open keeps the connection
+available until the command or TUI closes it.
 
 TUI appearance settings apply to the tools table:
 
