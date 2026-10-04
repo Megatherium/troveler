@@ -165,6 +165,11 @@ Search supports powerful field-based filtering with the following syntax:
 
 - **Fallback**: If no `=` is found, query is treated as a general search term
 
+Installed status participates in the full Boolean expression, including nested
+AND, OR, and NOT operations. For example, `installed=true|language=go` matches
+installed tools and any Go tools; `!(installed=true|language=go)` matches only
+uninstalled tools written in other languages.
+
 **Examples**:
 ```bash
 # Simple field filter
@@ -188,6 +193,8 @@ troveler search "!(language=go|language=rust)"
 
 # Filter by installed status
 troveler search installed=true
+troveler search "installed=true|language=go"
+troveler search "!(installed=true|language=go)"
 
 # Combine filters with sort
 troveler search language=python --sort name
