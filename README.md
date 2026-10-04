@@ -84,6 +84,27 @@ Dockerfile features:
 - Pre-populated database for offline testing
 - CGO enabled for SQLite support
 
+The runner checks command exit status before validating stdout. Searches must
+return one JSON array containing the expected record; the Go filter must return
+nonempty results whose languages are all Go. Install displays must contain the
+expected command rows. The batch dry run checks both `bat` and `btop` APK plans,
+per-tool completion and the summary, and rejects failed or skipped tools.
+Non-root search checks both its exit status and the `curl` record.
+
+Run the runner regression checks from the repository root (requires Bash and
+`jq`; both are included in the integration image):
+
+```sh
+go test ./integration
+```
+
+These checks also run in `go test ./...`, using temporary command fixtures
+instead of installing packages or switching users. They verify that failed
+commands and misleading output are rejected. The real container suite still
+installs `btop` through APK and needs access to Alpine package repositories.
+The runner writes to `/app/results` by default; set `RESULTS_DIR` to choose
+another results directory.
+
 ## ⌨️ Keybindings
 
 ### Global
