@@ -381,6 +381,12 @@ troveler/
 
 ## 🤝 Contributing
 
+Run the default Go suite with `go test ./...`. Crawler unit tests use local
+fixtures through an injected page fetcher and require no live-site access.
+They check ordered slug extraction, weekly flags, pagination, limits, empty
+results and fetch/initial-parse errors. Any future live-site smoke test must
+be separate and explicitly opt-in.
+
 The lint configuration requires golangci-lint v2. Validate it before running
 the configured checks (including test files):
 

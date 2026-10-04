@@ -215,8 +215,15 @@ func abs(x int) int {
 	return x
 }
 
+// searchPageFetcher allows slug discovery to use deterministic page fixtures.
+// The production crawler implements this contract without an adapter.
+type searchPageFetcher interface {
+	FetchSearchPage(context.Context, int) ([]byte, error)
+	FetchSearchPagesConcurrently(context.Context, int) (map[int][]byte, error)
+}
+
 func fetchAndParseSlugs(
-	ctx context.Context, fetcher *crawler.Fetcher, limit int,
+	ctx context.Context, fetcher searchPageFetcher, limit int,
 ) ([]string, map[string]bool, int, error) {
 	initialData, err := fetcher.FetchSearchPage(ctx, 1)
 	if err != nil {
