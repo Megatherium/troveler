@@ -47,6 +47,9 @@ Running `troveler update` again refreshes existing tools and replaces their inst
 commands while preserving your tags. Each tool and its commands are saved together;
 if saving fails, its previous data remains available and the update reports an error.
 
+Updates fetch tool details concurrently while showing an animated progress
+display. Use `troveler update --log` for detailed logging instead of the animation.
+
 ## 🧪 Testing
 
 ### Integration Tests with Docker

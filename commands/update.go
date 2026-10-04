@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -159,25 +160,30 @@ func (u *UpdateUI) Render() string {
 }
 
 func (u *UpdateUI) renderChaoticStream(streamWidth int) string {
+	u.bufferMu.Lock()
+	entries := slices.Clone(u.slugBuffer)
+	step := u.step
+	u.bufferMu.Unlock()
+
 	var lines []string
 	for row := 0; row < streamHeight; row++ {
 		var line strings.Builder
 		for col := 0; col < streamWidth; col++ {
 			found := false
-			for _, entry := range u.slugBuffer {
+			for _, entry := range entries {
 				pos := (entry.startOffset - entry.age) % streamWidth
 				if pos < 0 {
 					pos += streamWidth
 				}
 				dist := abs(pos - col)
 				if dist < 4 && entry.row == row {
-					charIdx := (col + entry.age + u.step) % len(entry.slug)
+					charIdx := (col + entry.age + step) % len(entry.slug)
 					char := entry.slug[charIdx]
-					colorIdx := (entry.age + col + u.step) % len(ui.GradientColors)
+					colorIdx := (entry.age + col + step) % len(ui.GradientColors)
 					color := ui.GradientColors[colorIdx]
 
 					style := lipgloss.NewStyle().Foreground(lipgloss.Color(color))
-					if u.step%8 < 4 {
+					if step%8 < 4 {
 						style = style.Bold(true)
 					}
 
@@ -188,8 +194,8 @@ func (u *UpdateUI) renderChaoticStream(streamWidth int) string {
 				}
 			}
 			if !found {
-				noiseChar := runePalette[(col+u.step+row*7)%len(runePalette)]
-				color := ui.GetGradientColor(col+u.step, streamWidth*2)
+				noiseChar := runePalette[(col+step+row*7)%len(runePalette)]
+				color := ui.GetGradientColor(col+step, streamWidth*2)
 				line.WriteString(lipgloss.NewStyle().
 					Foreground(lipgloss.Color(color)).
 					Render(string(noiseChar)))
